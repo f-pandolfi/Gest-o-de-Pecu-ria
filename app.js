@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as XLSX from 'xlsx';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { Plus, LayoutDashboard, List, Syringe, Stethoscope, Baby, TrendingUp, DollarSign, Package, Trash2, Save, ClipboardList, AlertCircle, Check, Loader2, Search, Sprout, RefreshCw, X, Dna, Lock, Unlock, Eye, EyeOff, Table } from 'lucide-react';
+import { Plus, LayoutDashboard, List, Syringe, Stethoscope, Baby, TrendingUp, DollarSign, Package, Trash2, Save, ClipboardList, AlertCircle, Check, Loader2, Search, Sprout, RefreshCw, X, Dna, Lock, Unlock, Eye, EyeOff, Table, CalendarClock } from 'lucide-react';
 
 // ---------- paleta ----------
 const C = {
@@ -498,6 +498,28 @@ function numeroCriaUltimoParto(matrizId, eventos) {
   const maisRecente = nascs.reduce((max, e) => e.data > max.data ? e : max, nascs[0]);
   return maisRecente.brincoBezerro || '';
 }
+const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
+
+function addDias(dataISO, dias) {
+  const d = new Date(dataISO + 'T00:00:00');
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+// Previsão de parto: prioriza diagnóstico com DG preenchido (mais preciso), senão usa a IATF mais recente
+function previsaoPartoDe(matrizId, eventos) {
+  const diags = eventos.filter(e => e.tipo === 'diagnostico' && e.matrizId === matrizId && e.resultado === 'Prenhe' && e.dg && e.data).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  if (diags.length) {
+    const dg = parseInt(diags[0].dg);
+    if (!isNaN(dg)) {
+      const concepcao = addDias(diags[0].data, -dg);
+      return addDias(concepcao, PERIODO_GESTACAO_DIAS);
+    }
+  }
+  const iatfs = eventos.filter(e => e.tipo === 'iatf' && e.matrizId === matrizId && e.data).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  if (iatfs.length) return addDias(iatfs[0].data, PERIODO_GESTACAO_DIAS);
+  return '';
+}
 
 // Sugere o próximo número de brinco de bezerro seguindo a convenção do produtor:
 // 1º dígito = último dígito do ano · faixa 000-499 = fêmea, 500-999 = macho · resto = sequência
@@ -743,6 +765,7 @@ export default function GestaoPecuaria() {
   const [saveStatus, setSaveStatus] = useState(null);
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [busca, setBusca] = useState('');
+  const [buscaPrevisao, setBuscaPrevisao] = useState('');
   const [planilhaTipo, setPlanilhaTipo] = useState('matrizes');
   const [syncError, setSyncError] = useState(false);
   const [editandoMatriz, setEditandoMatriz] = useState(null);
@@ -5127,7 +5150,12 @@ export default function GestaoPecuaria() {
     onClick: () => setTab('lancar')
   }, /*#__PURE__*/React.createElement(Plus, {
     size: 16
-  }), " Lançar"), ownerMode && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+  }), " Lançar"), /*#__PURE__*/React.createElement("button", {
+    style: tabButtonStyle(tab === 'previsao'),
+    onClick: () => setTab('previsao')
+  }, /*#__PURE__*/React.createElement(CalendarClock, {
+    size: 16
+  }), " Previsão de Parto"), ownerMode && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
     style: tabButtonStyle(tab === 'dashboard'),
     onClick: () => setTab('dashboard')
   }, /*#__PURE__*/React.createElement(LayoutDashboard, {
@@ -5721,7 +5749,147 @@ export default function GestaoPecuaria() {
     style: {
       color: C.textMuted
     }
-  }, formatarDataBR(e.data))))))), tab === 'matrizes' && ownerMode && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, formatarDataBR(e.data))))))), tab === 'previsao' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'relative',
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement(Search, {
+    size: 17,
+    style: {
+      position: 'absolute',
+      left: 14,
+      top: 15,
+      color: C.textMuted
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Buscar por brinco...",
+    value: buscaPrevisao,
+    onChange: e => setBuscaPrevisao(e.target.value),
+    style: {
+      width: '100%',
+      padding: '13px 14px 13px 40px',
+      borderRadius: 12,
+      border: `1px solid ${C.border}`,
+      background: C.surfaceAlt,
+      color: C.text,
+      fontSize: 16
+    }
+  })), (() => {
+    const hoje = todayISO();
+    const lista = matrizes.filter(m => m.status === 'Cheia').filter(m => !buscaPrevisao || m.brinco.toLowerCase().includes(buscaPrevisao.toLowerCase())).map(m => ({
+      matriz: m,
+      previsao: previsaoPartoDe(m.id, eventos),
+      ultimoParto: ultimoPartoDe(m.id, eventos),
+      numeroCria: numeroCriaUltimoParto(m.id, eventos)
+    })).sort((a, b) => {
+      if (!a.previsao) return 1;
+      if (!b.previsao) return -1;
+      return a.previsao.localeCompare(b.previsao);
+    });
+    if (lista.length === 0) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C.textMuted,
+          fontSize: 14,
+          padding: '30px 0',
+          textAlign: 'center'
+        }
+      }, buscaPrevisao ? 'Nenhuma matriz cheia encontrada com esse brinco.' : 'Nenhuma matriz com status Cheia no momento.');
+    }
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10
+      }
+    }, lista.map(({
+      matriz: m,
+      previsao,
+      ultimoParto,
+      numeroCria
+    }) => {
+      const diasRestantes = previsao ? Math.round((new Date(previsao + 'T00:00:00') - new Date(hoje + 'T00:00:00')) / 86400000) : null;
+      let corPrazo = C.textMuted;
+      let textoPrazo = 'sem previsão calculada';
+      if (diasRestantes !== null) {
+        if (diasRestantes < 0) {
+          corPrazo = C.descarte;
+          textoPrazo = `atrasado ${Math.abs(diasRestantes)} dia(s)`;
+        } else if (diasRestantes === 0) {
+          corPrazo = C.descarte;
+          textoPrazo = 'hoje!';
+        } else if (diasRestantes <= 15) {
+          corPrazo = C.vazia;
+          textoPrazo = `em ${diasRestantes} dia(s)`;
+        } else {
+          corPrazo = C.cheia;
+          textoPrazo = `em ${diasRestantes} dia(s)`;
+        }
+      }
+      return /*#__PURE__*/React.createElement("div", {
+        key: m.id,
+        style: {
+          background: C.surface,
+          border: `1px solid ${C.border}`,
+          borderRadius: 14,
+          padding: '14px 16px'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: 10,
+          flexWrap: 'wrap'
+        }
+      }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontWeight: 700,
+          fontSize: 17
+        }
+      }, m.brinco), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12.5,
+          color: C.textMuted
+        }
+      }, m.categoria, m.raca ? ` · ${m.raca}` : '', m.lote ? ` · ${m.lote}` : '')), /*#__PURE__*/React.createElement("div", {
+        style: {
+          textAlign: 'right'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 19,
+          fontWeight: 700,
+          fontFamily: 'Georgia, serif',
+          color: C.accent
+        }
+      }, previsao ? formatarDataBR(previsao) : '—'), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          fontWeight: 700,
+          color: corPrazo
+        }
+      }, textoPrazo))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          gap: 14,
+          marginTop: 8,
+          flexWrap: 'wrap',
+          fontSize: 12.5,
+          color: C.textMuted
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 700,
+          color: C.cheia,
+          background: `${C.cheia}22`,
+          padding: '3px 9px',
+          borderRadius: 20
+        }
+      }, m.status), ultimoParto && /*#__PURE__*/React.createElement("span", null, "Último parto: ", formatarDataBR(ultimoParto), numeroCria ? ` (cria ${numeroCria})` : '')));
+    }));
+  })()), tab === 'matrizes' && ownerMode && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8,
