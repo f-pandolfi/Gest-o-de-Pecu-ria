@@ -31,6 +31,40 @@ const SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbyDBTMVGJGeBj92q
 // Tipos de lançamento visíveis no modo Funcionário (restrito)
 const TIPOS_FUNCIONARIO = ['nascimento', 'desmama', 'iatf', 'insumo', 'descarte'];
 
+// Campos editáveis ao clicar numa matriz (modo proprietário) — cobre tudo do cadastro, com Status completo
+const CAMPOS_EDICAO_MATRIZ = [{
+  key: 'brinco',
+  label: 'Brinco / ID',
+  type: 'text',
+  required: true
+}, {
+  key: 'categoria',
+  label: 'Categoria',
+  type: 'select',
+  options: ['Novilha', 'Primípara', 'Multípara', 'Vaca']
+}, {
+  key: 'raca',
+  label: 'Raça',
+  type: 'text'
+}, {
+  key: 'lote',
+  label: 'Lote / piquete',
+  type: 'text'
+}, {
+  key: 'dataNascimento',
+  label: 'Data de nascimento',
+  type: 'date'
+}, {
+  key: 'partosAnteriores',
+  label: 'Partos antes de entrar na fazenda',
+  type: 'number'
+}, {
+  key: 'status',
+  label: 'Status',
+  type: 'select',
+  options: ['Vazia', 'Cheia', 'Descarte']
+}];
+
 // Abas disponíveis na visão de Planilha
 const PLANILHA_TIPOS = [{
   id: 'matrizes',
@@ -457,6 +491,14 @@ function ultimoPartoDe(matrizId, eventos) {
   return nascs.reduce((max, e) => e.data > max ? e.data : max, nascs[0].data);
 }
 
+// Número (brinco) da cria do último parto daquela matriz
+function numeroCriaUltimoParto(matrizId, eventos) {
+  const nascs = eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === matrizId && e.data);
+  if (!nascs.length) return '';
+  const maisRecente = nascs.reduce((max, e) => e.data > max.data ? e : max, nascs[0]);
+  return maisRecente.brincoBezerro || '';
+}
+
 // Sugere o próximo número de brinco de bezerro seguindo a convenção do produtor:
 // 1º dígito = último dígito do ano · faixa 000-499 = fêmea, 500-999 = macho · resto = sequência
 function sugerirBrincoBezerro(data, sexo, eventos) {
@@ -703,6 +745,8 @@ export default function GestaoPecuaria() {
   const [busca, setBusca] = useState('');
   const [planilhaTipo, setPlanilhaTipo] = useState('matrizes');
   const [syncError, setSyncError] = useState(false);
+  const [editandoMatriz, setEditandoMatriz] = useState(null);
+  const [formEdicaoMatriz, setFormEdicaoMatriz] = useState({});
   const [confirmAction, setConfirmAction] = useState(null); // null | 'import' | 'clear'
   const [ownerMode, setOwnerMode] = useState(false);
   const [showPinInput, setShowPinInput] = useState(false);
@@ -845,6 +889,31 @@ export default function GestaoPecuaria() {
       }
       return next;
     });
+  }
+  function abrirEdicaoMatriz(m) {
+    setEditandoMatriz(m);
+    setFormEdicaoMatriz({
+      ...m
+    });
+  }
+  function fecharEdicaoMatriz() {
+    setEditandoMatriz(null);
+    setFormEdicaoMatriz({});
+  }
+  function salvarEdicaoMatriz() {
+    const atualizada = {
+      ...editandoMatriz,
+      brinco: formEdicaoMatriz.brinco,
+      categoria: formEdicaoMatriz.categoria,
+      raca: formEdicaoMatriz.raca || '',
+      lote: formEdicaoMatriz.lote || '',
+      dataNascimento: formEdicaoMatriz.dataNascimento || '',
+      partosAnteriores: parseInt(formEdicaoMatriz.partosAnteriores) || 0,
+      status: formEdicaoMatriz.status
+    };
+    setMatrizes(matrizes.map(m => m.id === atualizada.id ? atualizada : m));
+    syncMatrizUpsert(atualizada);
+    fecharEdicaoMatriz();
   }
   async function handleSalvar() {
     const campos = CAMPOS[tipoSelecionado];
@@ -4736,7 +4805,8 @@ export default function GestaoPecuaria() {
         'Status': m.status,
         'Partos (Fazenda)': eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === m.id).length,
         'Partos Ant.': m.partosAnteriores || 0,
-        'Último Parto': formatarDataBR(ultimoPartoDe(m.id, eventos)) || ''
+        'Último Parto': formatarDataBR(ultimoPartoDe(m.id, eventos)) || '',
+        'Nº Cria': numeroCriaUltimoParto(m.id, eventos)
       }));
     }
     if (tipo === 'touros') {
@@ -4842,7 +4912,7 @@ export default function GestaoPecuaria() {
     const hoje = todayISO();
 
     // ---- Resumo ----
-    const resumo = [['Relatório Fazenda Piraçu', ''], ['Gerado em', hoje], [''], ['Total de matrizes', kpis.total], ['Cheias', kpis.cheias], ['Vazias', kpis.vazias], ['Descarte', kpis.descartes], ['Novilhas em recria', kpis.emRecria], ['Taxa de prenhez (%)', kpis.taxaPrenhez.toFixed(1)], [''], ['Nascimentos', kpis.nascimentos], ['Natimortos', kpis.natimortos], ['Taxa de perda ao nascer (%)', kpis.taxaPerda.toFixed(1)], ['Peso médio ao nascer (kg)', kpis.pesoMedioNascer.toFixed(1)], ['Desmamas', kpis.desmamas], ['Taxa de desmama (%)', kpis.taxaDesmama.toFixed(1)], ['Peso médio na desmama (kg)', kpis.pesoMedioDesmama.toFixed(1)], [''], ['Receita total de vendas (R$)', kpis.receitaTotal.toFixed(2)], ['Custo total (IATF+diagnóstico+insumo+frete) (R$)', kpis.custoTotal.toFixed(2)], ['Custo por bezerro (R$)', kpis.custoPorBezerro.toFixed(2)], ['Margem (vendas - custos) (R$)', kpis.margem.toFixed(2)]];
+    const resumo = [['Relatório Fazenda Ibiraçu', ''], ['Gerado em', hoje], [''], ['Total de matrizes', kpis.total], ['Cheias', kpis.cheias], ['Vazias', kpis.vazias], ['Descarte', kpis.descartes], ['Novilhas em recria', kpis.emRecria], ['Taxa de prenhez (%)', kpis.taxaPrenhez.toFixed(1)], [''], ['Nascimentos', kpis.nascimentos], ['Natimortos', kpis.natimortos], ['Taxa de perda ao nascer (%)', kpis.taxaPerda.toFixed(1)], ['Peso médio ao nascer (kg)', kpis.pesoMedioNascer.toFixed(1)], ['Desmamas', kpis.desmamas], ['Taxa de desmama (%)', kpis.taxaDesmama.toFixed(1)], ['Peso médio na desmama (kg)', kpis.pesoMedioDesmama.toFixed(1)], [''], ['Receita total de vendas (R$)', kpis.receitaTotal.toFixed(2)], ['Custo total (IATF+diagnóstico+insumo+frete) (R$)', kpis.custoTotal.toFixed(2)], ['Custo por bezerro (R$)', kpis.custoPorBezerro.toFixed(2)], ['Margem (vendas - custos) (R$)', kpis.margem.toFixed(2)]];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), 'Resumo');
 
     // ---- Matrizes ----
@@ -4855,6 +4925,7 @@ export default function GestaoPecuaria() {
       'Status': m.status,
       'Partos na Fazenda': eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === m.id).length,
       'Último Parto': formatarDataBR(ultimoPartoDe(m.id, eventos)) || '',
+      'Nº Cria (Último Parto)': numeroCriaUltimoParto(m.id, eventos),
       'Partos Anteriores': m.partosAnteriores || 0
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(matrizesSheet), 'Matrizes');
@@ -4970,7 +5041,7 @@ export default function GestaoPecuaria() {
       };
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tourosSheet), 'Touros');
-    XLSX.writeFile(wb, `Relatorio_Fazenda_Piracu_${hoje}.xlsx`);
+    XLSX.writeFile(wb, `Relatorio_Fazenda_Ibiracu_${hoje}.xlsx`);
   }
   if (loading) {
     return /*#__PURE__*/React.createElement("div", {
@@ -5015,7 +5086,7 @@ export default function GestaoPecuaria() {
       textTransform: 'uppercase',
       fontWeight: 700
     }
-  }, "Fazenda Piraçu"), /*#__PURE__*/React.createElement("h1", {
+  }, "Fazenda Ibiraçu"), /*#__PURE__*/React.createElement("h1", {
     style: {
       fontFamily: 'Georgia, serif',
       fontSize: 26,
@@ -5703,7 +5774,7 @@ export default function GestaoPecuaria() {
       padding: '30px 0',
       textAlign: 'center'
     }
-  }, "Nenhuma matriz encontrada.") : /*#__PURE__*/React.createElement("div", {
+  }, "Nenhuma matriz encontrada.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.surface,
       border: `1px solid ${C.border}`,
@@ -5716,19 +5787,23 @@ export default function GestaoPecuaria() {
     const partosAnt = parseInt(m.partosAnteriores) || 0;
     const partosLabel = partosAnt > 0 ? `${partosFazenda} parto(s) aqui · ${partosAnt} antes` : `${partosFazenda} parto(s) na fazenda`;
     const ultimoParto = formatarDataBR(ultimoPartoDe(m.id, eventos));
+    const numeroCria = numeroCriaUltimoParto(m.id, eventos);
     return /*#__PURE__*/React.createElement("div", {
       key: m.id,
+      onClick: ownerMode ? () => abrirEdicaoMatriz(m) : undefined,
       style: {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '13px 16px',
-        borderBottom: i < matrizesFiltradas.length - 1 ? `1px solid ${C.border}` : 'none'
+        borderBottom: i < matrizesFiltradas.length - 1 ? `1px solid ${C.border}` : 'none',
+        cursor: ownerMode ? 'pointer' : 'default'
       }
     }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontWeight: 700,
-        fontSize: 15
+        fontSize: 15,
+        color: ownerMode ? C.accent : C.text
       }
     }, m.brinco), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -5740,7 +5815,7 @@ export default function GestaoPecuaria() {
         fontSize: 12.5,
         color: C.textMuted
       }
-    }, partosLabel, ultimoParto ? ` · último parto: ${ultimoParto}` : '')), /*#__PURE__*/React.createElement("span", {
+    }, partosLabel, ultimoParto ? ` · último parto: ${ultimoParto}${numeroCria ? ` (cria ${numeroCria})` : ''}` : '')), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 12.5,
         fontWeight: 700,
@@ -5750,7 +5825,95 @@ export default function GestaoPecuaria() {
         borderRadius: 20
       }
     }, m.status));
-  }))), tab === 'touros' && ownerMode && /*#__PURE__*/React.createElement("div", null, touros.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  })), ownerMode && editandoMatriz && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.55)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 50,
+      padding: 16
+    },
+    onClick: fecharEdicaoMatriz
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      borderRadius: 16,
+      padding: 20,
+      maxWidth: 420,
+      width: '100%',
+      maxHeight: '85vh',
+      overflowY: 'auto'
+    },
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 700,
+      fontFamily: 'Georgia, serif'
+    }
+  }, "Editar matriz ", editandoMatriz.brinco), /*#__PURE__*/React.createElement("button", {
+    onClick: fecharEdicaoMatriz,
+    style: {
+      background: 'transparent',
+      border: 'none',
+      color: C.textMuted,
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement(X, {
+    size: 18
+  }))), CAMPOS_EDICAO_MATRIZ.map(campo => /*#__PURE__*/React.createElement(Field, {
+    key: campo.key,
+    campo: campo,
+    value: formEdicaoMatriz[campo.key],
+    onChange: (k, v) => setFormEdicaoMatriz(f => ({
+      ...f,
+      [k]: v
+    })),
+    matrizes: matrizes,
+    touros: touros
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      marginTop: 6
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: salvarEdicaoMatriz,
+    style: {
+      flex: 1,
+      padding: '12px',
+      borderRadius: 10,
+      border: 'none',
+      background: C.accent,
+      color: '#1B140A',
+      fontWeight: 700,
+      fontSize: 14.5,
+      cursor: 'pointer'
+    }
+  }, "Salvar alterações"), /*#__PURE__*/React.createElement("button", {
+    onClick: fecharEdicaoMatriz,
+    style: {
+      padding: '12px 18px',
+      borderRadius: 10,
+      border: `1px solid ${C.border}`,
+      background: 'transparent',
+      color: C.textMuted,
+      fontWeight: 600,
+      fontSize: 14.5,
+      cursor: 'pointer'
+    }
+  }, "Cancelar")))))), tab === 'touros' && ownerMode && /*#__PURE__*/React.createElement("div", null, touros.length === 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
       color: C.textMuted,
       fontSize: 14,
