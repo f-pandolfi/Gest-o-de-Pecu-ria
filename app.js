@@ -289,7 +289,11 @@ const CAMPOS = {
     type: 'number'
   }, {
     key: 'brincoBezerro',
-    label: 'Brinco do bezerro',
+    label: 'Brinco do bezerro (sugerido automaticamente)',
+    type: 'text'
+  }, {
+    key: 'pelagem',
+    label: 'Pelagem',
     type: 'text'
   }, {
     key: 'touroId',
@@ -435,6 +439,25 @@ const CAMPOS = {
 };
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
+}
+
+// Sugere o próximo número de brinco de bezerro seguindo a convenção do produtor:
+// 1º dígito = último dígito do ano · faixa 000-499 = fêmea, 500-999 = macho · resto = sequência
+function sugerirBrincoBezerro(data, sexo, eventos) {
+  if (!data || !sexo) return '';
+  const ano = parseInt(data.slice(0, 4), 10) % 10;
+  const base = sexo === 'Macho' ? 500 : 0;
+  const usados = new Set();
+  eventos.filter(e => e.tipo === 'nascimento' && e.brincoBezerro).forEach(e => {
+    const n = parseInt(e.brincoBezerro, 10);
+    if (!isNaN(n) && Math.floor(n / 1000) === ano) {
+      const resto = n % 1000;
+      if (resto >= base && resto < base + 500) usados.add(resto - base);
+    }
+  });
+  let seq = 0;
+  while (usados.has(seq)) seq++;
+  return String(ano * 1000 + base + seq);
 }
 
 // ---------- componentes utilitários ----------
@@ -750,10 +773,17 @@ export default function GestaoPecuaria() {
     await syncToSheets(m, t, ev);
   }
   function updateField(key, value) {
-    setForm(f => ({
-      ...f,
-      [key]: value
-    }));
+    setForm(f => {
+      const next = {
+        ...f,
+        [key]: value
+      };
+      if (tipoSelecionado === 'nascimento' && (key === 'sexo' || key === 'data') && !f.brincoBezerro) {
+        const sugestao = sugerirBrincoBezerro(next.data, next.sexo, eventos);
+        if (sugestao) next.brincoBezerro = sugestao;
+      }
+      return next;
+    });
   }
   async function handleSalvar() {
     const campos = CAMPOS[tipoSelecionado];
@@ -793,32 +823,31 @@ export default function GestaoPecuaria() {
       };
       await persistTouros([...touros, novo]);
     } else if (tipoSelecionado === 'descarte') {
-      const next = matrizes.map(m => m.id === form.matrizId ? {
+      const matrizesNext = matrizes.map(m => m.id === form.matrizId ? {
         ...m,
         status: 'Descarte'
       } : m);
-      await persistMatrizes(next);
-      await persistEventos([...eventos, {
+      const eventosNext = [...eventos, {
         id,
         tipo: 'descarte',
         ...form,
         createdAt: now
-      }]);
+      }];
+      await persistAll(matrizesNext, touros, eventosNext);
     } else if (tipoSelecionado === 'diagnostico') {
       const novoStatus = form.resultado === 'Prenhe' ? 'Cheia' : form.resultado === 'Descarte' ? 'Descarte' : 'Vazia';
-      const next = matrizes.map(m => m.id === form.matrizId ? {
+      const matrizesNext = matrizes.map(m => m.id === form.matrizId ? {
         ...m,
         status: novoStatus
       } : m);
-      await persistMatrizes(next);
-      const novosEventos = [...eventos, {
+      const eventosNext = [...eventos, {
         id,
         tipo: 'diagnostico',
         ...form,
         createdAt: now
       }];
       if (form.resultado === 'Descarte') {
-        novosEventos.push({
+        eventosNext.push({
           id: `${id}-desc`,
           tipo: 'descarte',
           matrizId: form.matrizId,
@@ -828,18 +857,18 @@ export default function GestaoPecuaria() {
           createdAt: now
         });
       }
-      await persistEventos(novosEventos);
+      await persistAll(matrizesNext, touros, eventosNext);
     } else if (tipoSelecionado === 'nascimento') {
-      const novosEventos = [...eventos, {
+      const eventosNext = [...eventos, {
         id,
         tipo: 'nascimento',
         ...form,
         createdAt: now
       }];
-      await persistEventos(novosEventos);
+      let matrizesNext = matrizes;
       if (form.matrizId) {
-        const partosNaFazenda = novosEventos.filter(e => e.tipo === 'nascimento' && e.matrizId === form.matrizId).length;
-        const next = matrizes.map(m => {
+        const partosNaFazenda = eventosNext.filter(e => e.tipo === 'nascimento' && e.matrizId === form.matrizId).length;
+        matrizesNext = matrizes.map(m => {
           if (m.id !== form.matrizId) return m;
           let categoria = m.categoria;
           if (categoria === 'Novilha' && partosNaFazenda >= 1) categoria = 'Primípara';else if (categoria === 'Primípara' && partosNaFazenda >= 2) categoria = 'Multípara';
@@ -848,8 +877,8 @@ export default function GestaoPecuaria() {
             categoria
           };
         });
-        await persistMatrizes(next);
       }
+      await persistAll(matrizesNext, touros, eventosNext);
     } else {
       await persistEventos([...eventos, {
         id,
@@ -4563,6 +4592,14 @@ export default function GestaoPecuaria() {
     await persistAll([], [], []);
   }
   const brincoMap = useMemo(() => Object.fromEntries(matrizes.map(m => [m.id, m.brinco])), [matrizes]);
+  const ultimosNascimentos = useMemo(() => {
+    const nasc = eventos.filter(e => e.tipo === 'nascimento' && e.brincoBezerro);
+    const maisRecente = sexo => nasc.filter(e => e.sexo === sexo).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0];
+    return {
+      Macho: maisRecente('Macho'),
+      Fêmea: maisRecente('Fêmea')
+    };
+  }, [eventos]);
   const touroNomeMap = useMemo(() => Object.fromEntries(touros.map(t => [t.id, t.nome])), [touros]);
   const nomeTouroEvento = e => (e.touroId === '__outro__' ? e.touroOutro : touroNomeMap[e.touroId]) || '';
   const kpis = useMemo(() => calcularKPIs(matrizes, eventos), [matrizes, eventos]);
@@ -4644,6 +4681,7 @@ export default function GestaoPecuaria() {
         'Sexo': e.sexo || '',
         'Peso (kg)': e.pesoNascer || '',
         'Brinco Bezerro': e.brincoBezerro || '',
+        'Pelagem': e.pelagem || '',
         'Pai': nomeTouroEvento(e),
         'Tipo Parto': e.tipoParto || ''
       }));
@@ -4745,6 +4783,7 @@ export default function GestaoPecuaria() {
       'Sexo': e.sexo || '',
       'Peso ao Nascer (kg)': e.pesoNascer || '',
       'Brinco do Bezerro': e.brincoBezerro || '',
+      'Pelagem': e.pelagem || '',
       'Pai (touro/sêmen)': nomeTouroEvento(e),
       'Tipo de Parto': e.tipoParto || '',
       'Observações': e.observacoes || ''
@@ -5098,7 +5137,45 @@ export default function GestaoPecuaria() {
       flexShrink: 0,
       marginTop: 1
     }
-  }), ownerMode ? 'Cadastre pelo menos uma matriz primeiro em "Nova Matriz" para poder vinculá-la aos outros eventos.' : 'Ainda não há matrizes cadastradas no sistema. Fale com o proprietário.'), CAMPOS[tipoSelecionado].filter(campo => !campo.showIf || campo.showIf(form)).map(campo => /*#__PURE__*/React.createElement(Field, {
+  }), ownerMode ? 'Cadastre pelo menos uma matriz primeiro em "Nova Matriz" para poder vinculá-la aos outros eventos.' : 'Ainda não há matrizes cadastradas no sistema. Fale com o proprietário.'), tipoSelecionado === 'nascimento' && (ultimosNascimentos.Macho || ultimosNascimentos.Fêmea) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      marginBottom: 16,
+      flexWrap: 'wrap'
+    }
+  }, ['Fêmea', 'Macho'].map(sexo => {
+    const ev = ultimosNascimentos[sexo];
+    if (!ev) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      key: sexo,
+      style: {
+        flex: '1 1 140px',
+        background: C.surfaceAlt,
+        border: `1px solid ${C.border}`,
+        borderRadius: 10,
+        padding: '10px 14px'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: 0.4
+      }
+    }, "Último ", sexo === 'Macho' ? 'macho' : 'fêmea', " lançado"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        fontFamily: 'Georgia, serif'
+      }
+    }, ev.brincoBezerro), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        color: C.textMuted
+      }
+    }, ev.data, ev.pelagem ? ` · ${ev.pelagem}` : ''));
+  })), CAMPOS[tipoSelecionado].filter(campo => !campo.showIf || campo.showIf(form)).map(campo => /*#__PURE__*/React.createElement(Field, {
     key: campo.key,
     campo: campo,
     value: form[campo.key],
