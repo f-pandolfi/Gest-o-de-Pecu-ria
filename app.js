@@ -441,6 +441,15 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Formata data ISO (YYYY-MM-DD) para o padrão brasileiro DD/MM/AA
+function formatarDataBR(iso) {
+  if (!iso || typeof iso !== 'string') return iso || '';
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return iso;
+  const [, ano, mes, dia] = m;
+  return `${dia}/${mes}/${ano.slice(2)}`;
+}
+
 // Sugere o próximo número de brinco de bezerro seguindo a convenção do produtor:
 // 1º dígito = último dígito do ano · faixa 000-499 = fêmea, 500-999 = macho · resto = sequência
 function sugerirBrincoBezerro(data, sexo, eventos) {
@@ -4622,10 +4631,13 @@ export default function GestaoPecuaria() {
       const mes = (e.data || '').slice(0, 7);
       if (mes) map[mes] = (map[mes] || 0) + 1;
     });
-    return Object.entries(map).sort().map(([mes, qtd]) => ({
-      mes,
-      qtd
-    }));
+    return Object.entries(map).sort().map(([mes, qtd]) => {
+      const [ano, m] = mes.split('-');
+      return {
+        mes: `${m}/${ano.slice(2)}`,
+        qtd
+      };
+    });
   }, [eventos]);
   const atividadeRecente = useMemo(() => [...eventos].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 8), [eventos]);
   const matrizesFiltradas = useMemo(() => matrizes.filter(m => (filtroStatus === 'todos' || m.status === filtroStatus) && (!busca || m.brinco.toLowerCase().includes(busca.toLowerCase()))), [matrizes, filtroStatus, busca]);
@@ -4650,7 +4662,7 @@ export default function GestaoPecuaria() {
         'Categoria': m.categoria,
         'Raça': m.raca || '',
         'Lote': m.lote || '',
-        'Data Nasc.': m.dataNascimento || '',
+        'Data Nasc.': formatarDataBR(m.dataNascimento) || '',
         'Status': m.status,
         'Partos (Fazenda)': eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === m.id).length,
         'Partos Ant.': m.partosAnteriores || 0
@@ -4675,7 +4687,7 @@ export default function GestaoPecuaria() {
     const evs = eventos.filter(e => e.tipo === tipo);
     if (tipo === 'nascimento') {
       return evs.map(e => ({
-        'Data': e.data,
+        'Data': formatarDataBR(e.data),
         'Matriz': brincoMap[e.matrizId] || '',
         'Resultado': e.resultadoParto || '',
         'Sexo': e.sexo || '',
@@ -4688,7 +4700,7 @@ export default function GestaoPecuaria() {
     }
     if (tipo === 'desmama') {
       return evs.map(e => ({
-        'Data': e.data,
+        'Data': formatarDataBR(e.data),
         'Brinco Bezerro': e.brincoBezerro || '',
         'Peso (kg)': e.pesoDesmama || '',
         'Idade (dias)': e.idadeDias || ''
@@ -4696,7 +4708,7 @@ export default function GestaoPecuaria() {
     }
     if (tipo === 'recria') {
       return evs.map(e => ({
-        'Data': e.data,
+        'Data': formatarDataBR(e.data),
         'Novilha': brincoMap[e.matrizId] || '',
         'Peso Atual (kg)': e.pesoAtual || '',
         'Apta Reprodução': e.aptaReproducao || ''
@@ -4704,7 +4716,7 @@ export default function GestaoPecuaria() {
     }
     if (tipo === 'iatf') {
       return evs.map(e => ({
-        'Data': e.data,
+        'Data': formatarDataBR(e.data),
         'Matriz': brincoMap[e.matrizId] || '',
         'Tipo': e.tipoServico || '',
         'Nº Tent.': e.numeroServico || '',
@@ -4715,7 +4727,7 @@ export default function GestaoPecuaria() {
     }
     if (tipo === 'diagnostico') {
       return evs.map(e => ({
-        'Data': e.data,
+        'Data': formatarDataBR(e.data),
         'Matriz': brincoMap[e.matrizId] || '',
         'Resultado': e.resultado || '',
         'Método': e.metodo || '',
@@ -4726,7 +4738,7 @@ export default function GestaoPecuaria() {
     }
     if (tipo === 'venda') {
       return evs.map(e => ({
-        'Data': e.data,
+        'Data': formatarDataBR(e.data),
         'Categoria': e.categoria || '',
         'Animais': e.animais || '',
         'Peso Total (kg)': e.pesoTotal || '',
@@ -4737,7 +4749,7 @@ export default function GestaoPecuaria() {
     }
     if (tipo === 'insumo') {
       return evs.map(e => ({
-        'Data': e.data,
+        'Data': formatarDataBR(e.data),
         'Produto': e.produto || '',
         'Quantidade': e.quantidade || '',
         'Unidade': e.unidade || '',
@@ -4747,7 +4759,7 @@ export default function GestaoPecuaria() {
     }
     if (tipo === 'descarte') {
       return evs.map(e => ({
-        'Data': e.data,
+        'Data': formatarDataBR(e.data),
         'Matriz': brincoMap[e.matrizId] || '',
         'Motivo': e.motivo || ''
       }));
@@ -4777,7 +4789,7 @@ export default function GestaoPecuaria() {
 
     // ---- Nascimentos ----
     const nascSheet = eventos.filter(e => e.tipo === 'nascimento').map(e => ({
-      'Data': e.data,
+      'Data': formatarDataBR(e.data),
       'Matriz (mãe)': brincoMap[e.matrizId] || '',
       'Resultado': e.resultadoParto || '',
       'Sexo': e.sexo || '',
@@ -4792,7 +4804,7 @@ export default function GestaoPecuaria() {
 
     // ---- Desmama ----
     const desmamaSheet = eventos.filter(e => e.tipo === 'desmama').map(e => ({
-      'Data': e.data,
+      'Data': formatarDataBR(e.data),
       'Brinco do Bezerro': e.brincoBezerro || '',
       'Peso na Desmama (kg)': e.pesoDesmama || '',
       'Idade (dias)': e.idadeDias || ''
@@ -4801,7 +4813,7 @@ export default function GestaoPecuaria() {
 
     // ---- Recria ----
     const recriaSheet = eventos.filter(e => e.tipo === 'recria').map(e => ({
-      'Data': e.data,
+      'Data': formatarDataBR(e.data),
       'Novilha': brincoMap[e.matrizId] || '',
       'Peso Atual (kg)': e.pesoAtual || '',
       'Apta para Reprodução': e.aptaReproducao || '',
@@ -4811,11 +4823,11 @@ export default function GestaoPecuaria() {
 
     // ---- IATF ----
     const iatfSheet = eventos.filter(e => e.tipo === 'iatf').map(e => ({
-      'Data': e.data,
+      'Data': formatarDataBR(e.data),
       'Matriz': brincoMap[e.matrizId] || '',
       'Tipo': e.tipoServico || '',
       'Nº Tentativa': e.numeroServico || '',
-      'Início Protocolo': e.dataInicioProtocolo || '',
+      'Início Protocolo': formatarDataBR(e.dataInicioProtocolo) || '',
       'Touro/Sêmen': nomeTouroEvento(e),
       'Técnico': e.tecnico || '',
       'Custo (R$)': e.custo || '',
@@ -4825,7 +4837,7 @@ export default function GestaoPecuaria() {
 
     // ---- Diagnósticos ----
     const diagSheet = eventos.filter(e => e.tipo === 'diagnostico').map(e => ({
-      'Data': e.data,
+      'Data': formatarDataBR(e.data),
       'Matriz': brincoMap[e.matrizId] || '',
       'Resultado': e.resultado || '',
       'Método': e.metodo || '',
@@ -4838,7 +4850,7 @@ export default function GestaoPecuaria() {
 
     // ---- Vendas ----
     const vendaSheet = eventos.filter(e => e.tipo === 'venda').map(e => ({
-      'Data': e.data,
+      'Data': formatarDataBR(e.data),
       'Categoria': e.categoria || '',
       'Animais': e.animais || '',
       'Peso Total (kg)': e.pesoTotal || '',
@@ -4851,7 +4863,7 @@ export default function GestaoPecuaria() {
 
     // ---- Insumos ----
     const insumoSheet = eventos.filter(e => e.tipo === 'insumo').map(e => ({
-      'Data': e.data,
+      'Data': formatarDataBR(e.data),
       'Produto': e.produto || '',
       'Quantidade': e.quantidade || '',
       'Unidade': e.unidade || '',
@@ -4862,7 +4874,7 @@ export default function GestaoPecuaria() {
 
     // ---- Descartes ----
     const descarteSheet = eventos.filter(e => e.tipo === 'descarte').map(e => ({
-      'Data': e.data,
+      'Data': formatarDataBR(e.data),
       'Matriz': brincoMap[e.matrizId] || '',
       'Motivo': e.motivo || '',
       'Origem': e.origemDiagnostico ? 'Diagnóstico veterinário' : 'Lançamento manual'
@@ -5174,7 +5186,7 @@ export default function GestaoPecuaria() {
         fontSize: 11.5,
         color: C.textMuted
       }
-    }, ev.data, ev.pelagem ? ` · ${ev.pelagem}` : ''));
+    }, formatarDataBR(ev.data), ev.pelagem ? ` · ${ev.pelagem}` : ''));
   })), CAMPOS[tipoSelecionado].filter(campo => !campo.showIf || campo.showIf(form)).map(campo => /*#__PURE__*/React.createElement(Field, {
     key: campo.key,
     campo: campo,
@@ -5566,7 +5578,7 @@ export default function GestaoPecuaria() {
     style: {
       color: C.textMuted
     }
-  }, e.data)))))), tab === 'matrizes' && ownerMode && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, formatarDataBR(e.data))))))), tab === 'matrizes' && ownerMode && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8,
@@ -5650,7 +5662,7 @@ export default function GestaoPecuaria() {
         fontSize: 12.5,
         color: C.textMuted
       }
-    }, m.categoria, m.dataNascimento ? ` · nasc. ${m.dataNascimento}` : ''), /*#__PURE__*/React.createElement("div", {
+    }, m.categoria, m.dataNascimento ? ` · nasc. ${formatarDataBR(m.dataNascimento)}` : ''), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12.5,
         color: C.textMuted
