@@ -450,6 +450,13 @@ function formatarDataBR(iso) {
   return `${dia}/${mes}/${ano.slice(2)}`;
 }
 
+// Data (ISO) do parto mais recente daquela matriz, olhando os nascimentos já lançados
+function ultimoPartoDe(matrizId, eventos) {
+  const nascs = eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === matrizId && e.data);
+  if (!nascs.length) return '';
+  return nascs.reduce((max, e) => e.data > max ? e.data : max, nascs[0].data);
+}
+
 // Sugere o próximo número de brinco de bezerro seguindo a convenção do produtor:
 // 1º dígito = último dígito do ano · faixa 000-499 = fêmea, 500-999 = macho · resto = sequência
 function sugerirBrincoBezerro(data, sexo, eventos) {
@@ -763,17 +770,62 @@ export default function GestaoPecuaria() {
       setSyncError(true);
     }
   }
-  async function persistMatrizes(next) {
-    setMatrizes(next);
-    await syncToSheets(next, touros, eventos);
+
+  // Gravações leves (uma linha só) — usadas no dia a dia, pra lançar rápido sem reescrever a planilha inteira
+  async function syncEventoAppend(evento) {
+    try {
+      await fetch(SHEETS_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify({
+          action: 'appendEvento',
+          tipo: evento.tipo,
+          evento
+        })
+      });
+      setSyncError(false);
+    } catch (e) {
+      console.error('Erro ao sincronizar evento', e);
+      setSyncError(true);
+    }
   }
-  async function persistTouros(next) {
-    setTouros(next);
-    await syncToSheets(matrizes, next, eventos);
+  async function syncMatrizUpsert(matriz) {
+    try {
+      await fetch(SHEETS_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify({
+          action: 'upsertMatriz',
+          matriz
+        })
+      });
+      setSyncError(false);
+    } catch (e) {
+      console.error('Erro ao sincronizar matriz', e);
+      setSyncError(true);
+    }
   }
-  async function persistEventos(next) {
-    setEventos(next);
-    await syncToSheets(matrizes, touros, next);
+  async function syncTouroAppend(touro) {
+    try {
+      await fetch(SHEETS_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify({
+          action: 'appendTouro',
+          touro
+        })
+      });
+      setSyncError(false);
+    } catch (e) {
+      console.error('Erro ao sincronizar touro', e);
+      setSyncError(true);
+    }
   }
   async function persistAll(m, t, ev) {
     setMatrizes(m);
@@ -817,7 +869,8 @@ export default function GestaoPecuaria() {
         status: form.statusInicial || 'Vazia',
         createdAt: now
       };
-      await persistMatrizes([...matrizes, nova]);
+      setMatrizes([...matrizes, nova]);
+      syncMatrizUpsert(nova);
     } else if (tipoSelecionado === 'touro') {
       const novo = {
         id,
@@ -830,33 +883,38 @@ export default function GestaoPecuaria() {
         observacoes: form.observacoes || '',
         createdAt: now
       };
-      await persistTouros([...touros, novo]);
+      setTouros([...touros, novo]);
+      syncTouroAppend(novo);
     } else if (tipoSelecionado === 'descarte') {
       const matrizesNext = matrizes.map(m => m.id === form.matrizId ? {
         ...m,
         status: 'Descarte'
       } : m);
-      const eventosNext = [...eventos, {
+      const novoEvento = {
         id,
         tipo: 'descarte',
         ...form,
         createdAt: now
-      }];
-      await persistAll(matrizesNext, touros, eventosNext);
+      };
+      setMatrizes(matrizesNext);
+      setEventos([...eventos, novoEvento]);
+      syncEventoAppend(novoEvento);
+      const matrizAtualizada = matrizesNext.find(m => m.id === form.matrizId);
+      if (matrizAtualizada) syncMatrizUpsert(matrizAtualizada);
     } else if (tipoSelecionado === 'diagnostico') {
       const novoStatus = form.resultado === 'Prenhe' ? 'Cheia' : form.resultado === 'Descarte' ? 'Descarte' : 'Vazia';
       const matrizesNext = matrizes.map(m => m.id === form.matrizId ? {
         ...m,
         status: novoStatus
       } : m);
-      const eventosNext = [...eventos, {
+      const eventosNovos = [{
         id,
         tipo: 'diagnostico',
         ...form,
         createdAt: now
       }];
       if (form.resultado === 'Descarte') {
-        eventosNext.push({
+        eventosNovos.push({
           id: `${id}-desc`,
           tipo: 'descarte',
           matrizId: form.matrizId,
@@ -866,35 +924,47 @@ export default function GestaoPecuaria() {
           createdAt: now
         });
       }
-      await persistAll(matrizesNext, touros, eventosNext);
+      setMatrizes(matrizesNext);
+      setEventos([...eventos, ...eventosNovos]);
+      eventosNovos.forEach(syncEventoAppend);
+      const matrizAtualizada = matrizesNext.find(m => m.id === form.matrizId);
+      if (matrizAtualizada) syncMatrizUpsert(matrizAtualizada);
     } else if (tipoSelecionado === 'nascimento') {
-      const eventosNext = [...eventos, {
+      const novoEvento = {
         id,
         tipo: 'nascimento',
         ...form,
         createdAt: now
-      }];
+      };
+      const eventosNext = [...eventos, novoEvento];
       let matrizesNext = matrizes;
+      let matrizAtualizada = null;
       if (form.matrizId) {
         const partosNaFazenda = eventosNext.filter(e => e.tipo === 'nascimento' && e.matrizId === form.matrizId).length;
         matrizesNext = matrizes.map(m => {
           if (m.id !== form.matrizId) return m;
           let categoria = m.categoria;
           if (categoria === 'Novilha' && partosNaFazenda >= 1) categoria = 'Primípara';else if (categoria === 'Primípara' && partosNaFazenda >= 2) categoria = 'Multípara';
-          return {
+          matrizAtualizada = {
             ...m,
             categoria
           };
+          return matrizAtualizada;
         });
       }
-      await persistAll(matrizesNext, touros, eventosNext);
+      setMatrizes(matrizesNext);
+      setEventos(eventosNext);
+      syncEventoAppend(novoEvento);
+      if (matrizAtualizada) syncMatrizUpsert(matrizAtualizada);
     } else {
-      await persistEventos([...eventos, {
+      const novoEvento = {
         id,
         tipo: tipoSelecionado,
         ...form,
         createdAt: now
-      }]);
+      };
+      setEventos([...eventos, novoEvento]);
+      syncEventoAppend(novoEvento);
     }
     setSaveStatus('saved');
     const campos2 = CAMPOS[tipoSelecionado] || [];
@@ -4665,7 +4735,8 @@ export default function GestaoPecuaria() {
         'Data Nasc.': formatarDataBR(m.dataNascimento) || '',
         'Status': m.status,
         'Partos (Fazenda)': eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === m.id).length,
-        'Partos Ant.': m.partosAnteriores || 0
+        'Partos Ant.': m.partosAnteriores || 0,
+        'Último Parto': formatarDataBR(ultimoPartoDe(m.id, eventos)) || ''
       }));
     }
     if (tipo === 'touros') {
@@ -4780,9 +4851,10 @@ export default function GestaoPecuaria() {
       'Categoria': m.categoria,
       'Raça': m.raca || '',
       'Lote': m.lote || '',
-      'Data Nascimento': m.dataNascimento || '',
+      'Data Nascimento': formatarDataBR(m.dataNascimento) || '',
       'Status': m.status,
       'Partos na Fazenda': eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === m.id).length,
+      'Último Parto': formatarDataBR(ultimoPartoDe(m.id, eventos)) || '',
       'Partos Anteriores': m.partosAnteriores || 0
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(matrizesSheet), 'Matrizes');
@@ -5643,6 +5715,7 @@ export default function GestaoPecuaria() {
     const partosFazenda = eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === m.id).length;
     const partosAnt = parseInt(m.partosAnteriores) || 0;
     const partosLabel = partosAnt > 0 ? `${partosFazenda} parto(s) aqui · ${partosAnt} antes` : `${partosFazenda} parto(s) na fazenda`;
+    const ultimoParto = formatarDataBR(ultimoPartoDe(m.id, eventos));
     return /*#__PURE__*/React.createElement("div", {
       key: m.id,
       style: {
@@ -5667,7 +5740,7 @@ export default function GestaoPecuaria() {
         fontSize: 12.5,
         color: C.textMuted
       }
-    }, partosLabel)), /*#__PURE__*/React.createElement("span", {
+    }, partosLabel, ultimoParto ? ` · último parto: ${ultimoParto}` : '')), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 12.5,
         fontWeight: 700,
