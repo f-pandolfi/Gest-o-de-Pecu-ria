@@ -5424,6 +5424,22 @@ export default function GestaoPecuaria() {
   }, /*#__PURE__*/React.createElement(Save, {
     size: 13
   }), " Baixar relatório Excel"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setConfirmAction('resync'),
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6,
+      padding: '7px 12px',
+      borderRadius: 8,
+      border: `1px solid ${C.border}`,
+      background: C.surface,
+      color: C.textMuted,
+      fontSize: 12.5,
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement(RefreshCw, {
+    size: 13
+  }), " Sincronizar planilha agora"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setConfirmAction('import'),
     style: {
       display: 'flex',
@@ -5499,14 +5515,14 @@ export default function GestaoPecuaria() {
       fontSize: 13.5,
       marginBottom: 10
     }
-  }, confirmAction === 'import' ? 'Isso vai SUBSTITUIR os dados atuais pelos dados reais importados da planilha REBANHO - 2026.xlsx (180 matrizes + 193 eventos). Confirma?' : 'Isso vai apagar todos os dados lançados (inclusive reais, se houver). Confirma?'), /*#__PURE__*/React.createElement("div", {
+  }, confirmAction === 'import' ? 'Isso vai SUBSTITUIR os dados atuais pelos dados reais importados da planilha REBANHO - 2026.xlsx (180 matrizes + 193 eventos) — CUIDADO: lançamentos feitos depois da importação original serão perdidos. Confirma?' : confirmAction === 'resync' ? 'Isso vai regravar a planilha inteira com os dados que estão na tela agora (nada é perdido, só atualiza formatação e fórmulas em todas as linhas). Pode demorar um pouco mais que o normal. Confirma?' : 'Isso vai apagar todos os dados lançados (inclusive reais, se houver). Confirma?'), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
     }
   }, /*#__PURE__*/React.createElement("button", {
     onClick: async () => {
-      if (confirmAction === 'import') await importarDadosReais();else await clearAll();
+      if (confirmAction === 'import') await importarDadosReais();else if (confirmAction === 'resync') await syncToSheets(matrizes, touros, eventos);else await clearAll();
       setConfirmAction(null);
     },
     style: {
