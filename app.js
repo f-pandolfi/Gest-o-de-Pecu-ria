@@ -766,6 +766,7 @@ export default function GestaoPecuaria() {
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [busca, setBusca] = useState('');
   const [buscaPrevisao, setBuscaPrevisao] = useState('');
+  const [filtroPrevisao, setFiltroPrevisao] = useState('Cheia');
   const [planilhaTipo, setPlanilhaTipo] = useState('matrizes');
   const [syncError, setSyncError] = useState(false);
   const [editandoMatriz, setEditandoMatriz] = useState(null);
@@ -5751,6 +5752,38 @@ export default function GestaoPecuaria() {
     }
   }, formatarDataBR(e.data))))))), tab === 'previsao' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
+      display: 'flex',
+      gap: 8,
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setFiltroPrevisao('Cheia'),
+    style: {
+      flex: 1,
+      padding: '11px',
+      borderRadius: 12,
+      fontSize: 14.5,
+      fontWeight: 700,
+      cursor: 'pointer',
+      border: `1px solid ${filtroPrevisao === 'Cheia' ? C.accent : C.border}`,
+      background: filtroPrevisao === 'Cheia' ? C.accentSoft : C.surface,
+      color: filtroPrevisao === 'Cheia' ? C.accent : C.textMuted
+    }
+  }, "Cheias"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setFiltroPrevisao('Vazia'),
+    style: {
+      flex: 1,
+      padding: '11px',
+      borderRadius: 12,
+      fontSize: 14.5,
+      fontWeight: 700,
+      cursor: 'pointer',
+      border: `1px solid ${filtroPrevisao === 'Vazia' ? C.accent : C.border}`,
+      background: filtroPrevisao === 'Vazia' ? C.accentSoft : C.surface,
+      color: filtroPrevisao === 'Vazia' ? C.accent : C.textMuted
+    }
+  }, "Vazias")), /*#__PURE__*/React.createElement("div", {
+    style: {
       position: 'relative',
       marginBottom: 16
     }
@@ -5777,15 +5810,21 @@ export default function GestaoPecuaria() {
     }
   })), (() => {
     const hoje = todayISO();
-    const lista = matrizes.filter(m => m.status === 'Cheia').filter(m => !buscaPrevisao || m.brinco.toLowerCase().includes(buscaPrevisao.toLowerCase())).map(m => ({
+    const lista = matrizes.filter(m => m.status === filtroPrevisao).filter(m => !buscaPrevisao || m.brinco.toLowerCase().includes(buscaPrevisao.toLowerCase())).map(m => ({
       matriz: m,
-      previsao: previsaoPartoDe(m.id, eventos),
+      previsao: m.status === 'Cheia' ? previsaoPartoDe(m.id, eventos) : '',
       ultimoParto: ultimoPartoDe(m.id, eventos),
       numeroCria: numeroCriaUltimoParto(m.id, eventos)
     })).sort((a, b) => {
-      if (!a.previsao) return 1;
-      if (!b.previsao) return -1;
-      return a.previsao.localeCompare(b.previsao);
+      if (filtroPrevisao === 'Cheia') {
+        if (!a.previsao) return 1;
+        if (!b.previsao) return -1;
+        return a.previsao.localeCompare(b.previsao);
+      }
+      // Vazias: mais recém-paridas primeiro (sem previsão de parto aplicável aqui)
+      if (!a.ultimoParto) return 1;
+      if (!b.ultimoParto) return -1;
+      return b.ultimoParto.localeCompare(a.ultimoParto);
     });
     if (lista.length === 0) {
       return /*#__PURE__*/React.createElement("div", {
@@ -5795,7 +5834,7 @@ export default function GestaoPecuaria() {
           padding: '30px 0',
           textAlign: 'center'
         }
-      }, buscaPrevisao ? 'Nenhuma matriz cheia encontrada com esse brinco.' : 'Nenhuma matriz com status Cheia no momento.');
+      }, buscaPrevisao ? `Nenhuma matriz ${filtroPrevisao === 'Cheia' ? 'cheia' : 'vazia'} encontrada com esse brinco.` : `Nenhuma matriz com status ${filtroPrevisao === 'Cheia' ? 'Cheia' : 'Vazia'} no momento.`);
     }
     return /*#__PURE__*/React.createElement("div", {
       style: {
@@ -5811,7 +5850,7 @@ export default function GestaoPecuaria() {
     }) => {
       const diasRestantes = previsao ? Math.round((new Date(previsao + 'T00:00:00') - new Date(hoje + 'T00:00:00')) / 86400000) : null;
       let corPrazo = C.textMuted;
-      let textoPrazo = 'sem previsão calculada';
+      let textoPrazo = filtroPrevisao === 'Cheia' ? 'sem previsão calculada' : '';
       if (diasRestantes !== null) {
         if (diasRestantes < 0) {
           corPrazo = C.descarte;
@@ -5882,8 +5921,8 @@ export default function GestaoPecuaria() {
       }, /*#__PURE__*/React.createElement("span", {
         style: {
           fontWeight: 700,
-          color: C.cheia,
-          background: `${C.cheia}22`,
+          color: m.status === 'Cheia' ? C.cheia : C.vazia,
+          background: `${m.status === 'Cheia' ? C.cheia : C.vazia}22`,
           padding: '3px 9px',
           borderRadius: 20
         }
@@ -5899,7 +5938,8 @@ export default function GestaoPecuaria() {
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'relative',
-      flex: '1 1 180px'
+      flex: '0 1 150px',
+      minWidth: 110
     }
   }, /*#__PURE__*/React.createElement(Search, {
     size: 15,
@@ -5910,7 +5950,7 @@ export default function GestaoPecuaria() {
       color: C.textMuted
     }
   }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "Buscar por brinco",
+    placeholder: "Brinco...",
     value: busca,
     onChange: e => setBusca(e.target.value),
     style: {
