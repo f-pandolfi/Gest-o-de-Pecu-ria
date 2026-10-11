@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="robots" content="noindex" />
+<meta name="theme-color" content="#131B16" />
+<title>TESTE · Gestão da Pecuária — Fazenda Ibiraçu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #131B16; min-height: 100vh; }
+  #root { min-height: 100vh; }
+</style>
+<!-- MODO TESTE: lê a planilha real, mas o app NÃO grava nada nela. Para a versão de verdade, esta linha some. -->
+<script>window.MODO_TESTE = true;</script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react-dom": "https://esm.sh/react-dom@18.3.1?external=react",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?external=react",
+    "lucide-react": "https://esm.sh/lucide-react@0.383.0?external=react",
+    "xlsx": "https://esm.sh/xlsx@0.18.5"
+  }
+}
+</script>
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
