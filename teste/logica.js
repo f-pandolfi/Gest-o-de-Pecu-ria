@@ -289,8 +289,11 @@ export function sugerirBrincoBezerro(data, sexo, eventos) {
         if (resto >= base && resto < base + 500) usados.add(resto - base);
       }
     });
-  let seq = 0;
-  while (usados.has(seq)) seq++;
+  // A sequência da fazenda começa em 001 (fêmeas) e 501 (machos) e segue do maior número já usado
+  let max = 0;
+  usados.forEach((x) => { if (x > max) max = x; });
+  let seq = max + 1;
+  if (seq >= 500) { seq = 1; while (usados.has(seq)) seq++; } // estourou a faixa: procura o primeiro livre
   return String(ano * 1000 + base + seq);
 }
 

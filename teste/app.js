@@ -266,8 +266,15 @@ function sugerirBrincoBezerro(data, sexo, eventos) {
       if (resto >= base && resto < base + 500) usados.add(resto - base);
     }
   });
-  let seq = 0;
-  while (usados.has(seq)) seq++;
+  let max = 0;
+  usados.forEach((x) => {
+    if (x > max) max = x;
+  });
+  let seq = max + 1;
+  if (seq >= 500) {
+    seq = 1;
+    while (usados.has(seq)) seq++;
+  }
   return String(ano * 1e3 + base + seq);
 }
 function linhasPrevisao(matrizes, eventos, status, hoje, busca) {
