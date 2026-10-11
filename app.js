@@ -311,16 +311,13 @@ const CAMPOS = {
     label: 'Resultado',
     type: 'select',
     options: ['Vivo', 'Natimorto'],
-    required: true
+    required: true,
+    default: 'Vivo'
   }, {
     key: 'sexo',
     label: 'Sexo',
     type: 'select',
     options: ['Macho', 'Fêmea']
-  }, {
-    key: 'pesoNascer',
-    label: 'Peso ao nascer (kg)',
-    type: 'number'
   }, {
     key: 'brincoBezerro',
     label: 'Brinco do bezerro (sugerido automaticamente)',
@@ -342,7 +339,8 @@ const CAMPOS = {
     key: 'tipoParto',
     label: 'Tipo de parto',
     type: 'select',
-    options: ['Normal', 'Distócico (com dificuldade)']
+    options: ['Normal', 'Distócico (com dificuldade)'],
+    default: 'Normal'
   }, {
     key: 'observacoes',
     label: 'Observações',
@@ -471,8 +469,55 @@ const CAMPOS = {
     type: 'text'
   }]
 };
+
+// Data de hoje no fuso do aparelho (toISOString usava UTC e virava "amanhã" depois das 21h no Brasil)
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// Valores iniciais de um formulário: data de hoje + padrões definidos nos campos (ex.: Vivo, Normal)
+function formularioInicial(tipo) {
+  const campos = CAMPOS[tipo] || [];
+  const f = {};
+  if (campos.some(c => c.key === 'data')) f.data = todayISO();
+  campos.forEach(c => {
+    if (c.default !== undefined) f[c.key] = c.default;
+  });
+  return f;
+}
+
+// A planilha pode devolver data como "2026-05-09T03:00:00.000Z" (meia-noite de Brasília); o app trabalha só com AAAA-MM-DD
+function normalizarDataISO(v) {
+  if (v === null || v === undefined || v === '') return '';
+  if (typeof v !== 'string') return String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(v)) {
+    const t = new Date(v).getTime();
+    if (!isNaN(t)) return new Date(t - 3 * 3600 * 1000).toISOString().slice(0, 10); // UTC-3 (Paragominas)
+  }
+  return v;
+}
+
+// Brinco sempre como texto (a planilha devolve número) e datas sempre AAAA-MM-DD
+function normalizarDados(data) {
+  const matrizes = (data.matrizes || []).map(m => ({
+    ...m,
+    brinco: String(m.brinco ?? ''),
+    dataNascimento: normalizarDataISO(m.dataNascimento)
+  }));
+  const eventos = (data.eventos || []).map(e => ({
+    ...e,
+    data: normalizarDataISO(e.data),
+    dataInicioProtocolo: normalizarDataISO(e.dataInicioProtocolo),
+    brincoBezerro: e.brincoBezerro === undefined || e.brincoBezerro === null ? '' : String(e.brincoBezerro)
+  }));
+  return {
+    matrizes,
+    touros: data.touros || [],
+    eventos
+  };
 }
 
 // Formata data ISO (YYYY-MM-DD) para o padrão brasileiro DD/MM/AA
@@ -499,26 +544,53 @@ function numeroCriaUltimoParto(matrizId, eventos) {
   return maisRecente.brincoBezerro || '';
 }
 const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
+const VERSAO_MINIMA_SCRIPT = 7;
+const VERSAO_APP = '8 (11/10/26)'; // versão do Apps Script que sabe gravar tudo que o app envia
 
+function paraUTC(iso) {
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+}
 function addDias(dataISO, dias) {
-  const d = new Date(dataISO + 'T00:00:00');
-  d.setDate(d.getDate() + dias);
-  return d.toISOString().slice(0, 10);
+  return new Date(paraUTC(dataISO) + dias * 86400000).toISOString().slice(0, 10);
+}
+function diasEntre(deISO, ateISO) {
+  return Math.round((paraUTC(ateISO) - paraUTC(deISO)) / 86400000);
 }
 
-// Previsão de parto: prioriza diagnóstico com DG preenchido (mais preciso), senão usa a IATF mais recente
-function previsaoPartoDe(matrizId, eventos) {
-  const diags = eventos.filter(e => e.tipo === 'diagnostico' && e.matrizId === matrizId && e.resultado === 'Prenhe' && e.dg && e.data).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-  if (diags.length) {
-    const dg = parseInt(diags[0].dg);
-    if (!isNaN(dg)) {
-      const concepcao = addDias(diags[0].data, -dg);
-      return addDias(concepcao, PERIODO_GESTACAO_DIAS);
-    }
+// Previsão de parto (cálculo padrão): concepção = data do toque - dias de gestação (DG); parto = concepção + 285 dias.
+// Sem DG, usa a IATF mais recente + 285. Ignora toque/IATF anteriores ao último parto (aquela prenhez já terminou).
+// Devolve { data, origem: 'toque' | 'iatf' | 'toque-sem-dg', base, dg } ou null.
+function previsaoPartoInfo(matrizId, eventos) {
+  const ultimo = ultimoPartoDe(matrizId, eventos);
+  const valida = d => d && (!ultimo || d > ultimo);
+  const diagsPrenhe = eventos.filter(e => e.tipo === 'diagnostico' && e.matrizId === matrizId && e.resultado === 'Prenhe' && valida(e.data)).sort((a, b) => b.data.localeCompare(a.data));
+  const comDG = diagsPrenhe.filter(e => e.dg !== '' && e.dg !== null && e.dg !== undefined && !isNaN(parseInt(e.dg, 10)));
+  if (comDG.length) {
+    const dg = parseInt(comDG[0].dg, 10);
+    return {
+      data: addDias(addDias(comDG[0].data, -dg), PERIODO_GESTACAO_DIAS),
+      origem: 'toque',
+      base: comDG[0].data,
+      dg
+    };
   }
-  const iatfs = eventos.filter(e => e.tipo === 'iatf' && e.matrizId === matrizId && e.data).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-  if (iatfs.length) return addDias(iatfs[0].data, PERIODO_GESTACAO_DIAS);
-  return '';
+  const iatfs = eventos.filter(e => e.tipo === 'iatf' && e.matrizId === matrizId && valida(e.data)).sort((a, b) => b.data.localeCompare(a.data));
+  if (iatfs.length) return {
+    data: addDias(iatfs[0].data, PERIODO_GESTACAO_DIAS),
+    origem: 'iatf',
+    base: iatfs[0].data
+  };
+  if (diagsPrenhe.length) return {
+    data: '',
+    origem: 'toque-sem-dg',
+    base: diagsPrenhe[0].data
+  };
+  return null;
+}
+function previsaoPartoDe(matrizId, eventos) {
+  const info = previsaoPartoInfo(matrizId, eventos);
+  return info ? info.data : '';
 }
 
 // Sugere o próximo número de brinco de bezerro seguindo a convenção do produtor:
@@ -587,7 +659,7 @@ function Field({
   }, "Selecione a matriz"), matrizes.filter(m => m.status !== 'Descarte').map(m => /*#__PURE__*/React.createElement("option", {
     key: m.id,
     value: m.id
-  }, m.brinco, " — ", m.status))), campo.type === 'touro' && /*#__PURE__*/React.createElement("select", {
+  }, m.brinco, " \u2014 ", m.status))), campo.type === 'touro' && /*#__PURE__*/React.createElement("select", {
     style: base,
     value: value || '',
     onChange: e => onChange(campo.key, e.target.value)
@@ -596,9 +668,9 @@ function Field({
   }, "Selecione"), touros.map(t => /*#__PURE__*/React.createElement("option", {
     key: t.id,
     value: t.id
-  }, t.nome, " — ", t.raca)), /*#__PURE__*/React.createElement("option", {
+  }, t.nome, " \u2014 ", t.raca)), /*#__PURE__*/React.createElement("option", {
     value: "__outro__"
-  }, "Outro / não cadastrado")), (campo.type === 'text' || campo.type === 'number' || campo.type === 'date') && /*#__PURE__*/React.createElement("input", {
+  }, "Outro / n\xE3o cadastrado")), (campo.type === 'text' || campo.type === 'number' || campo.type === 'date') && /*#__PURE__*/React.createElement("input", {
     style: base,
     type: campo.type,
     inputMode: campo.type === 'number' ? 'decimal' : undefined,
@@ -655,7 +727,7 @@ function SheetTable({
         padding: '30px 0',
         textAlign: 'center'
       }
-    }, "Nenhum registro lançado ainda.");
+    }, "Nenhum registro lan\xE7ado ainda.");
   }
   const headers = Object.keys(rows[0]);
   return /*#__PURE__*/React.createElement("div", {
@@ -721,7 +793,8 @@ function calcularKPIs(matrizes, eventos) {
   const custoTotal = custoIatf + custoDiag + custoInsumo + custoFrete;
   const custoPorBezerro = nascimentos.length ? custoTotal / nascimentos.length : 0;
   const margem = receitaTotal - custoTotal;
-  const pesoMedioNascer = nascimentos.length ? nascimentos.reduce((s, n) => s + (parseFloat(n.pesoNascer) || 0), 0) / nascimentos.length : 0;
+  const machos = nascimentos.filter(n => n.sexo === 'Macho').length;
+  const femeas = nascimentos.filter(n => n.sexo === 'Fêmea').length;
   const pesoMedioDesmama = desmamas.length ? desmamas.reduce((s, d) => s + (parseFloat(d.pesoDesmama) || 0), 0) / desmamas.length : 0;
   return {
     total: matrizes.length,
@@ -739,12 +812,13 @@ function calcularKPIs(matrizes, eventos) {
     custoTotal,
     custoPorBezerro,
     margem,
-    pesoMedioNascer,
+    machos,
+    femeas,
     pesoMedioDesmama
   };
 }
 function buildResumoRows(kpis) {
-  return [['Total de matrizes', kpis.total], ['Cheias', kpis.cheias], ['Vazias', kpis.vazias], ['Descarte', kpis.descartes], ['Novilhas em recria', kpis.emRecria], ['Taxa de prenhez (%)', kpis.taxaPrenhez.toFixed(1)], ['', ''], ['Nascimentos', kpis.nascimentos], ['Natimortos', kpis.natimortos], ['Taxa de perda ao nascer (%)', kpis.taxaPerda.toFixed(1)], ['Peso médio ao nascer (kg)', kpis.pesoMedioNascer.toFixed(1)], ['Desmamas', kpis.desmamas], ['Taxa de desmama (%)', kpis.taxaDesmama.toFixed(1)], ['Peso médio na desmama (kg)', kpis.pesoMedioDesmama.toFixed(1)], ['', ''], ['Receita total de vendas (R$)', kpis.receitaTotal.toFixed(2)], ['Custo total (R$)', kpis.custoTotal.toFixed(2)], ['Custo por bezerro (R$)', kpis.custoPorBezerro.toFixed(2)], ['Margem (R$)', kpis.margem.toFixed(2)]];
+  return [['Total de matrizes', kpis.total], ['Cheias', kpis.cheias], ['Vazias', kpis.vazias], ['Descarte', kpis.descartes], ['Novilhas em recria', kpis.emRecria], ['Taxa de prenhez (%)', kpis.taxaPrenhez.toFixed(1)], ['', ''], ['Nascimentos', kpis.nascimentos], ['Natimortos', kpis.natimortos], ['Taxa de perda ao nascer (%)', kpis.taxaPerda.toFixed(1)], ['Nascimentos: machos', kpis.machos], ['Nascimentos: fêmeas', kpis.femeas], ['Desmamas', kpis.desmamas], ['Taxa de desmama (%)', kpis.taxaDesmama.toFixed(1)], ['Peso médio na desmama (kg)', kpis.pesoMedioDesmama.toFixed(1)], ['', ''], ['Receita total de vendas (R$)', kpis.receitaTotal.toFixed(2)], ['Custo total (R$)', kpis.custoTotal.toFixed(2)], ['Custo por bezerro (R$)', kpis.custoPorBezerro.toFixed(2)], ['Margem (R$)', kpis.margem.toFixed(2)]];
 }
 const fmtBRL = n => (n || 0).toLocaleString('pt-BR', {
   style: 'currency',
@@ -752,23 +826,22 @@ const fmtBRL = n => (n || 0).toLocaleString('pt-BR', {
 });
 
 // ---------- app principal ----------
-export default function GestaoPecuaria() {
+function GestaoPecuaria() {
   const [tab, setTab] = useState('lancar');
   const [matrizes, setMatrizes] = useState([]);
   const [touros, setTouros] = useState([]);
   const [eventos, setEventos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tipoSelecionado, setTipoSelecionado] = useState('nascimento');
-  const [form, setForm] = useState({
-    data: todayISO()
-  });
+  const [form, setForm] = useState(formularioInicial('nascimento'));
   const [saveStatus, setSaveStatus] = useState(null);
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [busca, setBusca] = useState('');
   const [buscaPrevisao, setBuscaPrevisao] = useState('');
   const [filtroPrevisao, setFiltroPrevisao] = useState('Cheia');
   const [planilhaTipo, setPlanilhaTipo] = useState('matrizes');
-  const [syncError, setSyncError] = useState(false);
+  const [syncMsg, setSyncMsg] = useState(''); // aviso de problema com a planilha (vazio = tudo certo)
+  const [versaoScript, setVersaoScript] = useState(null);
   const [editandoMatriz, setEditandoMatriz] = useState(null);
   const [formEdicaoMatriz, setFormEdicaoMatriz] = useState({});
   const [confirmAction, setConfirmAction] = useState(null); // null | 'import' | 'clear'
@@ -796,104 +869,87 @@ export default function GestaoPecuaria() {
     loadAll();
   }, []);
   useEffect(() => {
-    const campos = CAMPOS[tipoSelecionado] || [];
-    const novo = {};
-    if (campos.some(c => c.key === 'data')) novo.data = todayISO();
-    setForm(novo);
+    setForm(formularioInicial(tipoSelecionado));
   }, [tipoSelecionado]);
   async function loadAll() {
     setLoading(true);
-    setSyncError(false);
+    setSyncMsg('');
     try {
       const res = await fetch(`${SHEETS_API_URL}?action=getAll`);
       const data = await res.json();
-      setMatrizes(data.matrizes || []);
-      setTouros(data.touros || []);
-      setEventos(data.eventos || []);
+      if (data && data.error) throw new Error(data.error);
+      const dados = normalizarDados(data);
+      setMatrizes(dados.matrizes);
+      setTouros(dados.touros);
+      setEventos(dados.eventos);
+      const v = Number(data.versao) || 0;
+      setVersaoScript(v);
+      if (v < VERSAO_MINIMA_SCRIPT) {
+        setSyncMsg(`ATENÇÃO: o script da planilha está desatualizado (versão ${v || 'antiga'}). O que você lançar aparece na tela, mas NÃO está sendo gravado na planilha. Avise o responsável pelo sistema.`);
+      }
     } catch (e) {
       console.error('Erro ao carregar dados da planilha', e);
-      setSyncError(true);
+      setSyncMsg('Não consegui falar com a planilha agora. Verifique a internet e tente de novo. Os dados na tela podem estar desatualizados.');
     }
     setLoading(false);
   }
-  async function syncToSheets(m, t, ev) {
+
+  // Envia uma gravação e CONFERE a resposta (antes, um erro devolvido pela planilha passava despercebido)
+  async function postar(payload) {
+    const res = await fetch(SHEETS_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify(payload)
+    });
+    let data = null;
     try {
-      const resumo = buildResumoRows(calcularKPIs(m, ev));
-      await fetch(SHEETS_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8'
-        },
-        body: JSON.stringify({
-          action: 'syncAll',
-          matrizes: m,
-          touros: t,
-          eventos: ev,
-          resumo
-        })
-      });
-      setSyncError(false);
+      data = await res.json();
     } catch (e) {
-      console.error('Erro ao sincronizar com a planilha', e);
-      setSyncError(true);
+      throw new Error('a planilha não respondeu direito');
     }
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  }
+  async function gravar(payload, rotulo) {
+    try {
+      await postar(payload);
+    } catch (e) {
+      console.error(`Erro ao gravar (${rotulo})`, e);
+      setSyncMsg(`Não consegui gravar na planilha (${rotulo}): ${e.message}. O registro aparece na tela, mas pode sumir ao recarregar. Tente salvar de novo.`);
+    }
+  }
+  async function syncToSheets(m, t, ev) {
+    const resumo = buildResumoRows(calcularKPIs(m, ev));
+    await gravar({
+      action: 'syncAll',
+      matrizes: m,
+      touros: t,
+      eventos: ev,
+      resumo
+    }, 'sincronização completa');
   }
 
   // Gravações leves (uma linha só) — usadas no dia a dia, pra lançar rápido sem reescrever a planilha inteira
   async function syncEventoAppend(evento) {
-    try {
-      await fetch(SHEETS_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8'
-        },
-        body: JSON.stringify({
-          action: 'appendEvento',
-          tipo: evento.tipo,
-          evento
-        })
-      });
-      setSyncError(false);
-    } catch (e) {
-      console.error('Erro ao sincronizar evento', e);
-      setSyncError(true);
-    }
+    await gravar({
+      action: 'appendEvento',
+      tipo: evento.tipo,
+      evento
+    }, 'lançamento');
   }
   async function syncMatrizUpsert(matriz) {
-    try {
-      await fetch(SHEETS_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8'
-        },
-        body: JSON.stringify({
-          action: 'upsertMatriz',
-          matriz
-        })
-      });
-      setSyncError(false);
-    } catch (e) {
-      console.error('Erro ao sincronizar matriz', e);
-      setSyncError(true);
-    }
+    await gravar({
+      action: 'upsertMatriz',
+      matriz
+    }, 'matriz');
   }
   async function syncTouroAppend(touro) {
-    try {
-      await fetch(SHEETS_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8'
-        },
-        body: JSON.stringify({
-          action: 'appendTouro',
-          touro
-        })
-      });
-      setSyncError(false);
-    } catch (e) {
-      console.error('Erro ao sincronizar touro', e);
-      setSyncError(true);
-    }
+    await gravar({
+      action: 'appendTouro',
+      touro
+    }, 'touro');
   }
   async function persistAll(m, t, ev) {
     setMatrizes(m);
@@ -1040,8 +1096,9 @@ export default function GestaoPecuaria() {
           if (categoria === 'Novilha' && partosNaFazenda >= 1) categoria = 'Primípara';else if (categoria === 'Primípara' && partosNaFazenda >= 2) categoria = 'Multípara';
           matrizAtualizada = {
             ...m,
-            categoria
-          };
+            categoria,
+            status: m.status === 'Cheia' ? 'Vazia' : m.status
+          }; // pariu: deixa de estar prenhe
           return matrizAtualizada;
         });
       }
@@ -1060,10 +1117,7 @@ export default function GestaoPecuaria() {
       syncEventoAppend(novoEvento);
     }
     setSaveStatus('saved');
-    const campos2 = CAMPOS[tipoSelecionado] || [];
-    const novo = {};
-    if (campos2.some(c => c.key === 'data')) novo.data = todayISO();
-    setForm(novo);
+    setForm(formularioInicial(tipoSelecionado));
     setTimeout(() => setSaveStatus(null), 2000);
   }
   async function importarDadosReais() {
@@ -4936,7 +4990,7 @@ export default function GestaoPecuaria() {
     const hoje = todayISO();
 
     // ---- Resumo ----
-    const resumo = [['Relatório Fazenda Ibiraçu', ''], ['Gerado em', hoje], [''], ['Total de matrizes', kpis.total], ['Cheias', kpis.cheias], ['Vazias', kpis.vazias], ['Descarte', kpis.descartes], ['Novilhas em recria', kpis.emRecria], ['Taxa de prenhez (%)', kpis.taxaPrenhez.toFixed(1)], [''], ['Nascimentos', kpis.nascimentos], ['Natimortos', kpis.natimortos], ['Taxa de perda ao nascer (%)', kpis.taxaPerda.toFixed(1)], ['Peso médio ao nascer (kg)', kpis.pesoMedioNascer.toFixed(1)], ['Desmamas', kpis.desmamas], ['Taxa de desmama (%)', kpis.taxaDesmama.toFixed(1)], ['Peso médio na desmama (kg)', kpis.pesoMedioDesmama.toFixed(1)], [''], ['Receita total de vendas (R$)', kpis.receitaTotal.toFixed(2)], ['Custo total (IATF+diagnóstico+insumo+frete) (R$)', kpis.custoTotal.toFixed(2)], ['Custo por bezerro (R$)', kpis.custoPorBezerro.toFixed(2)], ['Margem (vendas - custos) (R$)', kpis.margem.toFixed(2)]];
+    const resumo = [['Relatório Fazenda Ibiraçu', ''], ['Gerado em', hoje], [''], ['Total de matrizes', kpis.total], ['Cheias', kpis.cheias], ['Vazias', kpis.vazias], ['Descarte', kpis.descartes], ['Novilhas em recria', kpis.emRecria], ['Taxa de prenhez (%)', kpis.taxaPrenhez.toFixed(1)], [''], ['Nascimentos', kpis.nascimentos], ['Natimortos', kpis.natimortos], ['Taxa de perda ao nascer (%)', kpis.taxaPerda.toFixed(1)], ['Nascimentos: machos', kpis.machos], ['Nascimentos: fêmeas', kpis.femeas], ['Desmamas', kpis.desmamas], ['Taxa de desmama (%)', kpis.taxaDesmama.toFixed(1)], ['Peso médio na desmama (kg)', kpis.pesoMedioDesmama.toFixed(1)], [''], ['Receita total de vendas (R$)', kpis.receitaTotal.toFixed(2)], ['Custo total (IATF+diagnóstico+insumo+frete) (R$)', kpis.custoTotal.toFixed(2)], ['Custo por bezerro (R$)', kpis.custoPorBezerro.toFixed(2)], ['Margem (vendas - custos) (R$)', kpis.margem.toFixed(2)]];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), 'Resumo');
 
     // ---- Matrizes ----
@@ -5110,17 +5164,17 @@ export default function GestaoPecuaria() {
       textTransform: 'uppercase',
       fontWeight: 700
     }
-  }, "Fazenda Ibiraçu"), /*#__PURE__*/React.createElement("h1", {
+  }, "Fazenda Ibira\xE7u"), /*#__PURE__*/React.createElement("h1", {
     style: {
       fontFamily: 'Georgia, serif',
       fontSize: 26,
       margin: '2px 0 0',
       fontWeight: 700
     }
-  }, "Gestão da Pecuária")), syncError && /*#__PURE__*/React.createElement("div", {
+  }, "Gest\xE3o da Pecu\xE1ria")), syncMsg && /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 8,
       background: 'rgba(181,83,60,0.15)',
       border: `1px solid ${C.descarte}`,
@@ -5133,9 +5187,26 @@ export default function GestaoPecuaria() {
     size: 16,
     color: C.descarte,
     style: {
-      flexShrink: 0
+      flexShrink: 0,
+      marginTop: 1
     }
-  }), "Não consegui falar com a planilha agora. Verifique sua internet e tente de novo — os dados na tela podem estar desatualizados."), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1
+    }
+  }, syncMsg), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setSyncMsg(''),
+    style: {
+      background: 'none',
+      border: 'none',
+      color: C.textMuted,
+      cursor: 'pointer',
+      padding: 0
+    },
+    "aria-label": "Fechar aviso"
+  }, /*#__PURE__*/React.createElement(X, {
+    size: 15
+  }))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
@@ -5151,12 +5222,12 @@ export default function GestaoPecuaria() {
     onClick: () => setTab('lancar')
   }, /*#__PURE__*/React.createElement(Plus, {
     size: 16
-  }), " Lançar"), /*#__PURE__*/React.createElement("button", {
+  }), " Lan\xE7ar"), /*#__PURE__*/React.createElement("button", {
     style: tabButtonStyle(tab === 'previsao'),
     onClick: () => setTab('previsao')
   }, /*#__PURE__*/React.createElement(CalendarClock, {
     size: 16
-  }), " Previsão de Parto"), ownerMode && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+  }), " Previs\xE3o de Parto"), ownerMode && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
     style: tabButtonStyle(tab === 'dashboard'),
     onClick: () => setTab('dashboard')
   }, /*#__PURE__*/React.createElement(LayoutDashboard, {
@@ -5184,7 +5255,7 @@ export default function GestaoPecuaria() {
     }
   }, ownerMode ? /*#__PURE__*/React.createElement("button", {
     onClick: bloquear,
-    title: "Voltar para o modo funcionário",
+    title: "Voltar para o modo funcion\xE1rio",
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -5199,9 +5270,9 @@ export default function GestaoPecuaria() {
     }
   }, /*#__PURE__*/React.createElement(Unlock, {
     size: 14
-  }), " Proprietário") : /*#__PURE__*/React.createElement("button", {
+  }), " Propriet\xE1rio") : /*#__PURE__*/React.createElement("button", {
     onClick: () => setShowPinInput(v => !v),
-    title: "Entrar como proprietário",
+    title: "Entrar como propriet\xE1rio",
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -5230,7 +5301,7 @@ export default function GestaoPecuaria() {
   }, /*#__PURE__*/React.createElement("input", {
     type: "password",
     inputMode: "numeric",
-    placeholder: "PIN do proprietário",
+    placeholder: "PIN do propriet\xE1rio",
     value: pinValue,
     onChange: e => {
       setPinValue(e.target.value);
@@ -5347,7 +5418,7 @@ export default function GestaoPecuaria() {
         textTransform: 'uppercase',
         letterSpacing: 0.4
       }
-    }, "Último ", sexo === 'Macho' ? 'macho' : 'fêmea', " lançado"), /*#__PURE__*/React.createElement("div", {
+    }, "\xDAltimo ", sexo === 'Macho' ? 'macho' : 'fêmea', " lan\xE7ado"), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 18,
         fontWeight: 700,
@@ -5398,7 +5469,7 @@ export default function GestaoPecuaria() {
       fontSize: 13,
       marginTop: 8
     }
-  }, "Preencha os campos obrigatórios (*) antes de salvar."))), tab === 'dashboard' && ownerMode && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, "Preencha os campos obrigat\xF3rios (*) antes de salvar."))), tab === 'dashboard' && ownerMode && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       justifyContent: 'flex-end',
@@ -5423,7 +5494,7 @@ export default function GestaoPecuaria() {
     }
   }, /*#__PURE__*/React.createElement(Save, {
     size: 13
-  }), " Baixar relatório Excel"), /*#__PURE__*/React.createElement("button", {
+  }), " Baixar relat\xF3rio Excel"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setConfirmAction('resync'),
     style: {
       display: 'flex',
@@ -5565,7 +5636,7 @@ export default function GestaoPecuaria() {
   }), /*#__PURE__*/React.createElement(StatCard, {
     label: "Nascimentos",
     value: kpis.nascimentos,
-    sub: `peso médio ${kpis.pesoMedioNascer.toFixed(0)} kg`
+    sub: `${kpis.machos} machos · ${kpis.femeas} fêmeas`
   }), /*#__PURE__*/React.createElement(StatCard, {
     label: "Taxa de perda ao nascer",
     value: `${kpis.taxaPerda.toFixed(0)}%`,
@@ -5675,14 +5746,14 @@ export default function GestaoPecuaria() {
       marginBottom: 10,
       fontWeight: 600
     }
-  }, "Nascimentos por mês"), nascimentosPorMes.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, "Nascimentos por m\xEAs"), nascimentosPorMes.length === 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
       color: C.textMuted,
       fontSize: 13,
       padding: '30px 0',
       textAlign: 'center'
     }
-  }, "Sem nascimentos lançados ainda") : /*#__PURE__*/React.createElement(ResponsiveContainer, {
+  }, "Sem nascimentos lan\xE7ados ainda") : /*#__PURE__*/React.createElement(ResponsiveContainer, {
     width: "100%",
     height: 200
   }, /*#__PURE__*/React.createElement(BarChart, {
@@ -5747,7 +5818,7 @@ export default function GestaoPecuaria() {
       fontSize: 13,
       padding: '10px 0'
     }
-  }, "Nenhum registro lançado ainda.") : /*#__PURE__*/React.createElement("div", {
+  }, "Nenhum registro lan\xE7ado ainda.") : /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
@@ -5826,12 +5897,16 @@ export default function GestaoPecuaria() {
     }
   })), (() => {
     const hoje = todayISO();
-    const lista = matrizes.filter(m => m.status === filtroPrevisao).filter(m => !buscaPrevisao || m.brinco.toLowerCase().includes(buscaPrevisao.toLowerCase())).map(m => ({
-      matriz: m,
-      previsao: m.status === 'Cheia' ? previsaoPartoDe(m.id, eventos) : '',
-      ultimoParto: ultimoPartoDe(m.id, eventos),
-      numeroCria: numeroCriaUltimoParto(m.id, eventos)
-    })).sort((a, b) => {
+    const lista = matrizes.filter(m => m.status === filtroPrevisao).filter(m => !buscaPrevisao || m.brinco.toLowerCase().includes(buscaPrevisao.toLowerCase())).map(m => {
+      const info = m.status === 'Cheia' ? previsaoPartoInfo(m.id, eventos) : null;
+      return {
+        matriz: m,
+        info,
+        previsao: info ? info.data : '',
+        ultimoParto: ultimoPartoDe(m.id, eventos),
+        numeroCria: numeroCriaUltimoParto(m.id, eventos)
+      };
+    }).sort((a, b) => {
       if (filtroPrevisao === 'Cheia') {
         if (!a.previsao) return 1;
         if (!b.previsao) return -1;
@@ -5860,17 +5935,18 @@ export default function GestaoPecuaria() {
       }
     }, lista.map(({
       matriz: m,
+      info,
       previsao,
       ultimoParto,
       numeroCria
     }) => {
-      const diasRestantes = previsao ? Math.round((new Date(previsao + 'T00:00:00') - new Date(hoje + 'T00:00:00')) / 86400000) : null;
+      const diasRestantes = previsao ? diasEntre(hoje, previsao) : null;
       let corPrazo = C.textMuted;
       let textoPrazo = filtroPrevisao === 'Cheia' ? 'sem previsão calculada' : '';
       if (diasRestantes !== null) {
         if (diasRestantes < 0) {
           corPrazo = C.descarte;
-          textoPrazo = `atrasado ${Math.abs(diasRestantes)} dia(s)`;
+          textoPrazo = `atrasado ${Math.abs(diasRestantes)} dia(s) · confirmar se já pariu`;
         } else if (diasRestantes === 0) {
           corPrazo = C.descarte;
           textoPrazo = 'hoje!';
@@ -5942,7 +6018,13 @@ export default function GestaoPecuaria() {
           padding: '3px 9px',
           borderRadius: 20
         }
-      }, m.status), ultimoParto && /*#__PURE__*/React.createElement("span", null, "Último parto: ", formatarDataBR(ultimoParto), numeroCria ? ` (cria ${numeroCria})` : '')));
+      }, m.status), ultimoParto && /*#__PURE__*/React.createElement("span", null, "\xDAltimo parto: ", formatarDataBR(ultimoParto), numeroCria ? ` (cria ${numeroCria})` : '')), info && /*#__PURE__*/React.createElement("div", {
+        style: {
+          marginTop: 6,
+          fontSize: 12.5,
+          color: C.textMuted
+        }
+      }, info.origem === 'toque' && `Cálculo: toque de ${formatarDataBR(info.base)} com ${info.dg} dias de gestação, mais ${PERIODO_GESTACAO_DIAS} dias de gestação no total`, info.origem === 'iatf' && `Cálculo: IATF de ${formatarDataBR(info.base)} mais ${PERIODO_GESTACAO_DIAS} dias`, info.origem === 'toque-sem-dg' && `Toque de ${formatarDataBR(info.base)} sem os dias de gestação (DG) anotados, não dá para calcular`));
     }));
   })()), tab === 'matrizes' && ownerMode && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6125,7 +6207,7 @@ export default function GestaoPecuaria() {
       fontSize: 14.5,
       cursor: 'pointer'
     }
-  }, "Salvar alterações"), /*#__PURE__*/React.createElement("button", {
+  }, "Salvar altera\xE7\xF5es"), /*#__PURE__*/React.createElement("button", {
     onClick: fecharEdicaoMatriz,
     style: {
       padding: '12px 18px',
@@ -6144,7 +6226,7 @@ export default function GestaoPecuaria() {
       padding: '30px 0',
       textAlign: 'center'
     }
-  }, "Nenhum touro/sêmen cadastrado ainda.") : /*#__PURE__*/React.createElement("div", {
+  }, "Nenhum touro/s\xEAmen cadastrado ainda.") : /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
@@ -6231,9 +6313,17 @@ export default function GestaoPecuaria() {
     }), " ", t.label);
   })), /*#__PURE__*/React.createElement(SheetTable, {
     rows: getSheetRows(planilhaTipo)
-  }))));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 28,
+      textAlign: 'center',
+      fontSize: 11,
+      color: C.textMuted,
+      opacity: 0.7
+    }
+  }, "Fazenda Ibira\xE7u \xB7 app ", VERSAO_APP, " \xB7 planilha ", versaoScript ? `v${versaoScript}` : 'versão antiga')));
 }
 
 // ---------- montagem na página ----------
 const root = createRoot(document.getElementById('root'));
-root.render(React.createElement(GestaoPecuaria));
+root.render(/*#__PURE__*/React.createElement(GestaoPecuaria));
