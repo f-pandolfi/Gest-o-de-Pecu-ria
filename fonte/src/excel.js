@@ -14,7 +14,7 @@ export function exportarExcel({ matrizes, touros, eventos }, ano, hoje) {
   const resumo = [['Relatório Fazenda Ibiraçu', ''], ['Gerado em', hoje], ...buildResumoRows(kpis, ano)];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), 'Resumo');
   ABAS_EXCEL.forEach(([nome, tipo]) => {
-    const linhas = linhasPlanilha(tipo, { matrizes, touros, eventos: evs });
+    const linhas = linhasPlanilha(tipo, { matrizes, touros, eventos: evs, todosEventos: eventos });
     XLSX.utils.book_append_sheet(wb, linhas.length ? XLSX.utils.json_to_sheet(linhas) : XLSX.utils.aoa_to_sheet([['Sem registros']]), nomeAba(nome));
   });
   const arquivo = `Fazenda_Ibiracu_${ano === 'todos' ? 'todos_os_anos' : ano}_${hoje}.xlsx`;

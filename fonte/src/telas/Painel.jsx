@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { Download, RefreshCw } from 'lucide-react';
 import {
-  calcularKPIs, filtrarPorAno, linhasPrevisao, mesCurto, rotuloAno, formatarDataBR,
+  calcularKPIs, filtrarPorAno, linhasPrevisao, mesCurto, rotuloAno, formatarDataBR, listarCrias, listarNovilhas, analiseMachos, noPlantel,
 } from '../logica.js';
 import { Kpis, Lead, Aviso } from '../ui.jsx';
 import { descreverEvento, fmtBRL } from '../util.js';
@@ -17,9 +17,16 @@ export default function Painel({ anoSel, dados, ano, hoje, go, onExcel, onSync, 
   const sinal = cheias.filter((l) => l.dias !== null && l.dias >= 0 && l.dias <= 30).length;
 
   const nascSemMae = evsAno.filter((e) => e.tipo === 'nascimento' && !e.matrizId).length;
-  const semRacaLote = dados.matrizes.filter((m) => m.status !== 'Descarte' && (!m.raca || !m.lote)).length;
+  const plantel = dados.matrizes.filter(noPlantel);
+  const semRacaLote = plantel.filter((m) => m.status !== 'Descarte' && (!m.raca || !m.lote)).length;
   const brincos = {};
-  dados.matrizes.forEach((m) => { brincos[m.brinco] = (brincos[m.brinco] || 0) + 1; });
+  plantel.forEach((m) => { brincos[m.brinco] = (brincos[m.brinco] || 0) + 1; });
+  const crias = useMemo(() => listarCrias(dados, hoje), [dados, hoje]);
+  const criasAtivas = crias.filter((c) => c.ativa);
+  const criasSemPeso = criasAtivas.filter((c) => c.pesoAtual === null).length;
+  const machos = useMemo(() => analiseMachos(crias, dados.config), [crias, dados.config]);
+  const novilhas = useMemo(() => listarNovilhas(dados, dados.config, hoje), [dados, hoje]);
+  const novilhasAptas = novilhas.filter((n) => n.apta).length;
   const duplicados = Object.values(brincos).filter((n) => n > 1).length;
 
   const porMes = useMemo(() => {
@@ -41,6 +48,7 @@ export default function Painel({ anoSel, dados, ano, hoje, go, onExcel, onSync, 
     atrasadas > 0 && { rotulo: 'Previsões de parto já vencidas (conferir se pariram)', valor: atrasadas, onClick: () => go('parto'), cor: 'var(--late)' },
     semPrev > 0 && { rotulo: 'Cheias sem previsão calculada', valor: semPrev, onClick: () => go('parto') },
     nascSemMae > 0 && { rotulo: `Nascimentos de ${rot} sem a mãe informada`, valor: nascSemMae },
+    criasSemPeso > 0 && { rotulo: 'Crias no rebanho ainda sem nenhuma pesagem', valor: criasSemPeso, onClick: () => go('crias') },
     semRacaLote > 0 && { rotulo: 'Matrizes sem raça ou lote no cadastro', valor: semRacaLote, onClick: () => go('rebanho') },
     duplicados > 0 && { rotulo: 'Brincos repetidos no cadastro', valor: duplicados, cor: 'var(--late)' },
   ].filter(Boolean);
@@ -76,6 +84,14 @@ export default function Painel({ anoSel, dados, ano, hoje, go, onExcel, onSync, 
         <Lead rotulo="Partos previstos nos próximos 30 dias" valor={sinal} onClick={() => go('parto')} />
         <Lead rotulo="Novilhas em recria" valor={k.emRecria} />
       </div>
+
+      <h2 className="h2">Crias e novilhas<small>hoje</small></h2>
+      <Kpis itens={[
+        { rotulo: 'Crias no rebanho', valor: criasAtivas.length, sub: `${criasAtivas.filter((c) => c.sexo === 'Macho').length} machos · ${criasAtivas.filter((c) => c.sexo === 'Fêmea').length} fêmeas` },
+        { rotulo: machos.cfg.metaPesoMacho ? `Machos com ${machos.cfg.metaPesoMacho} kg ou mais` : 'Machos no peso alvo', valor: machos.cfg.metaPesoMacho ? machos.prontos : '—', cor: machos.prontos ? 'var(--green)' : undefined, sub: machos.cfg.metaQtdMacho ? `meta ${machos.cfg.metaQtdMacho}` : 'defina a meta em Crias', },
+        { rotulo: `Novilhas aptas (${novilhas.length ? 'de ' + novilhas.length : 'nenhuma no lote'})`, valor: novilhasAptas, cor: novilhasAptas ? 'var(--green)' : undefined },
+        { rotulo: 'Sem pesagem', valor: criasSemPeso, cor: criasSemPeso ? 'var(--amber)' : undefined, sub: 'crias no rebanho' },
+      ]} />
 
       <h2 className="h2">Movimento de {rot}</h2>
       <Kpis itens={[

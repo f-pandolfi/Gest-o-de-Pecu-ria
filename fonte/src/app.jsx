@@ -3,19 +3,20 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Plus, CalendarClock, List, LayoutDashboard, FileText, Lock, Unlock, Loader2, ChevronDown,
+  Plus, CalendarClock, List, LayoutDashboard, FileText, Lock, Unlock, Loader2, ChevronDown, Baby,
 } from 'lucide-react';
 import {
   VERSAO_APP, VERSAO_MINIMA_SCRIPT, todayISO, anoDe, anosDisponiveis, filtrarPorAno, normalizarDados,
-  aplicarLancamento, calcularKPIs, buildResumoRows,
+  aplicarLancamento, aplicarVenda, calcularKPIs, buildResumoRows,
 } from './logica.js';
 import { CSS } from './estilos.js';
 import { MODO_TESTE, lerTudo, postar } from './api.js';
 import { exportarExcel, exportarRelatorioExcel } from './excel.js';
 import { Aviso, Modal } from './ui.jsx';
-import { descreverEvento } from './util.js';
+import { descreverEvento, fmtKg, fmtBRL } from './util.js';
 import Lancar from './telas/Lancar.jsx';
 import Parto from './telas/Parto.jsx';
+import Crias from './telas/Crias.jsx';
 import Rebanho from './telas/Rebanho.jsx';
 import Painel from './telas/Painel.jsx';
 import Relatorios from './telas/Relatorios.jsx';
@@ -24,7 +25,7 @@ import Relatorios from './telas/Relatorios.jsx';
 // (nos testes automáticos o build troca a senha por uma de mentira, via __PIN_TESTE__)
 const OWNER_PIN = typeof __PIN_TESTE__ !== 'undefined' ? __PIN_TESTE__ : '1537';
 
-const VAZIO = { matrizes: [], touros: [], eventos: [] };
+const VAZIO = { matrizes: [], touros: [], eventos: [], config: {} };
 
 function Marca() {
   return (
@@ -87,7 +88,11 @@ function GestaoPecuaria() {
       const v = Number(data.versao) || 0;
       setVersaoScript(v);
       if (v < VERSAO_MINIMA_SCRIPT) {
-        setAviso({ tipo: 'erro', texto: `ATENÇÃO: o script da planilha está desatualizado (versão ${v || 'antiga'}). O que você lançar aparece na tela, mas NÃO está sendo gravado na planilha. Avise o responsável pelo sistema.` });
+        if (MODO_TESTE) {
+          setAviso({ tipo: 'info', texto: `Modo teste: a planilha ainda está na versão ${v || 'antiga'} do script. As telas novas já funcionam, mas as pesagens e vendas só serão gravadas depois que o script v${VERSAO_MINIMA_SCRIPT} for publicado.` });
+        } else {
+          setAviso({ tipo: 'erro', texto: `ATENÇÃO: o script da planilha está desatualizado (versão ${v || 'antiga'}). O que você lançar aparece na tela, mas NÃO está sendo gravado na planilha. Avise o responsável pelo sistema.` });
+        }
       }
     } catch (e) {
       console.error('Erro ao carregar dados da planilha', e);
@@ -139,8 +144,39 @@ function GestaoPecuaria() {
     enfileirar({ action: 'upsertMatriz', matriz: m }, 'matriz');
   }
 
+  // Metas e peso de corte da novilha (aba Config da planilha)
+  function salvarConfig(parcial) {
+    const d = dadosRef.current;
+    commit({ ...d, config: { ...(d.config || {}), ...parcial } });
+    enfileirar({ action: 'setConfig', config: parcial }, 'metas');
+  }
+
+  // Venda por peso: um registro da venda, um por animal e a baixa das matrizes vendidas. Grava primeiro os eventos e depois as
+  // matrizes; se parar no meio, o animal que já tem item de venda continua sendo tratado como vendido (não dá para vender duas vezes).
+  async function registrarVenda(form) {
+    if (!MODO_TESTE && (versaoScript || 0) < 9) {
+      return { ok: false, msg: 'O script da planilha está desatualizado e não aceita vendas. Avise o responsável pelo sistema.' };
+    }
+    const r = aplicarVenda(dadosRef.current, form, { hoje });
+    if (r.erro) return { ok: false, msg: r.erro };
+    try {
+      const itens = r.eventosNovos.map((e) => ({ tipo: e.tipo, evento: e }));
+      for (let i = 0; i < itens.length; i += 40) await postar({ action: 'appendEventos', itens: itens.slice(i, i + 40) });
+      if (r.matrizesAlteradas.length) await postar({ action: 'upsertMatrizes', matrizes: r.matrizesAlteradas });
+    } catch (e) {
+      console.error('Erro ao gravar a venda', e);
+      return { ok: false, msg: `Não consegui gravar a venda: ${e.message}. Use "Recarregar dados" nas ferramentas avançadas do Painel para ver o que chegou na planilha antes de tentar de novo, para não duplicar.` };
+    }
+    commit(r.estado);
+    const baixas = r.itens.filter((i) => i.criaId || i.matrizId).length;
+    return {
+      ok: true,
+      msg: `Venda gravada: ${r.totais.qtd} animal(is), ${fmtKg(r.totais.kg)}, ${fmtBRL(r.totais.valor)}.${baixas ? ` ${baixas} saíram do rebanho.` : ''}${r.avisos.length ? ` Atenção: ${r.avisos.join(' ')}` : ''}`,
+    };
+  }
+
   async function gravarLote(res) {
-    if (!MODO_TESTE && (versaoScript || 0) < 8) {
+    if (!MODO_TESTE && (versaoScript || 0) < 9) {
       return { ok: false, msg: 'O script da planilha está desatualizado e não aceita lote. Avise o responsável pelo sistema.' };
     }
     try {
@@ -188,6 +224,7 @@ function GestaoPecuaria() {
     ownerMode && { id: 'painel', label: 'Painel', Icon: LayoutDashboard },
     { id: 'lancar', label: 'Lançar', Icon: Plus },
     { id: 'parto', label: 'Parto', Icon: CalendarClock },
+    { id: 'crias', label: 'Crias', Icon: Baby },
     { id: 'rebanho', label: 'Rebanho', Icon: List },
     ownerMode && { id: 'relatorios', label: 'Relatórios', Icon: FileText },
   ].filter(Boolean);
@@ -246,6 +283,13 @@ function GestaoPecuaria() {
           <Lancar dados={dados} hoje={hoje} ownerMode={ownerMode} preset={preset} onSalvar={salvarLancamento} onGravarLote={gravarLote} modoTeste={MODO_TESTE} />
         )}
         {tab === 'parto' && <Parto dados={dados} hoje={hoje} onLancar={lancarDaVaca} />}
+        {tab === 'crias' && (
+          <Crias
+            dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE}
+            onLancar={salvarLancamento} onGravarLote={gravarLote} onVender={registrarVenda}
+            onSalvarMatriz={salvarMatriz} onSalvarConfig={salvarConfig}
+          />
+        )}
         {tab === 'rebanho' && <Rebanho dados={dados} ownerMode={ownerMode} onSalvarMatriz={salvarMatriz} />}
         {tab === 'painel' && ownerMode && (
           <Painel
@@ -265,7 +309,7 @@ function GestaoPecuaria() {
         </div>
       </div>
 
-      <nav className="bnav" aria-label="Telas (celular)">
+      <nav className={`bnav${itensNav.length > 5 ? ' mini' : ''}`} aria-label="Telas (celular)">
         {itensNav.map(({ id, label, Icon }) => (
           <button key={id} aria-current={tab === id ? 'page' : undefined} onClick={() => mudarTab(id)}><Icon /> {label}</button>
         ))}

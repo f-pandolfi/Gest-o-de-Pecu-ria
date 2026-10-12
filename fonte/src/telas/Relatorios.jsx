@@ -6,7 +6,7 @@ import {
 } from '../logica.js';
 import { IndexTabs, Kpis, SecaoRelatorio, TabelaLinhas } from '../ui.jsx';
 
-const NOMES_CURTOS = { previsao: 'Parto', nascimentos: 'Nascimentos', melhores: 'Melhores vacas', iatf: 'IATF', situacao: 'Situação' };
+const NOMES_CURTOS = { previsao: 'Parto', nascimentos: 'Nascimentos', melhores: 'Melhores vacas', iatf: 'IATF', situacao: 'Situação', crias: 'Crias', vendas: 'Vendas' };
 
 export default function Relatorios({ anoSel, dados, ano, hoje, onExcel, onExcelRelatorio }) {
   const [aba, setAba] = useState('previsao');
@@ -17,7 +17,7 @@ export default function Relatorios({ anoSel, dados, ano, hoje, onExcel, onExcelR
   const rel = useMemo(() => (def ? montarRelatorio(aba, dados, ano, hoje) : null), [aba, dados, ano, hoje]); // eslint-disable-line react-hooks/exhaustive-deps
   const evsAno = useMemo(() => filtrarPorAno(dados.eventos, ano), [dados.eventos, ano]);
   const linhasPlan = useMemo(
-    () => (aba === 'planilha' ? linhasPlanilha(tipoPlan, { matrizes: dados.matrizes, touros: dados.touros, eventos: evsAno }) : []),
+    () => (aba === 'planilha' ? linhasPlanilha(tipoPlan, { matrizes: dados.matrizes, touros: dados.touros, eventos: evsAno, todosEventos: dados.eventos }) : []),
     [aba, tipoPlan, dados, evsAno],
   );
 

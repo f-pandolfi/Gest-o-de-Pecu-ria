@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { X, AlertCircle, Info, Check } from 'lucide-react';
 
-export const corStatus = (s) => (s === 'Cheia' ? 'var(--green)' : s === 'Vazia' ? 'var(--amber)' : 'var(--late)');
+export const corStatus = (s) => (s === 'Cheia' ? 'var(--green)' : s === 'Vazia' ? 'var(--amber)' : s === 'Vendida' ? 'var(--mut)' : 'var(--late)');
 
 export function Tag({ status }) {
   return <span className="tag" style={{ color: corStatus(status) }}>{status}</span>;
@@ -97,7 +97,7 @@ export function MatrizPicker({ value, onChange, matrizes, filtro, rotulo }) {
   const [aberto, setAberto] = useState(false);
   const sel = matrizes.find((m) => m.id === value);
   const lista = useMemo(() => {
-    const base = matrizes.filter((m) => m.status !== 'Descarte' && (!filtro || filtro(m)));
+    const base = matrizes.filter((m) => m.status !== 'Descarte' && m.status !== 'Vendida' && (!filtro || filtro(m)));
     const t = q.trim().toLowerCase();
     if (!t) return [];
     const comeca = base.filter((m) => String(m.brinco).toLowerCase().startsWith(t));

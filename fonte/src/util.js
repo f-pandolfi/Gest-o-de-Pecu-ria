@@ -3,13 +3,14 @@ import { TIPOS_EVENTO, formatarDataBR, mapaBrincos, nomeTouroEvento } from './lo
 
 export const ROTULO_CURTO = {
   cadastro: 'Nova matriz', touro: 'Touro / sêmen', iatf: 'IATF', diagnostico: 'Toque', nascimento: 'Nascimento',
-  desmama: 'Desmama', recria: 'Recria', venda: 'Venda', insumo: 'Insumo', descarte: 'Descarte',
+  desmama: 'Desmama', recria: 'Recria', pesagem: 'Peso', venda: 'Venda', vendaitem: 'Animal vendido', insumo: 'Insumo', descarte: 'Descarte',
 };
 
 export const rotuloEvento = (tipo) => (TIPOS_EVENTO.find((t) => t.id === tipo) || {}).label || tipo;
 
 // Ordem das abas em "Lançar" (nascimento primeiro: é o que mais se lança no dia a dia)
-export const ORDEM_LANCAR = ['nascimento', 'iatf', 'diagnostico', 'desmama', 'recria', 'descarte', 'insumo', 'venda', 'cadastro', 'touro'];
+// (a venda por peso e as pesagens ficam na tela Crias)
+export const ORDEM_LANCAR = ['nascimento', 'iatf', 'diagnostico', 'desmama', 'recria', 'descarte', 'insumo', 'cadastro', 'touro'];
 
 // Texto curto de um evento, para listas ("Nascimento · mãe 3012 · cria 6001")
 export function descreverEvento(e, dados) {
@@ -32,9 +33,16 @@ export function descreverEvento(e, dados) {
   } else if (e.tipo === 'desmama') {
     if (e.brincoBezerro) partes.push(`cria ${e.brincoBezerro}`);
     if (e.pesoDesmama) partes.push(`${e.pesoDesmama} kg`);
+  } else if (e.tipo === 'pesagem') {
+    if (e.brinco) partes.push(`animal ${e.brinco}`);
+    if (e.peso) partes.push(`${fmtKg(e.peso)}`);
+  } else if (e.tipo === 'vendaitem') {
+    if (e.brinco) partes.push(`animal ${e.brinco}`);
+    if (e.tipoAnimal) partes.push(e.tipoAnimal);
+    if (e.peso) partes.push(`${fmtKg(e.peso)}`);
   } else if (e.tipo === 'venda') {
     if (e.animais) partes.push(e.animais);
-    if (e.valorTotal) partes.push(`R$ ${e.valorTotal}`);
+    if (e.valorTotal) partes.push(fmtBRL(parseFloat(e.valorTotal)));
   } else if (e.tipo === 'insumo') {
     if (e.produto) partes.push(e.produto);
     if (e.quantidade) partes.push(`${e.quantidade} ${e.unidade || ''}`.trim());
@@ -46,3 +54,13 @@ export function descreverEvento(e, dados) {
 
 export const fmtBRL = (n) => (n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 export const fmtData = formatarDataBR;
+// 245 -> "245 kg", 245.5 -> "245,5 kg", vazio -> "—"
+export const fmtKg = (n) => {
+  const x = Number(n);
+  if (n === null || n === undefined || n === '' || isNaN(x)) return '—';
+  return `${(Math.round(x * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg`;
+};
+export const fmtNum = (n, casas) => (n === null || n === undefined || isNaN(n) ? '—' : Number(n).toLocaleString('pt-BR', { maximumFractionDigits: casas === undefined ? 1 : casas, minimumFractionDigits: 0 }));
+// 199 -> "199 dias"; 400 -> "13,2 meses"
+export const fmtIdade = (dias) => (dias === null || dias === undefined ? '—' : dias < 60 ? `${dias} dias` : `${fmtNum(dias / 30.4, 1)} meses`);
+export const fmtGmd = (g) => (g === null || g === undefined ? '—' : `${fmtNum(g, 2)} kg/dia`);

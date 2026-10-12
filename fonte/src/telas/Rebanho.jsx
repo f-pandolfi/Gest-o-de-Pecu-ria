@@ -34,6 +34,8 @@ function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar }) {
         <>
           <div style={{ marginBottom: 6 }}><Tag status={m.status} /></div>
           <Lead rotulo="Categoria" valor={m.categoria || '—'} />
+          {m.destino && <Lead rotulo="Destino da novilha" valor={m.destino === 'Matriz' ? 'virar matriz' : m.destino === 'Venda' ? 'venda' : 'a definir'} />}
+          {m.status === 'Vendida' && <Lead rotulo="Baixa" valor={`Vendida${m.dataBaixa ? ` em ${formatarDataBR(m.dataBaixa)}` : ''}`} cor="var(--mut)" />}
           <Lead rotulo="Raça" valor={m.raca || '—'} />
           <Lead rotulo="Lote / piquete" valor={m.lote || '—'} />
           <Lead rotulo="Nascimento" valor={m.dataNascimento ? formatarDataBR(m.dataNascimento) : '—'} />
@@ -50,7 +52,9 @@ function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar }) {
             </ul>
           )}
 
-          {ownerMode ? (
+          {m.status === 'Vendida' ? (
+            <p className="sub" style={{ marginTop: 16 }}>Animal vendido: o cadastro fica guardado só para consulta.</p>
+          ) : ownerMode ? (
             <button className="btn wide" style={{ marginTop: 16 }} onClick={() => setEdit(true)}>Alterar cadastro</button>
           ) : (
             <p className="sub" style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -82,13 +86,14 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz }) {
   const lista = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return dados.matrizes
-      .filter((m) => (filtro === 'todos' || m.status === filtro) && (!q || String(m.brinco).toLowerCase().includes(q)))
+      .filter((m) => (filtro === 'todos' ? m.status !== 'Vendida' : m.status === filtro) && (!q || String(m.brinco).toLowerCase().includes(q)))
       .slice()
       .sort((a, b) => String(a.brinco).localeCompare(String(b.brinco), 'pt-BR', { numeric: true }));
   }, [dados.matrizes, filtro, busca]);
 
   const aberto = aberta ? dados.matrizes.find((m) => m.id === aberta) : null;
   const contar = (s) => dados.matrizes.filter((m) => m.status === s).length;
+  const totalNoRebanho = dados.matrizes.filter((m) => m.status !== 'Vendida').length;
 
   return (
     <div className="wrap">
@@ -100,7 +105,7 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz }) {
         rotulo="Cadastros"
         value={aba}
         onChange={setAba}
-        tabs={[{ id: 'matrizes', label: 'Matrizes', count: dados.matrizes.length }, { id: 'touros', label: 'Touros', count: dados.touros.length }]}
+        tabs={[{ id: 'matrizes', label: 'Matrizes', count: totalNoRebanho }, { id: 'touros', label: 'Touros', count: dados.touros.length }]}
       />
 
       {aba === 'matrizes' && (
@@ -110,9 +115,9 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz }) {
             <input placeholder="Buscar pelo brinco" aria-label="Buscar pelo brinco" value={busca} onChange={(e) => setBusca(e.target.value)} />
           </label>
           <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--line)' }}>
-            <div className="seg" role="group" aria-label="Filtrar por situação">
-              {[['todos', 'Todas'], ['Cheia', `Cheias ${contar('Cheia')}`], ['Vazia', `Vazias ${contar('Vazia')}`], ['Descarte', `Descarte ${contar('Descarte')}`]].map(([id, rot]) => (
-                <button key={id} aria-pressed={filtro === id} onClick={() => setFiltro(id)} style={{ minHeight: 40, fontSize: 13 }}>{rot}</button>
+            <div className="seg" style={{ flexWrap: 'wrap' }} role="group" aria-label="Filtrar por situação">
+              {[['todos', 'Todas'], ['Cheia', `Cheias ${contar('Cheia')}`], ['Vazia', `Vazias ${contar('Vazia')}`], ['Descarte', `Descarte ${contar('Descarte')}`], ...(contar('Vendida') ? [['Vendida', `Vendidas ${contar('Vendida')}`]] : [])].map(([id, rot]) => (
+                <button key={id} aria-pressed={filtro === id} onClick={() => setFiltro(id)} style={{ minHeight: 40, fontSize: 13, flex: '1 0 auto' }}>{rot}</button>
               ))}
             </div>
           </div>
@@ -126,7 +131,7 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz }) {
             return (
               <button key={m.id} className="led-r cols-reb" onClick={() => setAberta(m.id)} aria-label={`Abrir matriz ${m.brinco}`}>
                 <span className="b">{m.brinco}</span>
-                <span className="two"><b>{m.categoria}</b><span>{m.raca || '—'}</span></span>
+                <span className="two"><b>{m.categoria}</b><span>{m.destino && m.status !== 'Vendida' ? `recria · ${m.destino === 'Matriz' ? 'virar matriz' : m.destino.toLowerCase()}` : (m.raca || '—')}</span></span>
                 <span><Tag status={m.status} /></span>
                 <span className="hide-s m mut">{m.lote || '—'}</span>
                 <span className="hide-s m mut">{ult ? formatarDataBR(ult) : '—'}</span>

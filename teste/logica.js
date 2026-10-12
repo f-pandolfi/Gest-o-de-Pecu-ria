@@ -2,12 +2,12 @@
 // É usado por dois lados: o app (app.jsx) e a integração por foto (lançamentos em lote feitos pelo Claude).
 // Mexeu aqui = mudou nos dois, de propósito: uma única fonte da verdade para status, previsão e relatórios.
 
-export const VERSAO_APP = '9.2 (12/10/26)';
-export const VERSAO_MINIMA_SCRIPT = 7;
+export const VERSAO_APP = '9.3 (12/10/26)';
+export const VERSAO_MINIMA_SCRIPT = 9; // v9 = pesagens, venda por peso e baixa no rebanho
 export const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
 
 // Tipos de lançamento visíveis no modo Funcionário (restrito)
-export const TIPOS_FUNCIONARIO = ['nascimento', 'desmama', 'iatf', 'insumo', 'descarte'];
+export const TIPOS_FUNCIONARIO = ['nascimento', 'desmama', 'iatf', 'insumo', 'descarte', 'pesagem'];
 
 export const TIPOS_EVENTO = [
   { id: 'cadastro', label: 'Nova Matriz' },
@@ -17,7 +17,9 @@ export const TIPOS_EVENTO = [
   { id: 'nascimento', label: 'Nascimento' },
   { id: 'desmama', label: 'Desmama' },
   { id: 'recria', label: 'Recria (pesagem)' },
+  { id: 'pesagem', label: 'Pesagem' },
   { id: 'venda', label: 'Venda' },
+  { id: 'vendaitem', label: 'Animal vendido' },
   { id: 'insumo', label: 'Sal / Medicamento' },
   { id: 'descarte', label: 'Descarte' },
 ];
@@ -30,7 +32,7 @@ export const CAMPOS_EDICAO_MATRIZ = [
   { key: 'lote', label: 'Lote / piquete', type: 'text' },
   { key: 'dataNascimento', label: 'Data de nascimento', type: 'date' },
   { key: 'partosAnteriores', label: 'Partos antes de entrar na fazenda', type: 'number' },
-  { key: 'status', label: 'Status', type: 'select', options: ['Vazia', 'Cheia', 'Descarte'] },
+  { key: 'status', label: 'Status', type: 'select', options: ['Vazia', 'Cheia', 'Descarte', 'Vendida'] },
 ];
 
 export const CAMPOS = {
@@ -97,6 +99,13 @@ export const CAMPOS = {
     { key: 'data', label: 'Data da pesagem', type: 'date', required: true },
     { key: 'pesoAtual', label: 'Peso atual (kg)', type: 'number' },
     { key: 'aptaReproducao', label: 'Apta para reprodução?', type: 'select', options: ['Ainda não', 'Sim, apta'] },
+    { key: 'observacoes', label: 'Observações', type: 'text' },
+  ],
+  // Pesagem de cria ou novilha. O animal é achado pelo brinco (ver acharAnimal); a tela de Crias também manda criaId/matrizId.
+  pesagem: [
+    { key: 'brinco', label: 'Brinco do animal', type: 'text', required: true },
+    { key: 'data', label: 'Data da pesagem', type: 'date', required: true },
+    { key: 'peso', label: 'Peso (kg)', type: 'number', required: true },
     { key: 'observacoes', label: 'Observações', type: 'text' },
   ],
   venda: [
@@ -224,7 +233,7 @@ export function rotuloAno(ano) {
 // Brinco sempre como texto (a planilha devolve número) e datas sempre AAAA-MM-DD
 export function normalizarDados(data) {
   const matrizes = (data.matrizes || []).map((m) => ({
-    ...m, brinco: String(m.brinco ?? ''), dataNascimento: normalizarDataISO(m.dataNascimento),
+    ...m, brinco: String(m.brinco ?? ''), dataNascimento: normalizarDataISO(m.dataNascimento), dataBaixa: normalizarDataISO(m.dataBaixa),
   }));
   const eventos = (data.eventos || []).map((e) => ({
     ...e,
@@ -232,7 +241,7 @@ export function normalizarDados(data) {
     dataInicioProtocolo: normalizarDataISO(e.dataInicioProtocolo),
     brincoBezerro: e.brincoBezerro === undefined || e.brincoBezerro === null ? '' : String(e.brincoBezerro),
   }));
-  return { matrizes, touros: data.touros || [], eventos };
+  return { matrizes, touros: data.touros || [], eventos, config: data.config && typeof data.config === 'object' ? data.config : {} };
 }
 
 // ---------------------------------------------------------------- reprodução
@@ -302,7 +311,7 @@ export function linhasPrevisao(matrizes, eventos, status, hoje, busca) {
   hoje = hoje || todayISO();
   const q = (busca || '').toLowerCase();
   return matrizes
-    .filter((m) => m.status === status)
+    .filter((m) => m.status === status && noPlantel(m))
     .filter((m) => !q || String(m.brinco).toLowerCase().includes(q))
     .map((m) => {
       const info = status === 'Cheia' ? previsaoPartoInfo(m.id, eventos) : null;
@@ -329,7 +338,9 @@ export function linhasPrevisao(matrizes, eventos, status, hoje, busca) {
 }
 
 // ---------------------------------------------------------------- indicadores
-export function calcularKPIs(matrizes, eventos) {
+export function calcularKPIs(todasMatrizes, eventos) {
+  const matrizes = todasMatrizes.filter(noPlantel); // fora: vendidas (baixa) e novilhas ainda na recria
+  const vendidas = todasMatrizes.filter((m) => m.status === 'Vendida').length;
   const cheias = matrizes.filter((m) => m.status === 'Cheia').length;
   const vazias = matrizes.filter((m) => m.status === 'Vazia').length;
   const descartes = matrizes.filter((m) => m.status === 'Descarte').length;
@@ -342,7 +353,7 @@ export function calcularKPIs(matrizes, eventos) {
   const taxaPerda = nascimentosTodos.length ? (natimortos / nascimentosTodos.length) * 100 : 0;
   const desmamas = eventos.filter((e) => e.tipo === 'desmama');
   const taxaDesmama = nascimentos.length ? (desmamas.length / nascimentos.length) * 100 : 0;
-  const emRecria = matrizes.filter((m) => m.categoria === 'Novilha' && m.status !== 'Descarte').length;
+  const emRecria = todasMatrizes.filter((m) => m.status !== 'Vendida' && m.categoria === 'Novilha' && m.status !== 'Descarte').length;
   const vendas = eventos.filter((e) => e.tipo === 'venda');
   const receitaTotal = vendas.reduce((s, v) => s + (parseFloat(v.valorTotal) || 0), 0);
   const custoFrete = vendas.reduce((s, v) => s + (parseFloat(v.frete) || 0), 0);
@@ -361,7 +372,7 @@ export function calcularKPIs(matrizes, eventos) {
     total: matrizes.length, cheias, vazias, descartes, taxaPrenhez, nascimentos: nascimentos.length,
     natimortos, taxaPerda, desmamas: desmamas.length, taxaDesmama, emRecria, receitaTotal, custoTotal,
     custoPorBezerro, margem, machos, femeas, pesoMedioDesmama,
-    iatfs: iatfs.length, diagnosticos: diagnosticos.length,
+    iatfs: iatfs.length, diagnosticos: diagnosticos.length, vendidas,
   };
 }
 
@@ -373,6 +384,7 @@ export function buildResumoRows(kpis, ano) {
     ['Cheias (hoje)', kpis.cheias],
     ['Vazias (hoje)', kpis.vazias],
     ['Descarte (hoje)', kpis.descartes],
+    ['Matrizes vendidas (baixa)', kpis.vendidas || 0],
     ['Novilhas em recria (hoje)', kpis.emRecria],
     ['Taxa de prenhez do ano (%)', kpis.taxaPrenhez.toFixed(1)],
     ['', ''],
@@ -517,12 +529,44 @@ export function aplicarLancamento(estado, tipo, form, opcoes) {
     }
     ev = eventosNext;
     out.eventosNovos.push(novoEvento);
+  } else if (tipo === 'desmama') {
+    // Desmama de FÊMEA: a cria passa para o lote de novilhas (vira uma matriz "Novilha", destino "A definir").
+    const nasc = acharCriaPorBrinco(eventos, form.brincoBezerro, form.data);
+    const idade = nasc && nasc.data && form.data ? diasEntre(nasc.data, form.data) : '';
+    const novoEvento = { id, tipo: 'desmama', ...form, idadeDias: form.idadeDias || (idade !== '' && idade >= 0 ? idade : ''), createdAt: now };
+    ev = [...eventos, novoEvento];
+    out.eventosNovos.push(novoEvento);
+    if (nasc && nasc.sexo === 'Fêmea') {
+      const idNov = idNovilha(nasc.id);
+      const jaTem = matrizes.some((x) => x.id === idNov || String(x.brinco).trim() === String(nasc.brincoBezerro).trim());
+      if (!jaTem) {
+        const nova = {
+          id: idNov, brinco: String(nasc.brincoBezerro).trim(), categoria: 'Novilha', raca: '', lote: 'Novilhas',
+          dataNascimento: nasc.data || '', partosAnteriores: 0, status: 'Vazia', destino: 'A definir',
+          dataBaixa: '', motivoBaixa: '', createdAt: now,
+        };
+        m = [...matrizes, nova];
+        out.matrizesAlteradas.push(nova);
+      }
+    }
+  } else if (tipo === 'pesagem') {
+    // Pesagem de cria ou novilha. O animal vem pelo brinco (ou já com criaId / matrizId, quando escolhido numa lista).
+    const a = acharAnimal(estado, form.brinco);
+    const matrizId = (a && a.matriz && a.matriz.id) || form.matrizId || '';
+    const criaId = (a && a.nasc && a.nasc.id) || form.criaId || '';
+    const brinco = String(form.brinco || (a && a.nasc && a.nasc.brincoBezerro) || (a && a.matriz && a.matriz.brinco) || '').trim();
+    const novoEvento = {
+      id, tipo: 'pesagem', data: form.data, criaId, matrizId, brinco,
+      peso: numPeso(form.peso), observacoes: form.observacoes || '', createdAt: now,
+    };
+    ev = [...eventos, novoEvento];
+    out.eventosNovos.push(novoEvento);
   } else {
     const novoEvento = { id, tipo, ...form, createdAt: now };
     ev = [...eventos, novoEvento];
     out.eventosNovos.push(novoEvento);
   }
-  return { estado: { matrizes: m, touros: t, eventos: ev }, ...out };
+  return { estado: { ...estado, matrizes: m, touros: t, eventos: ev }, ...out };
 }
 
 // ---------------------------------------------------------------- lote (integração por foto)
@@ -560,6 +604,7 @@ function acharTouro(touros, nome) {
 //   desmama: brincoCria, data, peso, idadeDias
 //   descarte: matriz, data, motivo
 //   recria: matriz, data, peso, apta, obs
+//   pesagem: brincoCria (cria ou novilha; aceita também matriz antiga pelo brinco), data, peso, obs
 //   insumo: data, produto, quantidade, unidade, custo, categoriaAnimal
 //   venda: data, categoria, animais, pesoTotal, valorArroba, valorTotal, frete, comprador
 //   cadastro: brinco, categoria, raca, lote, dataNascimento, partosAnteriores, status
@@ -621,6 +666,14 @@ export function itemParaFormulario(item, estado, hoje) {
     if (item.peso) f.pesoAtual = item.peso;
     if (item.apta) f.aptaReproducao = item.apta;
     if (item.obs) f.observacoes = item.obs;
+  } else if (tipo === 'pesagem') {
+    const b = String(item.brincoCria ?? item.brinco ?? '').trim();
+    if (!b) return { erro: 'brinco do animal em branco' };
+    if (!acharAnimal(estado, b)) return { erro: `animal ${b} não encontrado (nem cria, nem matriz)` };
+    const p = numPeso(item.peso);
+    if (isNaN(p) || p <= 0) return { erro: `peso inválido (${item.peso ?? ''})` };
+    f.brinco = b; f.peso = p;
+    if (item.obs) f.observacoes = item.obs;
   } else if (tipo === 'insumo') {
     ['produto', 'quantidade', 'unidade', 'custo', 'categoriaAnimal'].forEach((k) => { if (item[k] !== undefined && item[k] !== '') f[k] = item[k]; });
   } else if (tipo === 'venda') {
@@ -640,7 +693,18 @@ export function itemParaFormulario(item, estado, hoje) {
 export function jaExiste(tipo, form, estado) {
   const { eventos, matrizes } = estado;
   if (tipo === 'cadastro') return matrizes.some((m) => String(m.brinco).trim() === String(form.brinco).trim());
-  if (tipo === 'desmama') return eventos.some((e) => e.tipo === 'desmama' && e.brincoBezerro === form.brincoBezerro && e.data === form.data);
+  if (tipo === 'desmama') {
+    // uma cria só é desmamada uma vez: qualquer desmama anterior desse brinco (em até 3 anos) já vale
+    const nasc = acharCriaPorBrinco(eventos, form.brincoBezerro, form.data);
+    return eventos.some((e) => e.tipo === 'desmama' && String(e.brincoBezerro).trim() === String(form.brincoBezerro).trim()
+      && (e.data === form.data || (nasc && nasc.data && e.data >= nasc.data && diasEntre(nasc.data, e.data) < 1100)));
+  }
+  if (tipo === 'pesagem') {
+    const a = acharAnimal(estado, form.brinco);
+    const crId = (a && a.nasc && a.nasc.id) || form.criaId; const mzId = (a && a.matriz && a.matriz.id) || form.matrizId;
+    return eventos.some((e) => e.tipo === 'pesagem' && e.data === form.data
+      && ((crId && e.criaId === crId) || (mzId && e.matrizId === mzId) || (!crId && !mzId && String(e.brinco) === String(form.brinco))));
+  }
   if (tipo === 'nascimento') {
     return eventos.some((e) => e.tipo === 'nascimento' && e.data === form.data
       && ((form.matrizId && e.matrizId === form.matrizId) || (form.brincoBezerro && e.brincoBezerro === form.brincoBezerro)));
@@ -687,6 +751,371 @@ export function aplicarLote(estado, itens, opcoes) {
     estado: atual, aplicados, rejeitados, avisos,
     eventosParaGravar, matrizesParaGravar: [...matrizesMap.values()], tourosParaGravar,
   };
+}
+
+// ---------------------------------------------------------------- crias, pesagens, novilhas e venda por peso
+// A cria não tem cadastro próprio: ela é derivada do lançamento de nascimento (id do nascimento = id da cria).
+// Pesagens e vendas são eventos (tipos "pesagem", "venda" e "vendaitem"); a desmama de uma fêmea cria a matriz "Novilha"
+// com id fixo `cria-<id do nascimento>`, o que liga a novilha à cria sem coluna extra.
+export const PESO_MATRIZ_PADRAO = 280; // a partir deste peso (kg) a novilha pode virar matriz
+export const KG_POR_ARROBA = 15;
+export const DESTINOS_NOVILHA = ['A definir', 'Matriz', 'Venda'];
+// Plantel de matrizes: fora as vendidas e fora as novilhas que ainda estão na recria (destino "A definir" ou "Venda").
+// Novilha antiga (sem destino) e novilha com destino "Matriz" fazem parte do plantel.
+export const noPlantel = (m) => m.status !== 'Vendida' && !(m.categoria === 'Novilha' && (m.destino === 'A definir' || m.destino === 'Venda'));
+export const TIPOS_ANIMAL_VENDA = ['Bezerro', 'Bezerra', 'Garrote', 'Novilha', 'Vaca de descarte', 'Vaca velha', 'Vaca', 'Boi', 'Touro', 'Outro'];
+
+export const idNovilha = (nascId) => `cria-${nascId}`;
+
+// Peso escrito como "280", "280,5" ou "280.5" -> número (NaN se não for número)
+export function numPeso(v) {
+  if (typeof v === 'number') return v;
+  if (v === null || v === undefined) return NaN;
+  const s = String(v).trim().replace(',', '.');
+  return s === '' ? NaN : Number(s);
+}
+const arred = (n, casas) => { const f = 10 ** (casas === undefined ? 1 : casas); return Math.round(n * f) / f; };
+
+// Metas e critério de peso (guardados na aba Config da planilha). Valor ausente ou inválido = padrão / sem meta.
+export function configCompleta(cfg) {
+  const c = cfg || {};
+  const pos = (v) => { const x = numPeso(v); return isNaN(x) || x <= 0 ? null : x; };
+  return { pesoMatriz: pos(c.pesoMatriz) || PESO_MATRIZ_PADRAO, metaPesoMacho: pos(c.metaPesoMacho), metaQtdMacho: pos(c.metaQtdMacho) };
+}
+
+const mesmoBrinco = (a, b) => {
+  const x = String(a ?? '').trim(); const y = String(b ?? '').trim();
+  if (!x || !y) return false;
+  return x === y || (/^\d+$/.test(x) && /^\d+$/.test(y) && Number(x) === Number(y));
+};
+
+// Nascimento (cria viva) com aquele brinco; se houver repetido de outro ano, o mais recente até a data dada
+export function acharCriaPorBrinco(eventos, brinco, ate) {
+  const lista = eventos
+    .filter((e) => e.tipo === 'nascimento' && e.resultadoParto !== 'Natimorto' && mesmoBrinco(e.brincoBezerro, brinco))
+    .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  if (!lista.length) return null;
+  return (ate && lista.find((e) => !e.data || e.data <= ate)) || lista[0];
+}
+
+// Acha um animal pelo brinco: cria (ainda sem cadastro de matriz), novilha (matriz criada na desmama) ou matriz antiga.
+// Devolve { tipo: 'cria' | 'matriz', nasc, matriz } ou null
+export function acharAnimal(estado, brinco) {
+  const b = String(brinco ?? '').trim();
+  if (!b) return null;
+  const nasc = acharCriaPorBrinco(estado.eventos, b);
+  if (nasc) {
+    const matriz = estado.matrizes.find((m) => m.id === idNovilha(nasc.id)) || null;
+    return { tipo: matriz ? 'matriz' : 'cria', nasc, matriz };
+  }
+  const r = acharMatrizPorBrinco(estado.matrizes, b);
+  if (r.matriz) return { tipo: 'matriz', nasc: null, matriz: r.matriz };
+  return null;
+}
+
+// Ganho de peso por dia (kg/dia): do último peso até um peso anterior com pelo menos 7 dias de diferença
+export function ganhoDiario(pontos) {
+  if (!pontos || pontos.length < 2) return null;
+  const ult = pontos[pontos.length - 1];
+  for (let i = pontos.length - 2; i >= 0; i--) {
+    const d = diasEntre(pontos[i].data, ult.data);
+    if (d >= 7) return (ult.peso - pontos[i].peso) / d;
+  }
+  return null;
+}
+
+function mapaListas(itens, chaveFn) {
+  const mapa = new Map();
+  itens.forEach((e) => { const k = chaveFn(e); if (k === undefined || k === null || k === '') return; if (!mapa.has(k)) mapa.set(k, []); mapa.get(k).push(e); });
+  return mapa;
+}
+
+function indicesDeEventos(eventos) {
+  return {
+    pesPorCria: mapaListas(eventos.filter((e) => e.tipo === 'pesagem'), (e) => e.criaId),
+    pesPorMatriz: mapaListas(eventos.filter((e) => e.tipo === 'pesagem' || e.tipo === 'recria'), (e) => e.matrizId),
+    desmamas: mapaListas(eventos.filter((e) => e.tipo === 'desmama'), (e) => String(e.brincoBezerro ?? '').trim()),
+    vendaPorCria: mapaListas(eventos.filter((e) => e.tipo === 'vendaitem'), (e) => e.criaId),
+    vendaPorMatriz: mapaListas(eventos.filter((e) => e.tipo === 'vendaitem'), (e) => e.matrizId),
+  };
+}
+
+// Pontos de peso (ordenados por data) de um animal. fonte: Nascimento | Pesagem | Recria | Desmama
+function pontosDePeso(idx, { nasc, matriz }) {
+  const vistos = new Set(); const pts = [];
+  const add = (id, data, peso, fonte) => {
+    const p = numPeso(peso);
+    if (!data || isNaN(p) || p <= 0 || vistos.has(id)) return;
+    vistos.add(id); pts.push({ id, data, peso: p, fonte });
+  };
+  if (nasc) {
+    add(`${nasc.id}-nascer`, nasc.data, nasc.pesoNascer, 'Nascimento');
+    (idx.pesPorCria.get(nasc.id) || []).forEach((e) => add(e.id, e.data, e.peso, 'Pesagem'));
+    const brinco = String(nasc.brincoBezerro ?? '').trim();
+    const d = (idx.desmamas.get(brinco) || []).filter((x) => x.data >= nasc.data && diasEntre(nasc.data, x.data) < 1100).sort((a, b) => a.data.localeCompare(b.data))[0];
+    if (d) add(d.id, d.data, d.pesoDesmama, 'Desmama');
+  }
+  if (matriz) (idx.pesPorMatriz.get(matriz.id) || []).forEach((e) => add(e.id, e.data, e.tipo === 'recria' ? e.pesoAtual : e.peso, e.tipo === 'recria' ? 'Recria' : 'Pesagem'));
+  return pts.sort((a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id));
+}
+
+export function rotuloSituacao(c) {
+  const f = c.sexo === 'Fêmea';
+  return { mamando: 'Mamando', desmamado: f ? 'Desmamada' : 'Desmamado', novilha: 'Novilha', matriz: 'Virou matriz', vendido: f ? 'Vendida' : 'Vendido' }[c.situacao] || c.situacao;
+}
+
+// Todas as crias vivas (uma por nascimento). Cada uma traz idade, mãe, origem/pai, pesos, ganho diário e situação.
+// situacao: mamando | desmamado | novilha | matriz | vendido
+export function listarCrias(estado, hoje) {
+  hoje = hoje || todayISO();
+  const { matrizes, eventos, touros } = estado;
+  const idx = indicesDeEventos(eventos);
+  const brincos = mapaBrincos(matrizes);
+  const matrizPorId = new Map(matrizes.map((m) => [m.id, m]));
+  return eventos
+    .filter((e) => e.tipo === 'nascimento' && e.resultadoParto !== 'Natimorto')
+    .map((n) => {
+      const novilha = matrizPorId.get(idNovilha(n.id)) || null;
+      const pontos = pontosDePeso(idx, { nasc: n, matriz: novilha });
+      const ultimo = pontos.length ? pontos[pontos.length - 1] : null;
+      const brinco = String(n.brincoBezerro ?? '').trim();
+      const desm = (idx.desmamas.get(brinco) || []).filter((x) => x.data >= n.data && diasEntre(n.data, x.data) < 1100).sort((a, b) => a.data.localeCompare(b.data))[0] || null;
+      const itensVenda = [...(idx.vendaPorCria.get(n.id) || []), ...(novilha ? idx.vendaPorMatriz.get(novilha.id) || [] : [])];
+      let situacao = 'mamando';
+      if (itensVenda.length || (novilha && novilha.status === 'Vendida')) situacao = 'vendido';
+      else if (novilha) situacao = novilha.destino === 'Matriz' ? 'matriz' : 'novilha';
+      else if (desm) situacao = 'desmamado';
+      const baixa = itensVenda[0] || null;
+      return {
+        id: n.id, nasc: n, brinco, sexo: n.sexo || '', nascData: n.data, idadeDias: n.data ? diasEntre(n.data, hoje) : null,
+        matrizId: n.matrizId || '', maeBrinco: n.matrizId ? brincos[n.matrizId] || '?' : '',
+        origem: origemDaCria(n, eventos, touros), pelagem: n.pelagem || '',
+        pontos, pesoAtual: ultimo ? ultimo.peso : null, pesoData: ultimo ? ultimo.data : '',
+        diasDesdePeso: ultimo ? diasEntre(ultimo.data, hoje) : null, gmd: ganhoDiario(pontos),
+        situacao, desmamaData: desm ? desm.data : '', novilha, vendaData: baixa ? baixa.data : (novilha && novilha.dataBaixa) || '',
+        ativa: situacao !== 'vendido',
+      };
+    })
+    .sort((a, b) => (b.nascData || '').localeCompare(a.nascData || '') || String(b.brinco).localeCompare(String(a.brinco), 'pt-BR', { numeric: true }));
+}
+
+// Novilhas do lote de recria: matrizes "Novilha" com destino definido (A definir / Venda / Matriz).
+// As novilhas antigas, sem destino, já fazem parte do plantel de matrizes e ficam de fora.
+export function listarNovilhas(estado, cfg, hoje) {
+  hoje = hoje || todayISO();
+  const c = configCompleta(cfg);
+  const { matrizes, eventos } = estado;
+  const idx = indicesDeEventos(eventos);
+  const nascPorId = new Map(eventos.filter((e) => e.tipo === 'nascimento').map((e) => [idNovilha(e.id), e]));
+  return matrizes
+    .filter((m) => m.categoria === 'Novilha' && DESTINOS_NOVILHA.includes(m.destino) && m.status !== 'Vendida' && m.status !== 'Descarte')
+    .map((m) => {
+      const nasc = nascPorId.get(m.id) || null;
+      const pontos = pontosDePeso(idx, { nasc, matriz: m });
+      const ultimo = pontos.length ? pontos[pontos.length - 1] : null;
+      const gmd = ganhoDiario(pontos);
+      const peso = ultimo ? ultimo.peso : null;
+      const nascData = m.dataNascimento || (nasc && nasc.data) || '';
+      const apta = peso !== null && peso >= c.pesoMatriz;
+      const faltam = peso !== null && !apta ? arred(c.pesoMatriz - peso) : null;
+      return {
+        matriz: m, brinco: m.brinco, nascData, idadeDias: nascData ? diasEntre(nascData, hoje) : null,
+        destino: m.destino, pontos, pesoAtual: peso, pesoData: ultimo ? ultimo.data : '', gmd, apta, faltam,
+        diasParaApta: faltam !== null && gmd > 0 ? Math.ceil(faltam / gmd) : null,
+        diasDesdePeso: ultimo ? diasEntre(ultimo.data, hoje) : null,
+      };
+    })
+    .sort((a, b) => (b.pesoAtual ?? -1) - (a.pesoAtual ?? -1) || String(a.brinco).localeCompare(String(b.brinco), 'pt-BR', { numeric: true }));
+}
+
+// Análise de venda dos machos: quantos já estão no peso alvo, quantos faltam para a quantidade alvo e quando devem chegar.
+export function analiseMachos(crias, cfg) {
+  const c = configCompleta(cfg);
+  const machos = crias.filter((x) => x.sexo === 'Macho' && (x.situacao === 'mamando' || x.situacao === 'desmamado'));
+  const comPeso = machos.filter((x) => x.pesoAtual !== null);
+  const diasAteAlvo = (x) => {
+    if (!c.metaPesoMacho || x.pesoAtual === null) return null;
+    if (x.pesoAtual >= c.metaPesoMacho) return 0;
+    return x.gmd > 0 ? Math.ceil((c.metaPesoMacho - x.pesoAtual) / x.gmd) : null;
+  };
+  const linhas = machos.map((x) => ({ cria: x, dias: diasAteAlvo(x), pronto: !!c.metaPesoMacho && x.pesoAtual !== null && x.pesoAtual >= c.metaPesoMacho }))
+    .sort((a, b) => (b.cria.pesoAtual ?? -1) - (a.cria.pesoAtual ?? -1) || String(a.cria.brinco).localeCompare(String(b.cria.brinco), 'pt-BR', { numeric: true }));
+  const prontos = linhas.filter((l) => l.pronto);
+  const prox = (n) => linhas.filter((l) => !l.pronto && l.dias !== null && l.dias <= n).length;
+  const kgProntos = prontos.reduce((s, l) => s + l.cria.pesoAtual, 0);
+  // data em que a quantidade alvo deve ser atingida, no ritmo atual de ganho (pronto agora = 0 dias)
+  let diasParaMetaQtd = null;
+  if (c.metaPesoMacho && c.metaQtdMacho) {
+    const ordem = linhas.filter((l) => l.dias !== null).map((l) => l.dias).sort((a, b) => a - b);
+    if (ordem.length >= c.metaQtdMacho) diasParaMetaQtd = ordem[c.metaQtdMacho - 1];
+  }
+  return {
+    cfg: c, linhas, total: machos.length, semPeso: machos.length - comPeso.length, prontos: prontos.length,
+    faltamQtd: c.metaQtdMacho ? Math.max(0, c.metaQtdMacho - prontos.length) : null,
+    metaQtdAtingida: c.metaQtdMacho ? prontos.length >= c.metaQtdMacho : null,
+    kgProntos: arred(kgProntos), pesoMedioProntos: prontos.length ? arred(kgProntos / prontos.length) : null,
+    pesoMedio: comPeso.length ? arred(comPeso.reduce((s, x) => s + x.pesoAtual, 0) / comPeso.length) : null,
+    prox30: prox(30), prox60: prox(60), diasParaMetaQtd,
+  };
+}
+
+// Avisos sobre um peso digitado (não bloqueiam): muito baixo, queda, ganho fora do normal
+export function avisoDePeso(pontos, peso, data) {
+  const p = numPeso(peso);
+  if (isNaN(p) || p <= 0) return 'Peso inválido.';
+  if (p < 15 || p > 1200) return `${p} kg parece fora do normal. Confira se o peso está certo.`;
+  const antes = (pontos || []).filter((x) => x.data <= data && x.fonte !== 'Nascimento').pop();
+  if (antes) {
+    const d = diasEntre(antes.data, data);
+    if (d > 0 && p < antes.peso - 5) return `Este peso (${p} kg) é menor que o anterior (${antes.peso} kg em ${formatarDataBR(antes.data)}). Confira.`;
+    if (d >= 1 && p - antes.peso > 15 && (p - antes.peso) / d > 2.5) return `Ganho de ${arred((p - antes.peso) / d, 2)} kg por dia desde ${formatarDataBR(antes.data)}: muito alto. Confira o peso.`;
+  }
+  return '';
+}
+
+// Lista colada "um animal por linha": "6532 245", "6532;245,5", "6532 = 245 kg". Devolve { itens: [{ brinco, peso }], erros: [texto da linha] }.
+export function lerListaPesos(texto) {
+  const itens = []; const erros = [];
+  String(texto || '').split(/\r?\n/).forEach((linha) => {
+    const t = linha.trim();
+    if (!t) return;
+    const m = t.match(/^(\S+?)(?:\s*[;:=\t]\s*|\s+|\s*,\s+)(\d+(?:[.,]\d+)?)\s*(?:kg)?$/i);
+    if (!m) { erros.push(t); return; }
+    const peso = numPeso(m[2]);
+    if (!(peso > 0)) { erros.push(t); return; }
+    itens.push({ brinco: m[1], peso });
+  });
+  return { itens, erros };
+}
+
+// ---- venda por peso
+// Dados do animal para uma linha de venda: quem é, tipo sugerido, último peso e se já saiu do rebanho.
+export function infoAnimalVenda(estado, brinco, hoje, crias) {
+  const b = String(brinco ?? '').trim();
+  if (!b) return { brinco: '', achado: false };
+  const lista = crias || listarCrias(estado, hoje);
+  const a = acharAnimal(estado, b);
+  if (!a) return { brinco: b, achado: false };
+  const cria = a.nasc ? lista.find((x) => x.id === a.nasc.id) : null;
+  if (a.tipo === 'cria' && cria) {
+    return {
+      brinco: b, achado: true, origem: 'cria', criaId: cria.id, matrizId: '', sexo: cria.sexo,
+      tipoSugerido: cria.sexo === 'Fêmea' ? 'Bezerra' : 'Bezerro', pesoUltimo: cria.pesoAtual, pesoData: cria.pesoData,
+      jaVendido: cria.situacao === 'vendido', vendidoEm: cria.vendaData, descricao: `${cria.sexo || 'Cria'} · ${cria.idadeDias ?? '?'} dias`,
+      pontos: cria.pontos,
+    };
+  }
+  const m = a.matriz;
+  const pts = pontosDePeso(indicesDeEventos(estado.eventos), { nasc: a.nasc, matriz: m });
+  const ult = pts.length ? pts[pts.length - 1] : null;
+  const nov = m.categoria === 'Novilha';
+  const itemVendido = estado.eventos.find((e) => e.tipo === 'vendaitem' && e.matrizId === m.id) || null;
+  return {
+    brinco: b, achado: true, origem: 'matriz', criaId: a.nasc ? a.nasc.id : '', matrizId: m.id, sexo: 'Fêmea',
+    tipoSugerido: m.status === 'Descarte' ? 'Vaca de descarte' : nov ? 'Novilha' : 'Vaca',
+    pesoUltimo: ult ? ult.peso : null, pesoData: ult ? ult.data : '',
+    jaVendido: m.status === 'Vendida' || !!itemVendido, vendidoEm: m.dataBaixa || (itemVendido && itemVendido.data) || '',
+    descricao: `${m.categoria || 'Matriz'}${m.raca ? ' · ' + m.raca : ''} · ${m.status}`, pontos: pts,
+  };
+}
+
+// Totais de uma venda. itens: [{ tipoAnimal, peso }]
+export function totaisVenda(itens, valorKg, frete) {
+  const validos = (itens || []).filter((i) => numPeso(i.peso) > 0);
+  const kg = validos.reduce((s, i) => s + numPeso(i.peso), 0);
+  const vkg = numPeso(valorKg);
+  const valor = vkg > 0 ? arred(kg * vkg, 2) : 0;
+  const fr = numPeso(frete) > 0 ? numPeso(frete) : 0;
+  const porTipo = new Map();
+  validos.forEach((i) => {
+    const t = i.tipoAnimal || 'Sem tipo';
+    const x = porTipo.get(t) || { tipo: t, qtd: 0, kg: 0 };
+    x.qtd += 1; x.kg = arred(x.kg + numPeso(i.peso)); porTipo.set(t, x);
+  });
+  return {
+    qtd: validos.length, kg: arred(kg), kgMedio: validos.length ? arred(kg / validos.length) : 0,
+    valor, frete: fr, liquido: arred(valor - fr, 2), porTipo: [...porTipo.values()],
+  };
+}
+
+// Confere uma venda antes de gravar. form: { data, comprador, valorKg, frete, itens: [{ brinco, tipoAnimal, peso }] }
+// Devolve { erros, avisos, linhas } (linhas já com o animal encontrado). Com erros, não deve gravar.
+export function validarVenda(estado, form, hoje) {
+  const erros = []; const avisos = [];
+  const crias = listarCrias(estado, hoje);
+  if (!form.data) erros.push('Falta a data da venda.');
+  if (!String(form.comprador || '').trim()) erros.push('Falta o comprador.');
+  if (!(numPeso(form.valorKg) > 0)) erros.push('Falta o valor do kg.');
+  const itens = (form.itens || []).filter((i) => String(i.brinco ?? '').trim() || String(i.peso ?? '').trim());
+  if (!itens.length) erros.push('Coloque pelo menos um animal na venda.');
+  const vistos = new Set();
+  const linhas = itens.map((i, n) => {
+    const pos = `Linha ${n + 1}`;
+    const info = infoAnimalVenda(estado, i.brinco, hoje, crias);
+    const peso = numPeso(i.peso);
+    if (!(peso > 0)) erros.push(`${pos}${info.brinco ? ` (${info.brinco})` : ''}: falta o peso.`);
+    if (!i.tipoAnimal) erros.push(`${pos}${info.brinco ? ` (${info.brinco})` : ''}: falta o tipo de animal.`);
+    if (info.brinco) {
+      if (vistos.has(info.brinco)) erros.push(`${pos}: o animal ${info.brinco} aparece duas vezes.`);
+      vistos.add(info.brinco);
+      if (!info.achado) avisos.push(`${pos}: o número ${info.brinco} não está no sistema. A venda é registrada, mas sem dar baixa em ninguém.`);
+      else if (info.jaVendido) erros.push(`${pos}: o animal ${info.brinco} já foi vendido${info.vendidoEm ? ` em ${formatarDataBR(info.vendidoEm)}` : ''}.`);
+    } else if (peso > 0) {
+      avisos.push(`${pos}: sem número do animal. A venda é registrada, mas sem dar baixa em ninguém.`);
+    }
+    return { ...i, info, peso };
+  });
+  return { erros, avisos, linhas };
+}
+
+// Aplica a venda: um registro "venda" (cabeçalho), um "vendaitem" por animal e a baixa das matrizes vendidas.
+// As crias (machos e fêmeas ainda sem cadastro de matriz) saem do estoque pelo próprio item de venda.
+export function aplicarVenda(estado, form, opcoes) {
+  const op = opcoes || {};
+  const hoje = op.hoje || todayISO();
+  const now = op.now || new Date().toISOString();
+  const vendaId = op.id || novoId();
+  const v = validarVenda(estado, form, hoje);
+  if (v.erros.length) return { erro: v.erros.join(' '), erros: v.erros };
+  const vkg = numPeso(form.valorKg);
+  const tot = totaisVenda(v.linhas.map((l) => ({ tipoAnimal: l.tipoAnimal, peso: l.peso })), vkg, form.frete);
+  const resumoTipos = tot.porTipo.map((t) => `${t.qtd} ${t.tipo}`).join(', ');
+  const venda = {
+    id: vendaId, tipo: 'venda', data: form.data, categoria: 'Venda por peso', animais: `${tot.qtd} animais: ${resumoTipos}`,
+    qtd: tot.qtd, pesoTotal: tot.kg, valorKg: vkg, valorArroba: arred(vkg * KG_POR_ARROBA, 2), valorTotal: tot.valor,
+    frete: tot.frete || '', comprador: String(form.comprador).trim(), createdAt: now,
+  };
+  const itens = v.linhas.map((l, i) => ({
+    id: `${vendaId}-${i + 1}`, tipo: 'vendaitem', vendaId, data: form.data, brinco: l.info.brinco || '', tipoAnimal: l.tipoAnimal,
+    peso: l.peso, valorKg: vkg, valor: arred(l.peso * vkg, 2), criaId: l.info.criaId || '', matrizId: l.info.matrizId || '',
+    comprador: venda.comprador, createdAt: now,
+  }));
+  const idsBaixa = new Set(itens.filter((i) => i.matrizId).map((i) => i.matrizId));
+  const alteradas = [];
+  const matrizes = estado.matrizes.map((m) => {
+    if (!idsBaixa.has(m.id)) return m;
+    const nova = { ...m, status: 'Vendida', destino: 'Venda', dataBaixa: form.data, motivoBaixa: 'Venda' };
+    alteradas.push(nova);
+    return nova;
+  });
+  return {
+    estado: { ...estado, matrizes, eventos: [...estado.eventos, venda, ...itens] },
+    eventosNovos: [venda, ...itens], matrizesAlteradas: alteradas, venda, itens, totais: tot, avisos: v.avisos,
+  };
+}
+
+// Histórico de vendas, da mais recente para a mais antiga. Vendas antigas (sem itens) aparecem só com o cabeçalho.
+export function listarVendas(estado) {
+  const itens = mapaListas(estado.eventos.filter((e) => e.tipo === 'vendaitem'), (e) => e.vendaId);
+  return estado.eventos.filter((e) => e.tipo === 'venda')
+    .map((v) => ({ venda: v, itens: itens.get(v.id) || [] }))
+    .sort((a, b) => (b.venda.data || '').localeCompare(a.venda.data || '') || (b.venda.createdAt || '').localeCompare(a.venda.createdAt || ''));
+}
+
+// Muda o destino de uma novilha (A definir / Matriz / Venda). Devolve a matriz alterada.
+export function definirDestinoNovilha(matriz, destino) {
+  if (!DESTINOS_NOVILHA.includes(destino)) throw new Error(`destino inválido: ${destino}`);
+  return { ...matriz, destino };
 }
 
 // ---------------------------------------------------------------- relatórios
@@ -951,8 +1380,9 @@ export function relatorioIATF(matrizes, eventos, touros, ano) {
   };
 }
 
-export function relatorioSituacaoVacas(matrizes, eventos, hoje) {
+export function relatorioSituacaoVacas(todasMatrizes, eventos, hoje) {
   hoje = hoje || todayISO();
+  const matrizes = todasMatrizes.filter(noPlantel);
   const brincosDe = (arr) => listaBrincos(arr.map((m) => m.brinco));
   const contarPor = (campo, vazioRotulo) => {
     const mapa = new Map();
@@ -1008,15 +1438,132 @@ export function relatorioSituacaoVacas(matrizes, eventos, hoje) {
   };
 }
 
+
+const idadeTxt = (dias) => (dias === null || dias === undefined ? '—' : dias < 60 ? `${dias} d` : `${arred(dias / 30.4, 1)} m`);
+const kg1 = (n) => (n === null || n === undefined ? '—' : String(arred(n, 1)));
+const gmdTxt = (g) => (g === null || g === undefined ? '—' : `${arred(g, 2)}`);
+
+export function relatorioCrias(estado, cfg, ano, hoje) {
+  hoje = hoje || todayISO();
+  const crias = listarCrias(estado, hoje).filter((c) => ano === 'todos' || anoDe(c.nascData) === ano);
+  const sit = ['mamando', 'desmamado', 'novilha', 'matriz', 'vendido'];
+  const nomeSit = { mamando: 'Mamando', desmamado: 'Desmamadas(os)', novilha: 'Novilhas', matriz: 'Viraram matriz', vendido: 'Vendidas(os)' };
+  const linhasSit = ['Macho', 'Fêmea', ''].map((sx) => {
+    const l = crias.filter((c) => (c.sexo || '') === sx);
+    const o = { sexo: sx || 'Sem sexo', total: l.length };
+    sit.forEach((k) => { o[k] = l.filter((c) => c.situacao === k).length; });
+    return o;
+  }).filter((o) => o.total > 0);
+  if (linhasSit.length) { const t = { sexo: 'Total', total: crias.length }; sit.forEach((k) => { t[k] = crias.filter((c) => c.situacao === k).length; }); linhasSit.push(t); }
+  const faixas = [['0 a 90 dias', 0, 90], ['91 a 180 dias', 91, 180], ['181 a 270 dias', 181, 270], ['271 a 365 dias', 271, 365], ['mais de 365 dias', 366, 99999]];
+  const ativas = crias.filter((c) => c.ativa && c.pesoAtual !== null && c.idadeDias !== null);
+  const linhasFaixa = faixas.map(([rot, a, b]) => {
+    const l = ativas.filter((c) => c.idadeDias >= a && c.idadeDias <= b);
+    const med = (sx) => { const x = l.filter((c) => c.sexo === sx); return x.length ? `${kg1(x.reduce((s, c) => s + c.pesoAtual, 0) / x.length)} (${x.length})` : '—'; };
+    return { faixa: rot, machos: med('Macho'), femeas: med('Fêmea') };
+  });
+  const an = analiseMachos(listarCrias(estado, hoje), cfg);
+  const nov = listarNovilhas(estado, cfg, hoje);
+  const comPeso = crias.filter((c) => c.ativa && c.pesoAtual !== null).length;
+  return {
+    titulo: `Crias e pesos · ${rotuloAno(ano)}`,
+    resumo: [
+      { rotulo: 'Crias vivas (nascimentos)', valor: crias.length },
+      { rotulo: 'Ainda no rebanho', valor: crias.filter((c) => c.ativa).length },
+      { rotulo: 'Com pelo menos uma pesagem', valor: comPeso },
+      { rotulo: an.cfg.metaPesoMacho ? `Machos a partir de ${an.cfg.metaPesoMacho} kg` : 'Machos no peso alvo', valor: an.cfg.metaPesoMacho ? an.prontos : 'meta não definida' },
+      { rotulo: `Novilhas a partir de ${an.cfg.pesoMatriz} kg`, valor: nov.filter((n) => n.apta).length },
+    ],
+    secoes: [
+      {
+        titulo: 'Situação das crias',
+        colunas: [{ k: 'sexo', label: 'Sexo' }, { k: 'mamando', label: 'Mamando', align: 'right', mono: true }, { k: 'desmamado', label: 'Desmam.', align: 'right', mono: true },
+          { k: 'novilha', label: 'Novilhas', align: 'right', mono: true }, { k: 'matriz', label: 'Matriz', align: 'right', mono: true }, { k: 'vendido', label: 'Vendidas', align: 'right', mono: true }, { k: 'total', label: 'Total', align: 'right', mono: true }],
+        linhas: linhasSit,
+      },
+      {
+        titulo: 'Peso médio por idade (último peso de cada cria no rebanho)',
+        nota: 'Em cada célula: peso médio em kg e, entre parênteses, quantos animais pesados entram na média.',
+        colunas: [{ k: 'faixa', label: 'Idade' }, { k: 'machos', label: 'Machos', align: 'right', mono: true }, { k: 'femeas', label: 'Fêmeas', align: 'right', mono: true }],
+        linhas: linhasFaixa,
+      },
+      {
+        titulo: 'Machos para venda',
+        nota: an.cfg.metaPesoMacho ? `Peso alvo ${an.cfg.metaPesoMacho} kg${an.cfg.metaQtdMacho ? ` · quantidade alvo ${an.cfg.metaQtdMacho}` : ''}. "Dias" é uma projeção pelo ganho diário recente.` : 'Defina o peso alvo em Crias > Para vender.',
+        colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'idade', label: 'Idade', align: 'right', mono: true }, { k: 'peso', label: 'Peso (kg)', align: 'right', mono: true },
+          { k: 'gmd', label: 'kg/dia', align: 'right', mono: true }, { k: 'dias', label: 'Dias p/ alvo', align: 'right', mono: true }, { k: 'mae', label: 'Mãe', mono: true }],
+        linhas: an.linhas.map((l) => ({
+          brinco: l.cria.brinco || '—', idade: idadeTxt(l.cria.idadeDias), peso: kg1(l.cria.pesoAtual), gmd: gmdTxt(l.cria.gmd),
+          dias: l.pronto ? 'pronto' : l.dias === null ? '—' : l.dias, mae: l.cria.maeBrinco || '—',
+        })),
+      },
+      {
+        titulo: 'Novilhas em recria',
+        nota: `A partir de ${an.cfg.pesoMatriz} kg a novilha está apta a virar matriz.`,
+        colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'idade', label: 'Idade', align: 'right', mono: true }, { k: 'peso', label: 'Peso (kg)', align: 'right', mono: true },
+          { k: 'gmd', label: 'kg/dia', align: 'right', mono: true }, { k: 'apta', label: 'Situação' }, { k: 'destino', label: 'Destino' }],
+        linhas: nov.map((n) => ({
+          brinco: n.brinco, idade: idadeTxt(n.idadeDias), peso: kg1(n.pesoAtual), gmd: gmdTxt(n.gmd),
+          apta: n.pesoAtual === null ? 'sem peso' : n.apta ? 'apta' : `faltam ${n.faltam} kg`, destino: n.destino,
+        })),
+      },
+    ],
+  };
+}
+
+export function relatorioVendas(estado, ano) {
+  const vendas = listarVendas(estado).filter((v) => ano === 'todos' || anoDe(v.venda.data) === ano);
+  const todosItens = vendas.flatMap((v) => v.itens);
+  const kgItens = todosItens.reduce((s, i) => s + (numPeso(i.peso) || 0), 0);
+  const receita = vendas.reduce((s, v) => s + (parseFloat(v.venda.valorTotal) || 0), 0);
+  const kgVendas = vendas.reduce((s, v) => s + (parseFloat(v.venda.pesoTotal) || 0), 0);
+  const agrupar = (chaveFn) => {
+    const mapa = new Map();
+    todosItens.forEach((i) => { const k = chaveFn(i) || 'Não informado'; if (!mapa.has(k)) mapa.set(k, []); mapa.get(k).push(i); });
+    return [...mapa.entries()].map(([k, l]) => ({
+      chave: k, qtd: l.length, kg: kg1(l.reduce((s, i) => s + (numPeso(i.peso) || 0), 0)),
+      valor: arred(l.reduce((s, i) => s + (parseFloat(i.valor) || 0), 0), 2).toFixed(2),
+    }));
+  };
+  const colAgr = [{ k: 'qtd', label: 'Animais', align: 'right', mono: true }, { k: 'kg', label: 'Kg', align: 'right', mono: true }, { k: 'valor', label: 'Valor (R$)', align: 'right', mono: true }];
+  return {
+    titulo: `Vendas por peso · ${rotuloAno(ano)}`,
+    resumo: [
+      { rotulo: 'Vendas', valor: vendas.length },
+      { rotulo: 'Animais vendidos (com número)', valor: todosItens.length },
+      { rotulo: 'Peso vendido (kg)', valor: kg1(kgVendas || kgItens) },
+      { rotulo: 'Receita (R$)', valor: receita.toFixed(2) },
+      { rotulo: 'Valor médio do kg (R$)', valor: kgVendas ? (receita / kgVendas).toFixed(2) : '—' },
+    ],
+    secoes: [
+      { titulo: 'Por tipo de animal', colunas: [{ k: 'chave', label: 'Tipo' }, ...colAgr], linhas: agrupar((i) => i.tipoAnimal).sort((a, b) => b.qtd - a.qtd) },
+      { titulo: 'Por comprador', colunas: [{ k: 'chave', label: 'Comprador' }, ...colAgr], linhas: agrupar((i) => i.comprador).sort((a, b) => b.qtd - a.qtd) },
+      {
+        titulo: 'Vendas',
+        colunas: [{ k: 'data', label: 'Data', mono: true }, { k: 'comprador', label: 'Comprador' }, { k: 'qtd', label: 'Animais', align: 'right', mono: true }, { k: 'kg', label: 'Kg', align: 'right', mono: true },
+          { k: 'vkg', label: 'R$/kg', align: 'right', mono: true }, { k: 'total', label: 'Total (R$)', align: 'right', mono: true }],
+        linhas: vendas.map(({ venda: v, itens }) => ({
+          data: formatarDataBR(v.data), comprador: v.comprador || '—', qtd: v.qtd || itens.length || '—', kg: v.pesoTotal ? kg1(parseFloat(v.pesoTotal)) : '—',
+          vkg: v.valorKg ? Number(v.valorKg).toFixed(2) : '—', total: v.valorTotal ? Number(v.valorTotal).toFixed(2) : '—',
+        })),
+      },
+    ],
+  };
+}
+
 export const RELATORIOS = [
   { id: 'previsao', titulo: 'Previsão de parto', porAno: false },
   { id: 'nascimentos', titulo: 'Nascimentos por sexo', porAno: true },
   { id: 'melhores', titulo: 'Melhores vacas em prenhez', porAno: true },
   { id: 'iatf', titulo: 'IATF', porAno: true },
   { id: 'situacao', titulo: 'Situação das vacas', porAno: false },
+  { id: 'crias', titulo: 'Crias e pesos', porAno: true },
+  { id: 'vendas', titulo: 'Vendas por peso', porAno: true },
 ];
 
-export function montarRelatorio(id, { matrizes, touros, eventos }, ano, hoje) {
+export function montarRelatorio(id, { matrizes, touros, eventos, config }, ano, hoje) {
+  if (id === 'crias') return relatorioCrias({ matrizes, touros, eventos }, config, ano, hoje);
+  if (id === 'vendas') return relatorioVendas({ matrizes, touros, eventos }, ano);
   if (id === 'previsao') return relatorioPrevisaoParto(matrizes, eventos, hoje);
   if (id === 'nascimentos') return relatorioNascimentos(matrizes, eventos, touros, ano);
   if (id === 'melhores') return relatorioMelhoresVacas(matrizes, eventos, ano);
@@ -1026,13 +1573,30 @@ export function montarRelatorio(id, { matrizes, touros, eventos }, ano, hoje) {
 
 // ---------------------------------------------------------------- planilha / Excel
 // Linhas (objetos) de cada aba da Planilha. Eventos já vêm filtrados pelo ano escolhido.
-export function linhasPlanilha(tipo, { matrizes, touros, eventos }) {
+export function linhasPlanilha(tipo, { matrizes, touros, eventos, config, todosEventos }) {
   const brincoMap = mapaBrincos(matrizes);
   const nomeTouro = (e) => nomeTouroEvento(e, touros);
+  if (tipo === 'crias') {
+    return listarCrias({ matrizes, touros, eventos: todosEventos || eventos }).map((c) => ({
+      'Brinco': c.brinco, 'Sexo': c.sexo, 'Nascimento': formatarDataBR(c.nascData), 'Idade (dias)': c.idadeDias ?? '', 'Mãe': c.maeBrinco,
+      'Origem / pai': c.origem.rotulo, 'Situação': rotuloSituacao(c), 'Último peso (kg)': c.pesoAtual ?? '', 'Data do peso': formatarDataBR(c.pesoData),
+      'Ganho (kg/dia)': c.gmd === null ? '' : arred(c.gmd, 2), 'Desmama': formatarDataBR(c.desmamaData), 'Baixa (venda)': formatarDataBR(c.vendaData),
+    }));
+  }
+  if (tipo === 'pesagem') {
+    return eventos.filter((e) => e.tipo === 'pesagem').map((e) => ({
+      'Data': formatarDataBR(e.data), 'Brinco': e.brinco || '', 'Peso (kg)': e.peso, 'Observações': e.observacoes || '',
+    }));
+  }
+  if (tipo === 'vendaitem') {
+    return eventos.filter((e) => e.tipo === 'vendaitem').map((e) => ({
+      'Data': formatarDataBR(e.data), 'Número': e.brinco || '', 'Tipo de animal': e.tipoAnimal || '', 'Peso (kg)': e.peso, 'R$/kg': e.valorKg, 'Valor (R$)': e.valor, 'Comprador': e.comprador || '',
+    }));
+  }
   if (tipo === 'matrizes') {
     return matrizes.map((m) => ({
       'Brinco': m.brinco, 'Categoria': m.categoria, 'Raça': m.raca || '',
-      'Lote': m.lote || '', 'Data Nasc.': formatarDataBR(m.dataNascimento) || '', 'Status': m.status,
+      'Lote': m.lote || '', 'Data Nasc.': formatarDataBR(m.dataNascimento) || '', 'Status': m.status, 'Destino': m.destino || '', 'Baixa em': formatarDataBR(m.dataBaixa) || '',
       'Partos (Fazenda)': eventos.filter((e) => e.tipo === 'nascimento' && e.matrizId === m.id).length,
       'Partos Ant.': m.partosAnteriores || 0,
       'Último Parto': formatarDataBR(ultimoPartoDe(m.id, eventos)) || '',
@@ -1079,8 +1643,8 @@ export function linhasPlanilha(tipo, { matrizes, touros, eventos }) {
   }
   if (tipo === 'venda') {
     return evs.map((e) => ({
-      'Data': formatarDataBR(e.data), 'Categoria': e.categoria || '', 'Animais': e.animais || '', 'Peso Total (kg)': e.pesoTotal || '',
-      'Valor Arroba (R$)': e.valorArroba || '', 'Valor Total (R$)': e.valorTotal || '', 'Frete/Comissão (R$)': e.frete || '', 'Comprador': e.comprador || '',
+      'Data': formatarDataBR(e.data), 'Categoria': e.categoria || '', 'Animais': e.animais || '', 'Qtd': e.qtd || '', 'Peso Total (kg)': e.pesoTotal || '',
+      'Valor kg (R$)': e.valorKg || '', 'Valor Arroba (R$)': e.valorArroba || '', 'Valor Total (R$)': e.valorTotal || '', 'Frete/Comissão (R$)': e.frete || '', 'Comprador': e.comprador || '',
     }));
   }
   if (tipo === 'insumo') {
@@ -1096,6 +1660,6 @@ export function linhasPlanilha(tipo, { matrizes, touros, eventos }) {
 }
 
 export const ABAS_EXCEL = [
-  ['Matrizes', 'matrizes'], ['Nascimentos', 'nascimento'], ['Desmama', 'desmama'], ['Recria', 'recria'], ['IATF', 'iatf'],
-  ['Diagnósticos', 'diagnostico'], ['Vendas', 'venda'], ['Insumos', 'insumo'], ['Descartes', 'descarte'], ['Touros', 'touros'],
+  ['Matrizes', 'matrizes'], ['Crias', 'crias'], ['Nascimentos', 'nascimento'], ['Pesagens', 'pesagem'], ['Desmama', 'desmama'], ['Recria', 'recria'], ['IATF', 'iatf'],
+  ['Diagnósticos', 'diagnostico'], ['Vendas', 'venda'], ['Animais vendidos', 'vendaitem'], ['Insumos', 'insumo'], ['Descartes', 'descarte'], ['Touros', 'touros'],
 ];
