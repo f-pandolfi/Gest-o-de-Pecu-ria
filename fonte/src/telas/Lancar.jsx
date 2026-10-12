@@ -28,7 +28,10 @@ export default function Lancar({ dados, hoje, ownerMode, preset, onSalvar, onGra
   const [erro, setErro] = useState('');
   const [dup, setDup] = useState(false);
   const [salvo, setSalvo] = useState('');
+  const [travado, setTravado] = useState(false); // logo depois de salvar o botão fica travado por um instante (evita toque duplo)
   const timer = useRef(null);
+  const timerTrava = useRef(null);
+  useEffect(() => () => { clearTimeout(timer.current); clearTimeout(timerTrava.current); }, []);
 
   // Vindo da tela Parto ("Lançar nascimento desta vaca")
   useEffect(() => {
@@ -66,6 +69,7 @@ export default function Lancar({ dados, hoje, ownerMode, preset, onSalvar, onGra
   }
 
   function salvar(forcar) {
+    if (travado) return;
     const falt = camposFaltando(tipo, form);
     if (falt.length) { setErro(`Falta preencher: ${falt.map((c) => c.label).join(', ')}.`); setDup(false); return; }
     if (!forcar && jaExiste(tipo, form, dados)) { setDup(true); setErro(''); return; }
@@ -76,6 +80,9 @@ export default function Lancar({ dados, hoje, ownerMode, preset, onSalvar, onGra
     setForm(formularioInicial(tipo, hoje));
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setSalvo(''), 6000);
+    setTravado(true);
+    clearTimeout(timerTrava.current);
+    timerTrava.current = setTimeout(() => setTravado(false), 1500);
   }
 
   const ultimos = useMemo(() => {
@@ -130,14 +137,14 @@ export default function Lancar({ dados, hoje, ownerMode, preset, onSalvar, onGra
               <Aviso tipo="info">
                 Esse lançamento parece já existir (mesma vaca e mesma data). Confira antes de salvar de novo.
                 <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button className="btn sm" onClick={() => salvar(true)}>Salvar mesmo assim</button>
+                  <button className="btn sm" onClick={() => salvar(true)} disabled={travado}>Salvar mesmo assim</button>
                   <button className="btn quiet sm" onClick={() => setDup(false)}>Cancelar</button>
                 </div>
               </Aviso>
             )}
             {salvo && <Aviso tipo="ok">{salvo}{modoTeste ? ' (modo teste: só na tela, nada foi para a planilha)' : ''}</Aviso>}
 
-            <button className="btn wide" onClick={() => salvar(false)} style={{ marginTop: 6 }}>
+            <button className="btn wide" onClick={() => salvar(false)} disabled={travado} style={{ marginTop: 6 }}>
               <Save size={18} /> Salvar registro
             </button>
           </>

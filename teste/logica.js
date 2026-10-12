@@ -2,7 +2,7 @@
 // É usado por dois lados: o app (app.jsx) e a integração por foto (lançamentos em lote feitos pelo Claude).
 // Mexeu aqui = mudou nos dois, de propósito: uma única fonte da verdade para status, previsão e relatórios.
 
-export const VERSAO_APP = '9.1 (12/10/26)';
+export const VERSAO_APP = '9.2 (12/10/26)';
 export const VERSAO_MINIMA_SCRIPT = 7;
 export const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
 
@@ -81,8 +81,8 @@ export const CAMPOS = {
     { key: 'sexo', label: 'Sexo', type: 'select', options: ['Fêmea', 'Macho'] },
     { key: 'brincoBezerro', label: 'Brinco do bezerro (sugerido automaticamente)', type: 'text' },
     { key: 'pelagem', label: 'Pelagem', type: 'text' },
-    { key: 'touroId', label: 'Pai (touro / sêmen)', type: 'touro' },
-    { key: 'touroOutro', label: 'Nome (não cadastrado)', type: 'text', showIf: (f) => f.touroId === '__outro__' },
+    // Sem campo "Pai": a origem da cria (IATF ou monta) e o pai são deduzidos depois, cruzando o parto
+    // com o IATF da mãe (ver origemDaCria). Sem IATF compatível, a cria é de monta natural.
     { key: 'tipoParto', label: 'Tipo de parto', type: 'select', options: ['Normal', 'Distócico (com dificuldade)'], default: 'Normal' },
     { key: 'observacoes', label: 'Observações', type: 'text' },
   ],
@@ -402,6 +402,28 @@ export function nomeTouroEvento(e, touros) {
   return (t && t.nome) || e.touroOutro || '';
 }
 
+// Origem da cria e pai, deduzidos do cruzamento do parto com o IATF da mãe (o nascimento não tem mais campo "Pai").
+// IATF compatível = IATF da mesma mãe de 250 a 320 dias antes do parto (gestação de ~285). O pai é o touro/sêmen desse IATF.
+// Sem IATF compatível, ou com "Repasse (monta natural)", a cria é de monta natural.
+export const JANELA_IATF_DIAS = [250, 320];
+export function origemDaCria(nasc, eventos, touros) {
+  const informado = nomeTouroEvento(nasc, touros); // lançamentos antigos que já traziam o pai
+  if (informado) return { origem: 'Informado', pai: informado, iatfData: '', rotulo: informado };
+  if (!nasc.matrizId) return { origem: 'Sem mãe', pai: '', iatfData: '', rotulo: 'Mãe não informada' };
+  if (!nasc.data) return { origem: 'Monta', pai: 'Monta natural', iatfData: '', rotulo: 'Monta natural' };
+  const [min, max] = JANELA_IATF_DIAS;
+  const dias = (d) => Math.round((new Date(nasc.data) - new Date(d)) / 86400000);
+  const candidatos = (eventos || []).filter((e) => e.tipo === 'iatf' && e.matrizId === nasc.matrizId && e.data && dias(e.data) >= min && dias(e.data) <= max);
+  if (!candidatos.length) return { origem: 'Monta', pai: 'Monta natural', iatfData: '', rotulo: 'Monta natural' };
+  candidatos.sort((a, b) => Math.abs(dias(a.data) - PERIODO_GESTACAO_DIAS) - Math.abs(dias(b.data) - PERIODO_GESTACAO_DIAS));
+  const e = candidatos[0];
+  const nome = nomeTouroEvento(e, touros);
+  if (/repasse|monta/i.test(e.tipoServico || '')) {
+    return { origem: 'Monta', pai: nome || 'Monta natural', iatfData: e.data, rotulo: nome ? `Monta · ${nome}` : 'Monta natural' };
+  }
+  return { origem: 'IATF', pai: nome, iatfData: e.data, rotulo: nome ? `IATF · ${nome}` : 'IATF · touro não informado' };
+}
+
 const semAcento = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '');
 const chave = (s) => semAcento(s).toLowerCase().trim();
 
@@ -422,7 +444,12 @@ export function novoId() {
 
 // ---------------------------------------------------------------- lançar (única fonte da verdade das mudanças de status)
 export function camposFaltando(tipo, form) {
-  return (CAMPOS[tipo] || []).filter((c) => c.required && (!c.showIf || c.showIf(form)) && !form[c.key]);
+  const falta = (CAMPOS[tipo] || []).filter((c) => c.required && (!c.showIf || c.showIf(form)) && !form[c.key]);
+  // Nascimento em branco (só com a data de hoje) não pode ser gravado: precisa dizer ao menos de quem é, o sexo ou o brinco.
+  if (tipo === 'nascimento' && !form.matrizId && !form.sexo && !String(form.brincoBezerro ?? '').trim()) {
+    falta.push({ key: '__identificacao', label: 'Mãe, sexo ou brinco da cria (pelo menos um)' });
+  }
+  return falta;
 }
 
 // estado = { matrizes, touros, eventos }. Devolve { estado (novo), eventosNovos, matrizesAlteradas, tourosNovos }
@@ -527,7 +554,7 @@ function acharTouro(touros, nome) {
 
 // Converte um item "como escrito no papel" no formulário do app. Devolve { form } ou { erro }.
 // Chaves aceitas (todas opcionais, menos as que o tipo exige):
-//   nascimento: matriz, data, sexo, resultado, brincoCria, pelagem, pai, tipoParto, obs
+//   nascimento: matriz, data, sexo, resultado, brincoCria, pelagem, tipoParto, obs  (pelo menos matriz, sexo ou brincoCria)
 //   diagnostico: matriz, data, resultado, dg, metodo, veterinario, motivo
 //   iatf: matriz, data, tipoServico, tentativa, inicioProtocolo, touro, tecnico, custo, obs
 //   desmama: brincoCria, data, peso, idadeDias
@@ -561,7 +588,7 @@ export function itemParaFormulario(item, estado, hoje) {
     f.tipoParto = item.tipoParto || 'Normal';
     if (item.obs) f.observacoes = item.obs;
     if (item.brincoCria) f.brincoBezerro = String(item.brincoCria).trim();
-    if (item.pai) { const t = acharTouro(estado.touros, item.pai); if (t) f.touroId = t.id; else { f.touroId = '__outro__'; f.touroOutro = String(item.pai); } }
+    // "pai" não é mais lançado no nascimento: a origem sai do cruzamento com o IATF da mãe (origemDaCria)
   } else if (tipo === 'diagnostico') {
     f.resultado = normResultadoDiag(item.resultado);
     if (!f.resultado) return { erro: `resultado do toque não entendido (${item.resultado})` };
@@ -736,7 +763,7 @@ export function relatorioNascimentos(matrizes, eventos, touros, ano) {
   const linhasMes = [...meses.keys()].sort().map((k) => ({ periodo: k === 'sem-data' ? 'Sem data' : mesCurto(k), ...contar(meses.get(k)) }));
   if (linhasMes.length) linhasMes.push({ periodo: 'Total', ...contar(nascs) });
   const pais = new Map();
-  nascs.forEach((n) => { const nome = nomeTouroEvento(n, touros) || 'Pai não informado'; if (!pais.has(nome)) pais.set(nome, []); pais.get(nome).push(n); });
+  nascs.forEach((n) => { const nome = origemDaCria(n, eventos, touros).rotulo; if (!pais.has(nome)) pais.set(nome, []); pais.get(nome).push(n); });
   const linhasPai = [...pais.entries()].sort((a, b) => b[1].length - a[1].length).map(([nome, lista]) => ({ pai: nome, ...contar(lista) }));
   const colSexo = [
     { k: 'machos', label: 'Machos', align: 'right', mono: true }, { k: 'femeas', label: 'Fêmeas', align: 'right', mono: true },
@@ -755,7 +782,11 @@ export function relatorioNascimentos(matrizes, eventos, touros, ano) {
     ],
     secoes: [
       { titulo: 'Por mês', colunas: [{ k: 'periodo', label: 'Mês' }, ...colSexo], linhas: linhasMes },
-      { titulo: 'Por pai (touro / sêmen)', colunas: [{ k: 'pai', label: 'Pai' }, ...colSexo], linhas: linhasPai },
+      {
+        titulo: 'Por origem e pai (IATF ou monta)',
+        nota: 'O pai sai do cruzamento do parto com o IATF da mãe (de 250 a 320 dias antes). Sem IATF compatível, a cria é de monta natural.',
+        colunas: [{ k: 'pai', label: 'Origem / pai' }, ...colSexo], linhas: linhasPai,
+      },
       {
         titulo: 'Lançamentos',
         colunas: [

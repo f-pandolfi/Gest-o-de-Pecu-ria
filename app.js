@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 // src/logica.js
-var VERSAO_APP = "9.1 (12/10/26)";
+var VERSAO_APP = "9.2 (12/10/26)";
 var VERSAO_MINIMA_SCRIPT = 7;
 var PERIODO_GESTACAO_DIAS = 285;
 var TIPOS_FUNCIONARIO = ["nascimento", "desmama", "iatf", "insumo", "descarte"];
@@ -87,8 +87,8 @@ var CAMPOS = {
     { key: "sexo", label: "Sexo", type: "select", options: ["F\xEAmea", "Macho"] },
     { key: "brincoBezerro", label: "Brinco do bezerro (sugerido automaticamente)", type: "text" },
     { key: "pelagem", label: "Pelagem", type: "text" },
-    { key: "touroId", label: "Pai (touro / s\xEAmen)", type: "touro" },
-    { key: "touroOutro", label: "Nome (n\xE3o cadastrado)", type: "text", showIf: (f) => f.touroId === "__outro__" },
+    // Sem campo "Pai": a origem da cria (IATF ou monta) e o pai são deduzidos depois, cruzando o parto
+    // com o IATF da mãe (ver origemDaCria). Sem IATF compatível, a cria é de monta natural.
     { key: "tipoParto", label: "Tipo de parto", type: "select", options: ["Normal", "Dist\xF3cico (com dificuldade)"], default: "Normal" },
     { key: "observacoes", label: "Observa\xE7\xF5es", type: "text" }
   ],
@@ -387,6 +387,24 @@ function nomeTouroEvento(e, touros) {
   const t = (touros || []).find((x) => x.id === e.touroId);
   return t && t.nome || e.touroOutro || "";
 }
+var JANELA_IATF_DIAS = [250, 320];
+function origemDaCria(nasc, eventos, touros) {
+  const informado = nomeTouroEvento(nasc, touros);
+  if (informado) return { origem: "Informado", pai: informado, iatfData: "", rotulo: informado };
+  if (!nasc.matrizId) return { origem: "Sem m\xE3e", pai: "", iatfData: "", rotulo: "M\xE3e n\xE3o informada" };
+  if (!nasc.data) return { origem: "Monta", pai: "Monta natural", iatfData: "", rotulo: "Monta natural" };
+  const [min, max] = JANELA_IATF_DIAS;
+  const dias = (d) => Math.round((new Date(nasc.data) - new Date(d)) / 864e5);
+  const candidatos = (eventos || []).filter((e2) => e2.tipo === "iatf" && e2.matrizId === nasc.matrizId && e2.data && dias(e2.data) >= min && dias(e2.data) <= max);
+  if (!candidatos.length) return { origem: "Monta", pai: "Monta natural", iatfData: "", rotulo: "Monta natural" };
+  candidatos.sort((a, b) => Math.abs(dias(a.data) - PERIODO_GESTACAO_DIAS) - Math.abs(dias(b.data) - PERIODO_GESTACAO_DIAS));
+  const e = candidatos[0];
+  const nome = nomeTouroEvento(e, touros);
+  if (/repasse|monta/i.test(e.tipoServico || "")) {
+    return { origem: "Monta", pai: nome || "Monta natural", iatfData: e.data, rotulo: nome ? `Monta \xB7 ${nome}` : "Monta natural" };
+  }
+  return { origem: "IATF", pai: nome, iatfData: e.data, rotulo: nome ? `IATF \xB7 ${nome}` : "IATF \xB7 touro n\xE3o informado" };
+}
 var semAcento = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "");
 var chave = (s) => semAcento(s).toLowerCase().trim();
 function acharMatrizPorBrinco(matrizes, brinco) {
@@ -402,7 +420,11 @@ function novoId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 function camposFaltando(tipo, form) {
-  return (CAMPOS[tipo] || []).filter((c) => c.required && (!c.showIf || c.showIf(form)) && !form[c.key]);
+  const falta = (CAMPOS[tipo] || []).filter((c) => c.required && (!c.showIf || c.showIf(form)) && !form[c.key]);
+  if (tipo === "nascimento" && !form.matrizId && !form.sexo && !String(form.brincoBezerro ?? "").trim()) {
+    falta.push({ key: "__identificacao", label: "M\xE3e, sexo ou brinco da cria (pelo menos um)" });
+  }
+  return falta;
 }
 function aplicarLancamento(estado, tipo, form, opcoes) {
   const op = opcoes || {};
@@ -542,14 +564,6 @@ function itemParaFormulario(item, estado, hoje) {
     f.tipoParto = item.tipoParto || "Normal";
     if (item.obs) f.observacoes = item.obs;
     if (item.brincoCria) f.brincoBezerro = String(item.brincoCria).trim();
-    if (item.pai) {
-      const t = acharTouro(estado.touros, item.pai);
-      if (t) f.touroId = t.id;
-      else {
-        f.touroId = "__outro__";
-        f.touroOutro = String(item.pai);
-      }
-    }
   } else if (tipo === "diagnostico") {
     f.resultado = normResultadoDiag(item.resultado);
     if (!f.resultado) return { erro: `resultado do toque n\xE3o entendido (${item.resultado})` };
@@ -756,7 +770,7 @@ function relatorioNascimentos(matrizes, eventos, touros, ano) {
   if (linhasMes.length) linhasMes.push({ periodo: "Total", ...contar(nascs) });
   const pais = /* @__PURE__ */ new Map();
   nascs.forEach((n) => {
-    const nome = nomeTouroEvento(n, touros) || "Pai n\xE3o informado";
+    const nome = origemDaCria(n, eventos, touros).rotulo;
     if (!pais.has(nome)) pais.set(nome, []);
     pais.get(nome).push(n);
   });
@@ -780,7 +794,12 @@ function relatorioNascimentos(matrizes, eventos, touros, ano) {
     ],
     secoes: [
       { titulo: "Por m\xEAs", colunas: [{ k: "periodo", label: "M\xEAs" }, ...colSexo], linhas: linhasMes },
-      { titulo: "Por pai (touro / s\xEAmen)", colunas: [{ k: "pai", label: "Pai" }, ...colSexo], linhas: linhasPai },
+      {
+        titulo: "Por origem e pai (IATF ou monta)",
+        nota: "O pai sai do cruzamento do parto com o IATF da m\xE3e (de 250 a 320 dias antes). Sem IATF compat\xEDvel, a cria \xE9 de monta natural.",
+        colunas: [{ k: "pai", label: "Origem / pai" }, ...colSexo],
+        linhas: linhasPai
+      },
       {
         titulo: "Lan\xE7amentos",
         colunas: [
@@ -1734,7 +1753,13 @@ function Lancar({ dados, hoje, ownerMode, preset, onSalvar, onGravarLote, modoTe
   const [erro, setErro] = useState3("");
   const [dup, setDup] = useState3(false);
   const [salvo, setSalvo] = useState3("");
+  const [travado, setTravado] = useState3(false);
   const timer = useRef2(null);
+  const timerTrava = useRef2(null);
+  useEffect2(() => () => {
+    clearTimeout(timer.current);
+    clearTimeout(timerTrava.current);
+  }, []);
   useEffect2(() => {
     if (!preset) return;
     setTipo(preset.tipo);
@@ -1768,6 +1793,7 @@ function Lancar({ dados, hoje, ownerMode, preset, onSalvar, onGravarLote, modoTe
     });
   }
   function salvar(forcar) {
+    if (travado) return;
     const falt = camposFaltando(tipo, form);
     if (falt.length) {
       setErro(`Falta preencher: ${falt.map((c) => c.label).join(", ")}.`);
@@ -1787,6 +1813,9 @@ function Lancar({ dados, hoje, ownerMode, preset, onSalvar, onGravarLote, modoTe
     setForm(formularioInicial(tipo, hoje));
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setSalvo(""), 6e3);
+    setTravado(true);
+    clearTimeout(timerTrava.current);
+    timerTrava.current = setTimeout(() => setTravado(false), 1500);
   }
   const ultimos = useMemo2(() => {
     const nasc = dados.eventos.filter((e) => e.tipo === "nascimento" && e.brincoBezerro);
@@ -1799,7 +1828,7 @@ function Lancar({ dados, hoje, ownerMode, preset, onSalvar, onGravarLote, modoTe
   );
   const campos = (CAMPOS[tipo] || []).filter((c) => !c.showIf || c.showIf(form));
   const semMatrizes = dados.matrizes.length === 0 && tipo !== "cadastro";
-  return /* @__PURE__ */ React3.createElement("div", { className: "wrap" }, /* @__PURE__ */ React3.createElement("div", { className: "head" }, /* @__PURE__ */ React3.createElement("div", null, /* @__PURE__ */ React3.createElement("small", null, "Livro do rebanho"), /* @__PURE__ */ React3.createElement("h1", null, "Lan\xE7ar"))), /* @__PURE__ */ React3.createElement(IndexTabs, { tabs: abas, value: tipo, onChange: trocarTipo, rotulo: "Tipo de lan\xE7amento" }), /* @__PURE__ */ React3.createElement("div", { className: "sheet pad" }, tipo === "lote" ? /* @__PURE__ */ React3.createElement(LoteFoto, { dados, hoje, onGravarLote, modoTeste }) : /* @__PURE__ */ React3.createElement(React3.Fragment, null, /* @__PURE__ */ React3.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rotuloEvento(tipo)), semMatrizes && /* @__PURE__ */ React3.createElement(Aviso, { tipo: "info" }, ownerMode ? 'Cadastre pelo menos uma matriz em "Nova matriz" para poder lig\xE1-la aos outros lan\xE7amentos.' : "Ainda n\xE3o h\xE1 matrizes no sistema. Fale com o propriet\xE1rio."), tipo === "nascimento" && (ultimos.Macho || ultimos["F\xEAmea"]) && /* @__PURE__ */ React3.createElement("div", { style: { marginBottom: 16 } }, ["F\xEAmea", "Macho"].map((sx) => ultimos[sx] ? /* @__PURE__ */ React3.createElement(Lead, { key: sx, rotulo: sx === "Macho" ? "\xDAltimo macho" : "\xDAltima f\xEAmea", valor: `${ultimos[sx].brincoBezerro} \xB7 ${formatarDataBR(ultimos[sx].data)}` }) : null)), /* @__PURE__ */ React3.createElement("div", { className: "grid2" }, campos.map((c) => /* @__PURE__ */ React3.createElement("div", { key: c.key, style: c.type === "matriz" || c.key === "observacoes" || c.key === "motivo" ? { gridColumn: "1 / -1" } : void 0 }, /* @__PURE__ */ React3.createElement(Campo, { campo: c, value: form[c.key], onChange: atualizar, matrizes: dados.matrizes, touros: dados.touros })))), erro && /* @__PURE__ */ React3.createElement(Aviso, null, erro), dup && /* @__PURE__ */ React3.createElement(Aviso, { tipo: "info" }, "Esse lan\xE7amento parece j\xE1 existir (mesma vaca e mesma data). Confira antes de salvar de novo.", /* @__PURE__ */ React3.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React3.createElement("button", { className: "btn sm", onClick: () => salvar(true) }, "Salvar mesmo assim"), /* @__PURE__ */ React3.createElement("button", { className: "btn quiet sm", onClick: () => setDup(false) }, "Cancelar"))), salvo && /* @__PURE__ */ React3.createElement(Aviso, { tipo: "ok" }, salvo, modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : ""), /* @__PURE__ */ React3.createElement("button", { className: "btn wide", onClick: () => salvar(false), style: { marginTop: 6 } }, /* @__PURE__ */ React3.createElement(Save, { size: 18 }), " Salvar registro"))), tipo !== "lote" && /* @__PURE__ */ React3.createElement(React3.Fragment, null, /* @__PURE__ */ React3.createElement("h2", { className: "h2" }, "\xDAltimos lan\xE7amentos"), /* @__PURE__ */ React3.createElement("div", { className: "sheet" }, recentes.length === 0 ? /* @__PURE__ */ React3.createElement("div", { className: "empty" }, "Nada lan\xE7ado ainda.") : recentes.map((e) => /* @__PURE__ */ React3.createElement("div", { className: "led-r", key: e.id, style: { "--cols": "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React3.createElement("span", { style: { fontSize: 14.5 } }, descreverEvento(e, dados)), /* @__PURE__ */ React3.createElement("span", { className: "m mut" }, formatarDataBR(e.data)))))));
+  return /* @__PURE__ */ React3.createElement("div", { className: "wrap" }, /* @__PURE__ */ React3.createElement("div", { className: "head" }, /* @__PURE__ */ React3.createElement("div", null, /* @__PURE__ */ React3.createElement("small", null, "Livro do rebanho"), /* @__PURE__ */ React3.createElement("h1", null, "Lan\xE7ar"))), /* @__PURE__ */ React3.createElement(IndexTabs, { tabs: abas, value: tipo, onChange: trocarTipo, rotulo: "Tipo de lan\xE7amento" }), /* @__PURE__ */ React3.createElement("div", { className: "sheet pad" }, tipo === "lote" ? /* @__PURE__ */ React3.createElement(LoteFoto, { dados, hoje, onGravarLote, modoTeste }) : /* @__PURE__ */ React3.createElement(React3.Fragment, null, /* @__PURE__ */ React3.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rotuloEvento(tipo)), semMatrizes && /* @__PURE__ */ React3.createElement(Aviso, { tipo: "info" }, ownerMode ? 'Cadastre pelo menos uma matriz em "Nova matriz" para poder lig\xE1-la aos outros lan\xE7amentos.' : "Ainda n\xE3o h\xE1 matrizes no sistema. Fale com o propriet\xE1rio."), tipo === "nascimento" && (ultimos.Macho || ultimos["F\xEAmea"]) && /* @__PURE__ */ React3.createElement("div", { style: { marginBottom: 16 } }, ["F\xEAmea", "Macho"].map((sx) => ultimos[sx] ? /* @__PURE__ */ React3.createElement(Lead, { key: sx, rotulo: sx === "Macho" ? "\xDAltimo macho" : "\xDAltima f\xEAmea", valor: `${ultimos[sx].brincoBezerro} \xB7 ${formatarDataBR(ultimos[sx].data)}` }) : null)), /* @__PURE__ */ React3.createElement("div", { className: "grid2" }, campos.map((c) => /* @__PURE__ */ React3.createElement("div", { key: c.key, style: c.type === "matriz" || c.key === "observacoes" || c.key === "motivo" ? { gridColumn: "1 / -1" } : void 0 }, /* @__PURE__ */ React3.createElement(Campo, { campo: c, value: form[c.key], onChange: atualizar, matrizes: dados.matrizes, touros: dados.touros })))), erro && /* @__PURE__ */ React3.createElement(Aviso, null, erro), dup && /* @__PURE__ */ React3.createElement(Aviso, { tipo: "info" }, "Esse lan\xE7amento parece j\xE1 existir (mesma vaca e mesma data). Confira antes de salvar de novo.", /* @__PURE__ */ React3.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React3.createElement("button", { className: "btn sm", onClick: () => salvar(true), disabled: travado }, "Salvar mesmo assim"), /* @__PURE__ */ React3.createElement("button", { className: "btn quiet sm", onClick: () => setDup(false) }, "Cancelar"))), salvo && /* @__PURE__ */ React3.createElement(Aviso, { tipo: "ok" }, salvo, modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : ""), /* @__PURE__ */ React3.createElement("button", { className: "btn wide", onClick: () => salvar(false), disabled: travado, style: { marginTop: 6 } }, /* @__PURE__ */ React3.createElement(Save, { size: 18 }), " Salvar registro"))), tipo !== "lote" && /* @__PURE__ */ React3.createElement(React3.Fragment, null, /* @__PURE__ */ React3.createElement("h2", { className: "h2" }, "\xDAltimos lan\xE7amentos"), /* @__PURE__ */ React3.createElement("div", { className: "sheet" }, recentes.length === 0 ? /* @__PURE__ */ React3.createElement("div", { className: "empty" }, "Nada lan\xE7ado ainda.") : recentes.map((e) => /* @__PURE__ */ React3.createElement("div", { className: "led-r", key: e.id, style: { "--cols": "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React3.createElement("span", { style: { fontSize: 14.5 } }, descreverEvento(e, dados)), /* @__PURE__ */ React3.createElement("span", { className: "m mut" }, formatarDataBR(e.data)))))));
 }
 
 // src/telas/Parto.jsx
