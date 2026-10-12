@@ -66,12 +66,18 @@ export function Lead({ rotulo, valor, onClick, big, cor }) {
 
 export function Modal({ titulo, onClose, children, rotulo }) {
   const ref = useRef(null);
+  // onClose costuma ser uma função nova a cada render. Se ela fosse dependência do efeito, a cada tecla
+  // digitada o efeito rodaria de novo e tiraria o foco do campo. Por isso fica guardada numa ref e o
+  // efeito roda só uma vez, quando a janela abre.
+  const fechar = useRef(onClose);
+  fechar.current = onClose;
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e) => { if (e.key === 'Escape') fechar.current(); };
     window.addEventListener('keydown', onKey);
-    if (ref.current) ref.current.focus();
+    const caixa = ref.current;
+    if (caixa && !caixa.contains(document.activeElement)) caixa.focus(); // não rouba o foco de um campo com autoFocus
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
   return (
     <div className="ov" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="box" role="dialog" aria-modal="true" aria-label={rotulo || titulo} ref={ref} tabIndex={-1}>

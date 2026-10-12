@@ -2,7 +2,7 @@
 // É usado por dois lados: o app (app.jsx) e a integração por foto (lançamentos em lote feitos pelo Claude).
 // Mexeu aqui = mudou nos dois, de propósito: uma única fonte da verdade para status, previsão e relatórios.
 
-export const VERSAO_APP = '9 (11/10/26)';
+export const VERSAO_APP = '9.1 (12/10/26)';
 export const VERSAO_MINIMA_SCRIPT = 7;
 export const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
 

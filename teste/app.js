@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 // src/logica.js
-var VERSAO_APP = "9 (11/10/26)";
+var VERSAO_APP = "9.1 (12/10/26)";
 var VERSAO_MINIMA_SCRIPT = 7;
 var PERIODO_GESTACAO_DIAS = 285;
 var TIPOS_FUNCIONARIO = ["nascimento", "desmama", "iatf", "insumo", "descarte"];
@@ -1498,14 +1498,17 @@ function Lead({ rotulo, valor, onClick, big, cor }) {
 }
 function Modal({ titulo, onClose, children, rotulo }) {
   const ref = useRef(null);
+  const fechar = useRef(onClose);
+  fechar.current = onClose;
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") fechar.current();
     };
     window.addEventListener("keydown", onKey);
-    if (ref.current) ref.current.focus();
+    const caixa = ref.current;
+    if (caixa && !caixa.contains(document.activeElement)) caixa.focus();
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
   return /* @__PURE__ */ React.createElement("div", { className: "ov", onMouseDown: (e) => {
     if (e.target === e.currentTarget) onClose();
   } }, /* @__PURE__ */ React.createElement("div", { className: "box", role: "dialog", "aria-modal": "true", "aria-label": rotulo || titulo, ref, tabIndex: -1 }, /* @__PURE__ */ React.createElement("div", { className: "top" }, /* @__PURE__ */ React.createElement("h2", null, titulo), /* @__PURE__ */ React.createElement("button", { className: "x", onClick: onClose, "aria-label": "Fechar" }, /* @__PURE__ */ React.createElement(X, { size: 20 }))), children));
