@@ -1,800 +1,334 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { createRoot } from 'react-dom/client';
-import * as XLSX from 'xlsx';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { Plus, LayoutDashboard, List, Syringe, Stethoscope, Baby, TrendingUp, DollarSign, Package, Trash2, Save, ClipboardList, AlertCircle, Check, Loader2, Search, Sprout, RefreshCw, X, Dna, Lock, Unlock, Eye, EyeOff, Table, CalendarClock } from 'lucide-react';
+// src/app.jsx
+import React8, { useState as useState8, useEffect as useEffect3, useMemo as useMemo7, useRef as useRef3 } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  Plus,
+  CalendarClock,
+  List,
+  LayoutDashboard,
+  FileText,
+  Lock as Lock2,
+  Unlock,
+  Loader2 as Loader23,
+  ChevronDown
+} from "lucide-react";
 
-// ---------- paleta ----------
-const C = {
-  bg: '#161F1A',
-  surface: '#1F2A23',
-  surfaceAlt: '#26332B',
-  border: '#354237',
-  text: '#EDE8DC',
-  textMuted: '#95A296',
-  accent: '#D4954A',
-  accentSoft: 'rgba(212,149,74,0.15)',
-  cheia: '#7FA86B',
-  vazia: '#D4A63A',
-  descarte: '#B5533C',
-  danger: '#C15B48'
+// src/logica.js
+var VERSAO_APP = "9.1 (12/10/26)";
+var VERSAO_MINIMA_SCRIPT = 7;
+var PERIODO_GESTACAO_DIAS = 285;
+var TIPOS_FUNCIONARIO = ["nascimento", "desmama", "iatf", "insumo", "descarte"];
+var TIPOS_EVENTO = [
+  { id: "cadastro", label: "Nova Matriz" },
+  { id: "touro", label: "Touro / S\xEAmen" },
+  { id: "iatf", label: "Insemina\xE7\xE3o (IATF)" },
+  { id: "diagnostico", label: "Diagn\xF3stico (Toque)" },
+  { id: "nascimento", label: "Nascimento" },
+  { id: "desmama", label: "Desmama" },
+  { id: "recria", label: "Recria (pesagem)" },
+  { id: "venda", label: "Venda" },
+  { id: "insumo", label: "Sal / Medicamento" },
+  { id: "descarte", label: "Descarte" }
+];
+var CAMPOS_EDICAO_MATRIZ = [
+  { key: "brinco", label: "Brinco / ID", type: "text", required: true },
+  { key: "categoria", label: "Categoria", type: "select", options: ["Novilha", "Prim\xEDpara", "Mult\xEDpara", "Vaca"] },
+  { key: "raca", label: "Ra\xE7a", type: "text" },
+  { key: "lote", label: "Lote / piquete", type: "text" },
+  { key: "dataNascimento", label: "Data de nascimento", type: "date" },
+  { key: "partosAnteriores", label: "Partos antes de entrar na fazenda", type: "number" },
+  { key: "status", label: "Status", type: "select", options: ["Vazia", "Cheia", "Descarte"] }
+];
+var CAMPOS = {
+  cadastro: [
+    { key: "brinco", label: "Brinco / ID", type: "text", required: true },
+    { key: "categoria", label: "Categoria", type: "select", options: ["Novilha", "Prim\xEDpara", "Mult\xEDpara", "Vaca"] },
+    { key: "raca", label: "Ra\xE7a", type: "text" },
+    { key: "lote", label: "Lote / piquete", type: "text" },
+    { key: "dataNascimento", label: "Data de nascimento", type: "date" },
+    { key: "partosAnteriores", label: "Partos antes de entrar na fazenda", type: "number" },
+    { key: "statusInicial", label: "Status inicial", type: "select", options: ["Vazia", "Cheia"] }
+  ],
+  touro: [
+    { key: "nome", label: "Nome do touro / s\xEAmen", type: "text", required: true },
+    { key: "raca", label: "Ra\xE7a", type: "text", required: true },
+    { key: "fornecedor", label: "Central / fornecedor", type: "text" },
+    { key: "anoAquisicao", label: "Ano de aquisi\xE7\xE3o", type: "number" },
+    { key: "doses", label: "Doses adquiridas", type: "number" },
+    { key: "custoDose", label: "Custo por dose (R$)", type: "number" },
+    { key: "observacoes", label: "Observa\xE7\xF5es", type: "text" }
+  ],
+  iatf: [
+    { key: "matrizId", label: "Matriz", type: "matriz", required: true },
+    { key: "tipoServico", label: "Tipo", type: "select", options: ["IATF", "Repasse (monta natural)"] },
+    { key: "numeroServico", label: "N\xBA da tentativa", type: "select", options: ["1\xAA", "2\xAA", "3\xAA ou mais"] },
+    { key: "data", label: "Data da IA / cobertura", type: "date", required: true },
+    { key: "dataInicioProtocolo", label: "In\xEDcio do protocolo", type: "date" },
+    { key: "touroId", label: "S\xEAmen / touro", type: "touro" },
+    { key: "touroOutro", label: "Nome (n\xE3o cadastrado)", type: "text", showIf: (f) => f.touroId === "__outro__" },
+    { key: "tecnico", label: "T\xE9cnico", type: "text" },
+    { key: "custo", label: "Custo (R$)", type: "number" },
+    { key: "observacoes", label: "Observa\xE7\xF5es", type: "text" }
+  ],
+  diagnostico: [
+    { key: "matrizId", label: "Matriz", type: "matriz", required: true },
+    { key: "data", label: "Data do exame", type: "date", required: true },
+    { key: "resultado", label: "Resultado", type: "select", options: ["Prenhe", "Vazia", "Descarte"], required: true },
+    { key: "metodo", label: "M\xE9todo", type: "select", options: ["Toque retal", "Ultrassom"] },
+    { key: "dg", label: "DG (dias de gesta\xE7\xE3o)", type: "number" },
+    { key: "motivo", label: "Motivo do descarte", type: "text", showIf: (f) => f.resultado === "Descarte" },
+    { key: "veterinario", label: "Veterin\xE1rio", type: "text" },
+    { key: "custo", label: "Custo (R$)", type: "number" }
+  ],
+  nascimento: [
+    { key: "matrizId", label: "Matriz (m\xE3e)", type: "matriz" },
+    { key: "data", label: "Data do nascimento", type: "date", required: true },
+    { key: "resultadoParto", label: "Resultado", type: "select", options: ["Vivo", "Natimorto"], required: true, default: "Vivo" },
+    { key: "sexo", label: "Sexo", type: "select", options: ["F\xEAmea", "Macho"] },
+    { key: "brincoBezerro", label: "Brinco do bezerro (sugerido automaticamente)", type: "text" },
+    { key: "pelagem", label: "Pelagem", type: "text" },
+    { key: "touroId", label: "Pai (touro / s\xEAmen)", type: "touro" },
+    { key: "touroOutro", label: "Nome (n\xE3o cadastrado)", type: "text", showIf: (f) => f.touroId === "__outro__" },
+    { key: "tipoParto", label: "Tipo de parto", type: "select", options: ["Normal", "Dist\xF3cico (com dificuldade)"], default: "Normal" },
+    { key: "observacoes", label: "Observa\xE7\xF5es", type: "text" }
+  ],
+  desmama: [
+    { key: "brincoBezerro", label: "Brinco do bezerro", type: "text", required: true },
+    { key: "data", label: "Data da desmama", type: "date", required: true },
+    { key: "pesoDesmama", label: "Peso na desmama (kg)", type: "number" },
+    { key: "idadeDias", label: "Idade (dias)", type: "number" }
+  ],
+  recria: [
+    { key: "matrizId", label: "Novilha", type: "matriz", required: true },
+    { key: "data", label: "Data da pesagem", type: "date", required: true },
+    { key: "pesoAtual", label: "Peso atual (kg)", type: "number" },
+    { key: "aptaReproducao", label: "Apta para reprodu\xE7\xE3o?", type: "select", options: ["Ainda n\xE3o", "Sim, apta"] },
+    { key: "observacoes", label: "Observa\xE7\xF5es", type: "text" }
+  ],
+  venda: [
+    { key: "data", label: "Data da venda", type: "date", required: true },
+    { key: "categoria", label: "Categoria do animal", type: "select", options: ["Bezerro(a) (mamando)", "Novilha (recria)", "Boi/Boiadinho (engorda)", "Vaca de descarte"] },
+    { key: "animais", label: "Animais (descri\xE7\xE3o/qtd)", type: "text" },
+    { key: "pesoTotal", label: "Peso total (kg)", type: "number" },
+    { key: "valorArroba", label: "Valor por arroba (R$)", type: "number" },
+    { key: "valorTotal", label: "Valor total da venda (R$)", type: "number", required: true },
+    { key: "frete", label: "Frete / comiss\xE3o (R$)", type: "number" },
+    { key: "comprador", label: "Comprador", type: "text" }
+  ],
+  insumo: [
+    { key: "data", label: "Data", type: "date", required: true },
+    { key: "produto", label: "Produto", type: "select", options: ["Sal Mineral", "Medicamento", "Vacina", "Outro"] },
+    { key: "quantidade", label: "Quantidade", type: "number" },
+    { key: "unidade", label: "Unidade", type: "select", options: ["kg", "L", "un", "dose"] },
+    { key: "custo", label: "Custo (R$)", type: "number" },
+    { key: "categoriaAnimal", label: "Categoria de animal", type: "text" }
+  ],
+  descarte: [
+    { key: "matrizId", label: "Matriz", type: "matriz", required: true },
+    { key: "data", label: "Data", type: "date", required: true },
+    { key: "motivo", label: "Motivo", type: "text" }
+  ]
 };
-
-// PIN simples para desbloquear o modo Proprietário. Isso é uma trava de conveniência,
-// não segurança de verdade (o código fica visível pra quem inspecionar a página) —
-// mas é suficiente pra impedir que o funcionário abra sem querer as telas financeiras.
-const OWNER_PIN = '1537';
-
-// URL do Apps Script publicado, que lê/grava na planilha "Gestão Pecuária - Fazenda Ibiraçú"
-const SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbyDBTMVGJGeBj92qtiIRfrzZciWyzgP8mvDx8inCjdvVBb2Erm5laJyuuiwx8YjJQlI/exec';
-
-// Tipos de lançamento visíveis no modo Funcionário (restrito)
-const TIPOS_FUNCIONARIO = ['nascimento', 'desmama', 'iatf', 'insumo', 'descarte'];
-
-// Campos editáveis ao clicar numa matriz (modo proprietário) — cobre tudo do cadastro, com Status completo
-const CAMPOS_EDICAO_MATRIZ = [{
-  key: 'brinco',
-  label: 'Brinco / ID',
-  type: 'text',
-  required: true
-}, {
-  key: 'categoria',
-  label: 'Categoria',
-  type: 'select',
-  options: ['Novilha', 'Primípara', 'Multípara', 'Vaca']
-}, {
-  key: 'raca',
-  label: 'Raça',
-  type: 'text'
-}, {
-  key: 'lote',
-  label: 'Lote / piquete',
-  type: 'text'
-}, {
-  key: 'dataNascimento',
-  label: 'Data de nascimento',
-  type: 'date'
-}, {
-  key: 'partosAnteriores',
-  label: 'Partos antes de entrar na fazenda',
-  type: 'number'
-}, {
-  key: 'status',
-  label: 'Status',
-  type: 'select',
-  options: ['Vazia', 'Cheia', 'Descarte']
-}];
-
-// Abas disponíveis na visão de Planilha
-const PLANILHA_TIPOS = [{
-  id: 'matrizes',
-  label: 'Matrizes',
-  icon: List
-}, {
-  id: 'nascimento',
-  label: 'Nascimentos',
-  icon: Baby
-}, {
-  id: 'desmama',
-  label: 'Desmama',
-  icon: TrendingUp
-}, {
-  id: 'recria',
-  label: 'Recria',
-  icon: Sprout
-}, {
-  id: 'iatf',
-  label: 'IATF',
-  icon: Syringe
-}, {
-  id: 'diagnostico',
-  label: 'Diagnósticos',
-  icon: Stethoscope
-}, {
-  id: 'venda',
-  label: 'Vendas',
-  icon: DollarSign
-}, {
-  id: 'insumo',
-  label: 'Insumos',
-  icon: Package
-}, {
-  id: 'descarte',
-  label: 'Descartes',
-  icon: Trash2
-}, {
-  id: 'touros',
-  label: 'Touros',
-  icon: Dna
-}];
-const TIPOS_EVENTO = [{
-  id: 'cadastro',
-  label: 'Nova Matriz',
-  icon: Plus
-}, {
-  id: 'touro',
-  label: 'Touro / Sêmen',
-  icon: Dna
-}, {
-  id: 'iatf',
-  label: 'Inseminação (IATF)',
-  icon: Syringe
-}, {
-  id: 'diagnostico',
-  label: 'Diagnóstico (Toque)',
-  icon: Stethoscope
-}, {
-  id: 'nascimento',
-  label: 'Nascimento',
-  icon: Baby
-}, {
-  id: 'desmama',
-  label: 'Desmama',
-  icon: TrendingUp
-}, {
-  id: 'recria',
-  label: 'Recria (pesagem)',
-  icon: Sprout
-}, {
-  id: 'venda',
-  label: 'Venda',
-  icon: DollarSign
-}, {
-  id: 'insumo',
-  label: 'Sal / Medicamento',
-  icon: Package
-}, {
-  id: 'descarte',
-  label: 'Descarte',
-  icon: Trash2
-}];
-const CAMPOS = {
-  cadastro: [{
-    key: 'brinco',
-    label: 'Brinco / ID',
-    type: 'text',
-    required: true
-  }, {
-    key: 'categoria',
-    label: 'Categoria',
-    type: 'select',
-    options: ['Novilha', 'Primípara', 'Multípara', 'Vaca']
-  }, {
-    key: 'raca',
-    label: 'Raça',
-    type: 'text'
-  }, {
-    key: 'lote',
-    label: 'Lote / piquete',
-    type: 'text'
-  }, {
-    key: 'dataNascimento',
-    label: 'Data de nascimento',
-    type: 'date'
-  }, {
-    key: 'partosAnteriores',
-    label: 'Partos antes de entrar na fazenda',
-    type: 'number'
-  }, {
-    key: 'statusInicial',
-    label: 'Status inicial',
-    type: 'select',
-    options: ['Vazia', 'Cheia']
-  }],
-  touro: [{
-    key: 'nome',
-    label: 'Nome do touro / sêmen',
-    type: 'text',
-    required: true
-  }, {
-    key: 'raca',
-    label: 'Raça',
-    type: 'text',
-    required: true
-  }, {
-    key: 'fornecedor',
-    label: 'Central / fornecedor',
-    type: 'text'
-  }, {
-    key: 'anoAquisicao',
-    label: 'Ano de aquisição',
-    type: 'number'
-  }, {
-    key: 'doses',
-    label: 'Doses adquiridas',
-    type: 'number'
-  }, {
-    key: 'custoDose',
-    label: 'Custo por dose (R$)',
-    type: 'number'
-  }, {
-    key: 'observacoes',
-    label: 'Observações',
-    type: 'text'
-  }],
-  iatf: [{
-    key: 'matrizId',
-    label: 'Matriz',
-    type: 'matriz',
-    required: true
-  }, {
-    key: 'tipoServico',
-    label: 'Tipo',
-    type: 'select',
-    options: ['IATF', 'Repasse (monta natural)']
-  }, {
-    key: 'numeroServico',
-    label: 'Nº da tentativa',
-    type: 'select',
-    options: ['1ª', '2ª', '3ª ou mais']
-  }, {
-    key: 'data',
-    label: 'Data da IA / cobertura',
-    type: 'date',
-    required: true
-  }, {
-    key: 'dataInicioProtocolo',
-    label: 'Início do protocolo',
-    type: 'date'
-  }, {
-    key: 'touroId',
-    label: 'Sêmen / touro',
-    type: 'touro'
-  }, {
-    key: 'touroOutro',
-    label: 'Nome (não cadastrado)',
-    type: 'text',
-    showIf: f => f.touroId === '__outro__'
-  }, {
-    key: 'tecnico',
-    label: 'Técnico',
-    type: 'text'
-  }, {
-    key: 'custo',
-    label: 'Custo (R$)',
-    type: 'number'
-  }, {
-    key: 'observacoes',
-    label: 'Observações',
-    type: 'text'
-  }],
-  diagnostico: [{
-    key: 'matrizId',
-    label: 'Matriz',
-    type: 'matriz',
-    required: true
-  }, {
-    key: 'data',
-    label: 'Data do exame',
-    type: 'date',
-    required: true
-  }, {
-    key: 'resultado',
-    label: 'Resultado',
-    type: 'select',
-    options: ['Prenhe', 'Vazia', 'Descarte'],
-    required: true
-  }, {
-    key: 'metodo',
-    label: 'Método',
-    type: 'select',
-    options: ['Toque retal', 'Ultrassom']
-  }, {
-    key: 'dg',
-    label: 'DG (dias de gestação)',
-    type: 'number'
-  }, {
-    key: 'motivo',
-    label: 'Motivo do descarte',
-    type: 'text',
-    showIf: f => f.resultado === 'Descarte'
-  }, {
-    key: 'veterinario',
-    label: 'Veterinário',
-    type: 'text'
-  }, {
-    key: 'custo',
-    label: 'Custo (R$)',
-    type: 'number'
-  }],
-  nascimento: [{
-    key: 'matrizId',
-    label: 'Matriz (mãe)',
-    type: 'matriz'
-  }, {
-    key: 'data',
-    label: 'Data do nascimento',
-    type: 'date',
-    required: true
-  }, {
-    key: 'resultadoParto',
-    label: 'Resultado',
-    type: 'select',
-    options: ['Vivo', 'Natimorto'],
-    required: true,
-    default: 'Vivo'
-  }, {
-    key: 'sexo',
-    label: 'Sexo',
-    type: 'select',
-    options: ['Macho', 'Fêmea']
-  }, {
-    key: 'brincoBezerro',
-    label: 'Brinco do bezerro (sugerido automaticamente)',
-    type: 'text'
-  }, {
-    key: 'pelagem',
-    label: 'Pelagem',
-    type: 'text'
-  }, {
-    key: 'touroId',
-    label: 'Pai (touro / sêmen)',
-    type: 'touro'
-  }, {
-    key: 'touroOutro',
-    label: 'Nome (não cadastrado)',
-    type: 'text',
-    showIf: f => f.touroId === '__outro__'
-  }, {
-    key: 'tipoParto',
-    label: 'Tipo de parto',
-    type: 'select',
-    options: ['Normal', 'Distócico (com dificuldade)'],
-    default: 'Normal'
-  }, {
-    key: 'observacoes',
-    label: 'Observações',
-    type: 'text'
-  }],
-  desmama: [{
-    key: 'brincoBezerro',
-    label: 'Brinco do bezerro',
-    type: 'text',
-    required: true
-  }, {
-    key: 'data',
-    label: 'Data da desmama',
-    type: 'date',
-    required: true
-  }, {
-    key: 'pesoDesmama',
-    label: 'Peso na desmama (kg)',
-    type: 'number'
-  }, {
-    key: 'idadeDias',
-    label: 'Idade (dias)',
-    type: 'number'
-  }],
-  recria: [{
-    key: 'matrizId',
-    label: 'Novilha',
-    type: 'matriz',
-    required: true
-  }, {
-    key: 'data',
-    label: 'Data da pesagem',
-    type: 'date',
-    required: true
-  }, {
-    key: 'pesoAtual',
-    label: 'Peso atual (kg)',
-    type: 'number'
-  }, {
-    key: 'aptaReproducao',
-    label: 'Apta para reprodução?',
-    type: 'select',
-    options: ['Ainda não', 'Sim, apta']
-  }, {
-    key: 'observacoes',
-    label: 'Observações',
-    type: 'text'
-  }],
-  venda: [{
-    key: 'data',
-    label: 'Data da venda',
-    type: 'date',
-    required: true
-  }, {
-    key: 'categoria',
-    label: 'Categoria do animal',
-    type: 'select',
-    options: ['Bezerro(a) (mamando)', 'Novilha (recria)', 'Boi/Boiadinho (engorda)', 'Vaca de descarte']
-  }, {
-    key: 'animais',
-    label: 'Animais (descrição/qtd)',
-    type: 'text'
-  }, {
-    key: 'pesoTotal',
-    label: 'Peso total (kg)',
-    type: 'number'
-  }, {
-    key: 'valorArroba',
-    label: 'Valor por arroba (R$)',
-    type: 'number'
-  }, {
-    key: 'valorTotal',
-    label: 'Valor total da venda (R$)',
-    type: 'number',
-    required: true
-  }, {
-    key: 'frete',
-    label: 'Frete / comissão (R$)',
-    type: 'number'
-  }, {
-    key: 'comprador',
-    label: 'Comprador',
-    type: 'text'
-  }],
-  insumo: [{
-    key: 'data',
-    label: 'Data',
-    type: 'date',
-    required: true
-  }, {
-    key: 'produto',
-    label: 'Produto',
-    type: 'select',
-    options: ['Sal Mineral', 'Medicamento', 'Vacina', 'Outro']
-  }, {
-    key: 'quantidade',
-    label: 'Quantidade',
-    type: 'number'
-  }, {
-    key: 'unidade',
-    label: 'Unidade',
-    type: 'select',
-    options: ['kg', 'L', 'un', 'dose']
-  }, {
-    key: 'custo',
-    label: 'Custo (R$)',
-    type: 'number'
-  }, {
-    key: 'categoriaAnimal',
-    label: 'Categoria de animal',
-    type: 'text'
-  }],
-  descarte: [{
-    key: 'matrizId',
-    label: 'Matriz',
-    type: 'matriz',
-    required: true
-  }, {
-    key: 'data',
-    label: 'Data',
-    type: 'date',
-    required: true
-  }, {
-    key: 'motivo',
-    label: 'Motivo',
-    type: 'text'
-  }]
-};
-
-// Data de hoje no fuso do aparelho (toISOString usava UTC e virava "amanhã" depois das 21h no Brasil)
+var p2 = (n) => String(n).padStart(2, "0");
 function todayISO() {
-  const d = new Date();
-  const p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  const d = /* @__PURE__ */ new Date();
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
 }
-
-// Valores iniciais de um formulário: data de hoje + padrões definidos nos campos (ex.: Vivo, Normal)
-function formularioInicial(tipo) {
-  const campos = CAMPOS[tipo] || [];
-  const f = {};
-  if (campos.some(c => c.key === 'data')) f.data = todayISO();
-  campos.forEach(c => {
-    if (c.default !== undefined) f[c.key] = c.default;
-  });
-  return f;
+function paraUTC(iso) {
+  const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
 }
-
-// A planilha pode devolver data como "2026-05-09T03:00:00.000Z" (meia-noite de Brasília); o app trabalha só com AAAA-MM-DD
+function addDias(dataISO, dias) {
+  return new Date(paraUTC(dataISO) + dias * 864e5).toISOString().slice(0, 10);
+}
+function diasEntre(deISO, ateISO) {
+  return Math.round((paraUTC(ateISO) - paraUTC(deISO)) / 864e5);
+}
 function normalizarDataISO(v) {
-  if (v === null || v === undefined || v === '') return '';
-  if (typeof v !== 'string') return String(v);
+  if (v === null || v === void 0 || v === "") return "";
+  if (typeof v !== "string") return String(v);
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
   if (/^\d{4}-\d{2}-\d{2}T/.test(v)) {
     const t = new Date(v).getTime();
-    if (!isNaN(t)) return new Date(t - 3 * 3600 * 1000).toISOString().slice(0, 10); // UTC-3 (Paragominas)
+    if (!isNaN(t)) return new Date(t - 3 * 3600 * 1e3).toISOString().slice(0, 10);
   }
   return v;
 }
-
-// Brinco sempre como texto (a planilha devolve número) e datas sempre AAAA-MM-DD
-function normalizarDados(data) {
-  const matrizes = (data.matrizes || []).map(m => ({
-    ...m,
-    brinco: String(m.brinco ?? ''),
-    dataNascimento: normalizarDataISO(m.dataNascimento)
-  }));
-  const eventos = (data.eventos || []).map(e => ({
-    ...e,
-    data: normalizarDataISO(e.data),
-    dataInicioProtocolo: normalizarDataISO(e.dataInicioProtocolo),
-    brincoBezerro: e.brincoBezerro === undefined || e.brincoBezerro === null ? '' : String(e.brincoBezerro)
-  }));
-  return {
-    matrizes,
-    touros: data.touros || [],
-    eventos
-  };
-}
-
-// Formata data ISO (YYYY-MM-DD) para o padrão brasileiro DD/MM/AA
 function formatarDataBR(iso) {
-  if (!iso || typeof iso !== 'string') return iso || '';
+  if (!iso || typeof iso !== "string") return iso || "";
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return iso;
   const [, ano, mes, dia] = m;
   return `${dia}/${mes}/${ano.slice(2)}`;
 }
-
-// Data (ISO) do parto mais recente daquela matriz, olhando os nascimentos já lançados
+var MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+function mesCurto(aaaamm) {
+  const [a, m] = String(aaaamm).split("-");
+  return `${MESES[parseInt(m, 10) - 1] || m}/${String(a).slice(2)}`;
+}
+function parseDataFlex(txt, hoje) {
+  hoje = hoje || todayISO();
+  if (txt === null || txt === void 0) return "";
+  const s = String(txt).trim();
+  if (!s) return "";
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  let ano;
+  let mes;
+  let dia;
+  if (m) {
+    ano = +m[1];
+    mes = +m[2];
+    dia = +m[3];
+  } else {
+    m = s.match(/^(\d{1,2})[/.\-](\d{1,2})(?:[/.\-](\d{2}|\d{4}))?$/);
+    if (!m) return "";
+    dia = +m[1];
+    mes = +m[2];
+    if (m[3]) ano = m[3].length === 2 ? 2e3 + +m[3] : +m[3];
+    else {
+      ano = parseInt(hoje.slice(0, 4), 10);
+      const cand = `${ano}-${p2(mes)}-${p2(dia)}`;
+      if (!isNaN(paraUTC(cand)) && diasEntre(hoje, cand) > 60) ano -= 1;
+    }
+  }
+  const iso = `${ano}-${p2(mes)}-${p2(dia)}`;
+  const d = new Date(Date.UTC(ano, mes - 1, dia));
+  if (d.getUTCFullYear() !== ano || d.getUTCMonth() !== mes - 1 || d.getUTCDate() !== dia) return "";
+  return iso;
+}
+function anoDe(iso) {
+  const m = /^(\d{4})-/.exec(iso || "");
+  return m ? parseInt(m[1], 10) : null;
+}
+function anosDisponiveis(eventos, hoje) {
+  const set = /* @__PURE__ */ new Set([anoDe(hoje || todayISO())]);
+  eventos.forEach((e) => {
+    const a = anoDe(e.data);
+    if (a) set.add(a);
+  });
+  return [...set].sort((a, b) => b - a);
+}
+function filtrarPorAno(eventos, ano) {
+  if (ano === "todos" || ano === null || ano === void 0) return eventos;
+  return eventos.filter((e) => anoDe(e.data) === ano);
+}
+function rotuloAno(ano) {
+  return ano === "todos" ? "todos os anos" : String(ano);
+}
+function normalizarDados(data) {
+  const matrizes = (data.matrizes || []).map((m) => ({
+    ...m,
+    brinco: String(m.brinco ?? ""),
+    dataNascimento: normalizarDataISO(m.dataNascimento)
+  }));
+  const eventos = (data.eventos || []).map((e) => ({
+    ...e,
+    data: normalizarDataISO(e.data),
+    dataInicioProtocolo: normalizarDataISO(e.dataInicioProtocolo),
+    brincoBezerro: e.brincoBezerro === void 0 || e.brincoBezerro === null ? "" : String(e.brincoBezerro)
+  }));
+  return { matrizes, touros: data.touros || [], eventos };
+}
 function ultimoPartoDe(matrizId, eventos) {
-  const nascs = eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === matrizId && e.data);
-  if (!nascs.length) return '';
+  const nascs = eventos.filter((e) => e.tipo === "nascimento" && e.matrizId === matrizId && e.data);
+  if (!nascs.length) return "";
   return nascs.reduce((max, e) => e.data > max ? e.data : max, nascs[0].data);
 }
-
-// Número (brinco) da cria do último parto daquela matriz
 function numeroCriaUltimoParto(matrizId, eventos) {
-  const nascs = eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === matrizId && e.data);
-  if (!nascs.length) return '';
+  const nascs = eventos.filter((e) => e.tipo === "nascimento" && e.matrizId === matrizId && e.data);
+  if (!nascs.length) return "";
   const maisRecente = nascs.reduce((max, e) => e.data > max.data ? e : max, nascs[0]);
-  return maisRecente.brincoBezerro || '';
+  return maisRecente.brincoBezerro || "";
 }
-const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
-const VERSAO_MINIMA_SCRIPT = 7;
-const VERSAO_APP = '8 (11/10/26)'; // versão do Apps Script que sabe gravar tudo que o app envia
-
-function paraUTC(iso) {
-  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
-  return Date.UTC(y, m - 1, d);
-}
-function addDias(dataISO, dias) {
-  return new Date(paraUTC(dataISO) + dias * 86400000).toISOString().slice(0, 10);
-}
-function diasEntre(deISO, ateISO) {
-  return Math.round((paraUTC(ateISO) - paraUTC(deISO)) / 86400000);
-}
-
-// Previsão de parto (cálculo padrão): concepção = data do toque - dias de gestação (DG); parto = concepção + 285 dias.
-// Sem DG, usa a IATF mais recente + 285. Ignora toque/IATF anteriores ao último parto (aquela prenhez já terminou).
-// Devolve { data, origem: 'toque' | 'iatf' | 'toque-sem-dg', base, dg } ou null.
 function previsaoPartoInfo(matrizId, eventos) {
   const ultimo = ultimoPartoDe(matrizId, eventos);
-  const valida = d => d && (!ultimo || d > ultimo);
-  const diagsPrenhe = eventos.filter(e => e.tipo === 'diagnostico' && e.matrizId === matrizId && e.resultado === 'Prenhe' && valida(e.data)).sort((a, b) => b.data.localeCompare(a.data));
-  const comDG = diagsPrenhe.filter(e => e.dg !== '' && e.dg !== null && e.dg !== undefined && !isNaN(parseInt(e.dg, 10)));
+  const valida = (d) => d && (!ultimo || d > ultimo);
+  const diagsPrenhe = eventos.filter((e) => e.tipo === "diagnostico" && e.matrizId === matrizId && e.resultado === "Prenhe" && valida(e.data)).sort((a, b) => b.data.localeCompare(a.data));
+  const comDG = diagsPrenhe.filter((e) => e.dg !== "" && e.dg !== null && e.dg !== void 0 && !isNaN(parseInt(e.dg, 10)));
   if (comDG.length) {
     const dg = parseInt(comDG[0].dg, 10);
-    return {
-      data: addDias(addDias(comDG[0].data, -dg), PERIODO_GESTACAO_DIAS),
-      origem: 'toque',
-      base: comDG[0].data,
-      dg
-    };
+    return { data: addDias(addDias(comDG[0].data, -dg), PERIODO_GESTACAO_DIAS), origem: "toque", base: comDG[0].data, dg };
   }
-  const iatfs = eventos.filter(e => e.tipo === 'iatf' && e.matrizId === matrizId && valida(e.data)).sort((a, b) => b.data.localeCompare(a.data));
-  if (iatfs.length) return {
-    data: addDias(iatfs[0].data, PERIODO_GESTACAO_DIAS),
-    origem: 'iatf',
-    base: iatfs[0].data
-  };
-  if (diagsPrenhe.length) return {
-    data: '',
-    origem: 'toque-sem-dg',
-    base: diagsPrenhe[0].data
-  };
+  const iatfs = eventos.filter((e) => e.tipo === "iatf" && e.matrizId === matrizId && valida(e.data)).sort((a, b) => b.data.localeCompare(a.data));
+  if (iatfs.length) return { data: addDias(iatfs[0].data, PERIODO_GESTACAO_DIAS), origem: "iatf", base: iatfs[0].data };
+  if (diagsPrenhe.length) return { data: "", origem: "toque-sem-dg", base: diagsPrenhe[0].data };
   return null;
 }
-function previsaoPartoDe(matrizId, eventos) {
-  const info = previsaoPartoInfo(matrizId, eventos);
-  return info ? info.data : '';
-}
-
-// Sugere o próximo número de brinco de bezerro seguindo a convenção do produtor:
-// 1º dígito = último dígito do ano · faixa 000-499 = fêmea, 500-999 = macho · resto = sequência
 function sugerirBrincoBezerro(data, sexo, eventos) {
-  if (!data || !sexo) return '';
+  if (!data || !sexo) return "";
   const ano = parseInt(data.slice(0, 4), 10) % 10;
-  const base = sexo === 'Macho' ? 500 : 0;
-  const usados = new Set();
-  eventos.filter(e => e.tipo === 'nascimento' && e.brincoBezerro).forEach(e => {
+  const base = sexo === "Macho" ? 500 : 0;
+  const usados = /* @__PURE__ */ new Set();
+  eventos.filter((e) => e.tipo === "nascimento" && e.brincoBezerro).forEach((e) => {
     const n = parseInt(e.brincoBezerro, 10);
-    if (!isNaN(n) && Math.floor(n / 1000) === ano) {
-      const resto = n % 1000;
+    if (!isNaN(n) && Math.floor(n / 1e3) === ano) {
+      const resto = n % 1e3;
       if (resto >= base && resto < base + 500) usados.add(resto - base);
     }
   });
-  let seq = 0;
-  while (usados.has(seq)) seq++;
-  return String(ano * 1000 + base + seq);
-}
-
-// ---------- componentes utilitários ----------
-function Field({
-  campo,
-  value,
-  onChange,
-  matrizes,
-  touros
-}) {
-  const base = {
-    width: '100%',
-    padding: '11px 12px',
-    borderRadius: 10,
-    border: `1px solid ${C.border}`,
-    background: C.surfaceAlt,
-    color: C.text,
-    fontSize: 15,
-    outline: 'none'
-  };
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 14
-    }
-  }, /*#__PURE__*/React.createElement("label", {
-    style: {
-      display: 'block',
-      fontSize: 13,
-      color: C.textMuted,
-      marginBottom: 6
-    }
-  }, campo.label, campo.required ? ' *' : ''), campo.type === 'select' && /*#__PURE__*/React.createElement("select", {
-    style: base,
-    value: value || '',
-    onChange: e => onChange(campo.key, e.target.value)
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "Selecione"), campo.options.map(o => /*#__PURE__*/React.createElement("option", {
-    key: o,
-    value: o
-  }, o))), campo.type === 'matriz' && /*#__PURE__*/React.createElement("select", {
-    style: base,
-    value: value || '',
-    onChange: e => onChange(campo.key, e.target.value)
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "Selecione a matriz"), matrizes.filter(m => m.status !== 'Descarte').map(m => /*#__PURE__*/React.createElement("option", {
-    key: m.id,
-    value: m.id
-  }, m.brinco, " \u2014 ", m.status))), campo.type === 'touro' && /*#__PURE__*/React.createElement("select", {
-    style: base,
-    value: value || '',
-    onChange: e => onChange(campo.key, e.target.value)
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "Selecione"), touros.map(t => /*#__PURE__*/React.createElement("option", {
-    key: t.id,
-    value: t.id
-  }, t.nome, " \u2014 ", t.raca)), /*#__PURE__*/React.createElement("option", {
-    value: "__outro__"
-  }, "Outro / n\xE3o cadastrado")), (campo.type === 'text' || campo.type === 'number' || campo.type === 'date') && /*#__PURE__*/React.createElement("input", {
-    style: base,
-    type: campo.type,
-    inputMode: campo.type === 'number' ? 'decimal' : undefined,
-    value: value || '',
-    onChange: e => onChange(campo.key, e.target.value)
-  }));
-}
-function StatCard({
-  label,
-  value,
-  sub,
-  color
-}) {
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: C.surface,
-      border: `1px solid ${C.border}`,
-      borderRadius: 14,
-      padding: '16px 18px',
-      flex: '1 1 150px',
-      minWidth: 150
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: C.textMuted,
-      marginBottom: 6,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4
-    }
-  }, label), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 24,
-      fontWeight: 700,
-      color: color || C.text,
-      fontFamily: 'Georgia, serif'
-    }
-  }, value), sub && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: C.textMuted,
-      marginTop: 4
-    }
-  }, sub));
-}
-function SheetTable({
-  rows
-}) {
-  if (!rows || rows.length === 0) {
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        color: C.textMuted,
-        fontSize: 13.5,
-        padding: '30px 0',
-        textAlign: 'center'
-      }
-    }, "Nenhum registro lan\xE7ado ainda.");
+  let max = 0;
+  usados.forEach((x) => {
+    if (x > max) max = x;
+  });
+  let seq = max + 1;
+  if (seq >= 500) {
+    seq = 1;
+    while (usados.has(seq)) seq++;
   }
-  const headers = Object.keys(rows[0]);
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      overflowX: 'auto',
-      border: `1px solid ${C.border}`,
-      borderRadius: 12
+  return String(ano * 1e3 + base + seq);
+}
+function linhasPrevisao(matrizes, eventos, status, hoje, busca) {
+  hoje = hoje || todayISO();
+  const q = (busca || "").toLowerCase();
+  return matrizes.filter((m) => m.status === status).filter((m) => !q || String(m.brinco).toLowerCase().includes(q)).map((m) => {
+    const info = status === "Cheia" ? previsaoPartoInfo(m.id, eventos) : null;
+    const previsao = info ? info.data : "";
+    const ultimoParto = ultimoPartoDe(m.id, eventos);
+    return {
+      matriz: m,
+      info,
+      previsao,
+      dias: previsao ? diasEntre(hoje, previsao) : null,
+      ultimoParto,
+      diasDesdeParto: ultimoParto ? diasEntre(ultimoParto, hoje) : null,
+      numeroCria: numeroCriaUltimoParto(m.id, eventos)
+    };
+  }).sort((a, b) => {
+    if (status === "Cheia") {
+      if (!a.previsao) return 1;
+      if (!b.previsao) return -1;
+      return a.previsao.localeCompare(b.previsao);
     }
-  }, /*#__PURE__*/React.createElement("table", {
-    style: {
-      borderCollapse: 'collapse',
-      width: '100%',
-      fontSize: 12.5,
-      minWidth: headers.length * 110
-    }
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, headers.map(h => /*#__PURE__*/React.createElement("th", {
-    key: h,
-    style: {
-      position: 'sticky',
-      top: 0,
-      background: C.surfaceAlt,
-      color: C.textMuted,
-      textAlign: 'left',
-      padding: '9px 12px',
-      borderBottom: `1px solid ${C.border}`,
-      whiteSpace: 'nowrap',
-      fontWeight: 700
-    }
-  }, h)))), /*#__PURE__*/React.createElement("tbody", null, rows.map((r, i) => /*#__PURE__*/React.createElement("tr", {
-    key: i,
-    style: {
-      background: i % 2 === 0 ? 'transparent' : C.surfaceAlt
-    }
-  }, headers.map(h => /*#__PURE__*/React.createElement("td", {
-    key: h,
-    style: {
-      padding: '8px 12px',
-      borderBottom: `1px solid ${C.border}`,
-      whiteSpace: 'nowrap',
-      color: C.text
-    }
-  }, String(r[h] ?? ''))))))));
+    if (!a.ultimoParto) return 1;
+    if (!b.ultimoParto) return -1;
+    return b.ultimoParto.localeCompare(a.ultimoParto);
+  });
 }
 function calcularKPIs(matrizes, eventos) {
-  const cheias = matrizes.filter(m => m.status === 'Cheia').length;
-  const vazias = matrizes.filter(m => m.status === 'Vazia').length;
-  const descartes = matrizes.filter(m => m.status === 'Descarte').length;
-  const diagnosticos = eventos.filter(e => e.tipo === 'diagnostico');
-  const taxaPrenhez = diagnosticos.length ? diagnosticos.filter(d => d.resultado === 'Prenhe').length / diagnosticos.length * 100 : 0;
-  const nascimentosTodos = eventos.filter(e => e.tipo === 'nascimento');
-  const natimortos = nascimentosTodos.filter(n => n.resultadoParto === 'Natimorto').length;
-  const nascimentos = nascimentosTodos.filter(n => n.resultadoParto !== 'Natimorto');
+  const cheias = matrizes.filter((m) => m.status === "Cheia").length;
+  const vazias = matrizes.filter((m) => m.status === "Vazia").length;
+  const descartes = matrizes.filter((m) => m.status === "Descarte").length;
+  const diagnosticos = eventos.filter((e) => e.tipo === "diagnostico");
+  const taxaPrenhez = diagnosticos.length ? diagnosticos.filter((d) => d.resultado === "Prenhe").length / diagnosticos.length * 100 : 0;
+  const nascimentosTodos = eventos.filter((e) => e.tipo === "nascimento");
+  const natimortos = nascimentosTodos.filter((n) => n.resultadoParto === "Natimorto").length;
+  const nascimentos = nascimentosTodos.filter((n) => n.resultadoParto !== "Natimorto");
   const taxaPerda = nascimentosTodos.length ? natimortos / nascimentosTodos.length * 100 : 0;
-  const desmamas = eventos.filter(e => e.tipo === 'desmama');
+  const desmamas = eventos.filter((e) => e.tipo === "desmama");
   const taxaDesmama = nascimentos.length ? desmamas.length / nascimentos.length * 100 : 0;
-  const emRecria = matrizes.filter(m => m.categoria === 'Novilha' && m.status !== 'Descarte').length;
-  const vendas = eventos.filter(e => e.tipo === 'venda');
+  const emRecria = matrizes.filter((m) => m.categoria === "Novilha" && m.status !== "Descarte").length;
+  const vendas = eventos.filter((e) => e.tipo === "venda");
   const receitaTotal = vendas.reduce((s, v) => s + (parseFloat(v.valorTotal) || 0), 0);
   const custoFrete = vendas.reduce((s, v) => s + (parseFloat(v.frete) || 0), 0);
-  const custoIatf = eventos.filter(e => e.tipo === 'iatf').reduce((s, e) => s + (parseFloat(e.custo) || 0), 0);
+  const iatfs = eventos.filter((e) => e.tipo === "iatf");
+  const custoIatf = iatfs.reduce((s, e) => s + (parseFloat(e.custo) || 0), 0);
   const custoDiag = diagnosticos.reduce((s, e) => s + (parseFloat(e.custo) || 0), 0);
-  const custoInsumo = eventos.filter(e => e.tipo === 'insumo').reduce((s, e) => s + (parseFloat(e.custo) || 0), 0);
+  const custoInsumo = eventos.filter((e) => e.tipo === "insumo").reduce((s, e) => s + (parseFloat(e.custo) || 0), 0);
   const custoTotal = custoIatf + custoDiag + custoInsumo + custoFrete;
   const custoPorBezerro = nascimentos.length ? custoTotal / nascimentos.length : 0;
   const margem = receitaTotal - custoTotal;
-  const machos = nascimentos.filter(n => n.sexo === 'Macho').length;
-  const femeas = nascimentos.filter(n => n.sexo === 'Fêmea').length;
+  const machos = nascimentos.filter((n) => n.sexo === "Macho").length;
+  const femeas = nascimentos.filter((n) => n.sexo === "F\xEAmea").length;
   const pesoMedioDesmama = desmamas.length ? desmamas.reduce((s, d) => s + (parseFloat(d.pesoDesmama) || 0), 0) / desmamas.length : 0;
   return {
     total: matrizes.length,
@@ -814,5516 +348,1834 @@ function calcularKPIs(matrizes, eventos) {
     margem,
     machos,
     femeas,
-    pesoMedioDesmama
+    pesoMedioDesmama,
+    iatfs: iatfs.length,
+    diagnosticos: diagnosticos.length
   };
 }
-function buildResumoRows(kpis) {
-  return [['Total de matrizes', kpis.total], ['Cheias', kpis.cheias], ['Vazias', kpis.vazias], ['Descarte', kpis.descartes], ['Novilhas em recria', kpis.emRecria], ['Taxa de prenhez (%)', kpis.taxaPrenhez.toFixed(1)], ['', ''], ['Nascimentos', kpis.nascimentos], ['Natimortos', kpis.natimortos], ['Taxa de perda ao nascer (%)', kpis.taxaPerda.toFixed(1)], ['Nascimentos: machos', kpis.machos], ['Nascimentos: fêmeas', kpis.femeas], ['Desmamas', kpis.desmamas], ['Taxa de desmama (%)', kpis.taxaDesmama.toFixed(1)], ['Peso médio na desmama (kg)', kpis.pesoMedioDesmama.toFixed(1)], ['', ''], ['Receita total de vendas (R$)', kpis.receitaTotal.toFixed(2)], ['Custo total (R$)', kpis.custoTotal.toFixed(2)], ['Custo por bezerro (R$)', kpis.custoPorBezerro.toFixed(2)], ['Margem (R$)', kpis.margem.toFixed(2)]];
+function buildResumoRows(kpis, ano) {
+  return [
+    ["Ano de gest\xE3o", ano === "todos" || !ano ? "todos os anos" : String(ano)],
+    ["", ""],
+    ["Total de matrizes (hoje)", kpis.total],
+    ["Cheias (hoje)", kpis.cheias],
+    ["Vazias (hoje)", kpis.vazias],
+    ["Descarte (hoje)", kpis.descartes],
+    ["Novilhas em recria (hoje)", kpis.emRecria],
+    ["Taxa de prenhez do ano (%)", kpis.taxaPrenhez.toFixed(1)],
+    ["", ""],
+    ["Nascimentos", kpis.nascimentos],
+    ["Natimortos", kpis.natimortos],
+    ["Taxa de perda ao nascer (%)", kpis.taxaPerda.toFixed(1)],
+    ["Nascimentos: machos", kpis.machos],
+    ["Nascimentos: f\xEAmeas", kpis.femeas],
+    ["Desmamas", kpis.desmamas],
+    ["Taxa de desmama (%)", kpis.taxaDesmama.toFixed(1)],
+    ["Peso m\xE9dio na desmama (kg)", kpis.pesoMedioDesmama.toFixed(1)],
+    ["", ""],
+    ["Receita total de vendas (R$)", kpis.receitaTotal.toFixed(2)],
+    ["Custo total (R$)", kpis.custoTotal.toFixed(2)],
+    ["Custo por bezerro (R$)", kpis.custoPorBezerro.toFixed(2)],
+    ["Margem (R$)", kpis.margem.toFixed(2)]
+  ];
 }
-const fmtBRL = n => (n || 0).toLocaleString('pt-BR', {
-  style: 'currency',
-  currency: 'BRL'
-});
-
-// ---------- app principal ----------
-function GestaoPecuaria() {
-  const [tab, setTab] = useState('lancar');
-  const [matrizes, setMatrizes] = useState([]);
-  const [touros, setTouros] = useState([]);
-  const [eventos, setEventos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [tipoSelecionado, setTipoSelecionado] = useState('nascimento');
-  const [form, setForm] = useState(formularioInicial('nascimento'));
-  const [saveStatus, setSaveStatus] = useState(null);
-  const [filtroStatus, setFiltroStatus] = useState('todos');
-  const [busca, setBusca] = useState('');
-  const [buscaPrevisao, setBuscaPrevisao] = useState('');
-  const [filtroPrevisao, setFiltroPrevisao] = useState('Cheia');
-  const [planilhaTipo, setPlanilhaTipo] = useState('matrizes');
-  const [syncMsg, setSyncMsg] = useState(''); // aviso de problema com a planilha (vazio = tudo certo)
-  const [versaoScript, setVersaoScript] = useState(null);
-  const [editandoMatriz, setEditandoMatriz] = useState(null);
-  const [formEdicaoMatriz, setFormEdicaoMatriz] = useState({});
-  const [confirmAction, setConfirmAction] = useState(null); // null | 'import' | 'clear'
-  const [ownerMode, setOwnerMode] = useState(false);
-  const [showPinInput, setShowPinInput] = useState(false);
-  const [pinValue, setPinValue] = useState('');
-  const [pinError, setPinError] = useState(false);
-  const tiposVisiveis = ownerMode ? TIPOS_EVENTO : TIPOS_EVENTO.filter(t => TIPOS_FUNCIONARIO.includes(t.id));
-  function tentarDesbloquear() {
-    if (pinValue === OWNER_PIN) {
-      setOwnerMode(true);
-      setShowPinInput(false);
-      setPinValue('');
-      setPinError(false);
-    } else {
-      setPinError(true);
+function mapaBrincos(matrizes) {
+  return Object.fromEntries(matrizes.map((m) => [m.id, m.brinco]));
+}
+function nomeTouroEvento(e, touros) {
+  if (e.touroId === "__outro__") return e.touroOutro || "";
+  const t = (touros || []).find((x) => x.id === e.touroId);
+  return t && t.nome || e.touroOutro || "";
+}
+var semAcento = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "");
+var chave = (s) => semAcento(s).toLowerCase().trim();
+function acharMatrizPorBrinco(matrizes, brinco) {
+  const b = String(brinco ?? "").trim();
+  if (!b) return { erro: "brinco da matriz em branco" };
+  let achadas = matrizes.filter((m) => String(m.brinco).trim() === b);
+  if (!achadas.length && /^\d+$/.test(b)) achadas = matrizes.filter((m) => /^\d+$/.test(String(m.brinco)) && Number(m.brinco) === Number(b));
+  if (achadas.length === 1) return { matriz: achadas[0] };
+  if (achadas.length > 1) return { erro: `brinco ${b} aparece em mais de uma matriz` };
+  return { erro: `matriz ${b} n\xE3o encontrada` };
+}
+function novoId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+function camposFaltando(tipo, form) {
+  return (CAMPOS[tipo] || []).filter((c) => c.required && (!c.showIf || c.showIf(form)) && !form[c.key]);
+}
+function aplicarLancamento(estado, tipo, form, opcoes) {
+  const op = opcoes || {};
+  const id = op.id || novoId();
+  const now = op.now || (/* @__PURE__ */ new Date()).toISOString();
+  const { matrizes, touros, eventos } = estado;
+  const out = { eventosNovos: [], matrizesAlteradas: [], tourosNovos: [] };
+  let m = matrizes;
+  let t = touros;
+  let ev = eventos;
+  if (tipo === "cadastro") {
+    const nova = {
+      id,
+      brinco: form.brinco,
+      categoria: form.categoria || "Novilha",
+      raca: form.raca || "",
+      lote: form.lote || "",
+      dataNascimento: form.dataNascimento || "",
+      partosAnteriores: parseInt(form.partosAnteriores) || 0,
+      status: form.statusInicial || "Vazia",
+      createdAt: now
+    };
+    m = [...matrizes, nova];
+    out.matrizesAlteradas.push(nova);
+  } else if (tipo === "touro") {
+    const novo = {
+      id,
+      nome: form.nome,
+      raca: form.raca,
+      fornecedor: form.fornecedor || "",
+      anoAquisicao: form.anoAquisicao || "",
+      doses: parseInt(form.doses) || 0,
+      custoDose: parseFloat(form.custoDose) || 0,
+      observacoes: form.observacoes || "",
+      createdAt: now
+    };
+    t = [...touros, novo];
+    out.tourosNovos.push(novo);
+  } else if (tipo === "descarte") {
+    m = matrizes.map((x) => x.id === form.matrizId ? { ...x, status: "Descarte" } : x);
+    const novoEvento = { id, tipo: "descarte", ...form, createdAt: now };
+    ev = [...eventos, novoEvento];
+    out.eventosNovos.push(novoEvento);
+    const alt = m.find((x) => x.id === form.matrizId);
+    if (alt) out.matrizesAlteradas.push(alt);
+  } else if (tipo === "diagnostico") {
+    const novoStatus = form.resultado === "Prenhe" ? "Cheia" : form.resultado === "Descarte" ? "Descarte" : "Vazia";
+    m = matrizes.map((x) => x.id === form.matrizId ? { ...x, status: novoStatus } : x);
+    out.eventosNovos.push({ id, tipo: "diagnostico", ...form, createdAt: now });
+    if (form.resultado === "Descarte") {
+      out.eventosNovos.push({
+        id: `${id}-desc`,
+        tipo: "descarte",
+        matrizId: form.matrizId,
+        data: form.data,
+        motivo: form.motivo || "Identificado no diagn\xF3stico veterin\xE1rio",
+        origemDiagnostico: true,
+        createdAt: now
+      });
     }
+    ev = [...eventos, ...out.eventosNovos];
+    const alt = m.find((x) => x.id === form.matrizId);
+    if (alt) out.matrizesAlteradas.push(alt);
+  } else if (tipo === "nascimento") {
+    const novoEvento = { id, tipo: "nascimento", ...form, createdAt: now };
+    const eventosNext = [...eventos, novoEvento];
+    if (form.matrizId) {
+      const partosNaFazenda = eventosNext.filter((e) => e.tipo === "nascimento" && e.matrizId === form.matrizId).length;
+      m = matrizes.map((x) => {
+        if (x.id !== form.matrizId) return x;
+        let categoria = x.categoria;
+        if (categoria === "Novilha" && partosNaFazenda >= 1) categoria = "Prim\xEDpara";
+        else if (categoria === "Prim\xEDpara" && partosNaFazenda >= 2) categoria = "Mult\xEDpara";
+        const atualizada = { ...x, categoria, status: x.status === "Cheia" ? "Vazia" : x.status };
+        out.matrizesAlteradas.push(atualizada);
+        return atualizada;
+      });
+    }
+    ev = eventosNext;
+    out.eventosNovos.push(novoEvento);
+  } else {
+    const novoEvento = { id, tipo, ...form, createdAt: now };
+    ev = [...eventos, novoEvento];
+    out.eventosNovos.push(novoEvento);
   }
-  function bloquear() {
-    setOwnerMode(false);
-    if (tab !== 'lancar') setTab('lancar');
-    if (!TIPOS_FUNCIONARIO.includes(tipoSelecionado)) setTipoSelecionado('nascimento');
+  return { estado: { matrizes: m, touros: t, eventos: ev }, ...out };
+}
+function normSexo(v) {
+  const s = chave(v);
+  if (["m", "macho", "boi", "bezerro", "garrote"].includes(s)) return "Macho";
+  if (["f", "femea", "bezerra", "novilha"].includes(s)) return "F\xEAmea";
+  return "";
+}
+function normResultadoDiag(v) {
+  const s = chave(v);
+  if (["prenhe", "prenha", "p", "+", "positivo", "cheia", "gestante"].includes(s)) return "Prenhe";
+  if (["vazia", "v", "-", "negativo", "falhada", "falhou"].includes(s)) return "Vazia";
+  if (["descarte", "d", "descartar"].includes(s)) return "Descarte";
+  return "";
+}
+function normResultadoParto(v) {
+  const s = chave(v);
+  if (!s || ["vivo", "viva", "v", "nasceu vivo"].includes(s)) return "Vivo";
+  if (["natimorto", "morto", "morta", "n", "nasceu morto"].includes(s)) return "Natimorto";
+  return "";
+}
+function acharTouro(touros, nome) {
+  const k = chave(nome);
+  if (!k) return null;
+  return touros.find((t) => chave(t.nome) === k) || touros.find((t) => chave(t.nome).includes(k)) || null;
+}
+function itemParaFormulario(item, estado, hoje) {
+  const tipo = item.tipo;
+  if (!CAMPOS[tipo]) return { erro: `tipo desconhecido: ${tipo}` };
+  const f = {};
+  const data = parseDataFlex(item.data, hoje);
+  const comData = !["cadastro", "touro", "desmama"].includes(tipo) || tipo === "desmama";
+  if (comData) {
+    if (!data) return { erro: `data inv\xE1lida ou em branco (${item.data ?? ""})` };
+    f.data = data;
   }
+  const exigeMatriz = ["iatf", "diagnostico", "descarte", "recria"].includes(tipo);
+  if (exigeMatriz || tipo === "nascimento" && item.matriz) {
+    const r = acharMatrizPorBrinco(estado.matrizes, item.matriz);
+    if (r.erro) return { erro: r.erro };
+    f.matrizId = r.matriz.id;
+    f._matrizBrinco = r.matriz.brinco;
+  }
+  if (tipo === "nascimento") {
+    f.resultadoParto = normResultadoParto(item.resultado);
+    if (!f.resultadoParto) return { erro: `resultado do parto n\xE3o entendido (${item.resultado})` };
+    if (item.sexo) {
+      f.sexo = normSexo(item.sexo);
+      if (!f.sexo) return { erro: `sexo n\xE3o entendido (${item.sexo})` };
+    }
+    if (item.pelagem) f.pelagem = item.pelagem;
+    f.tipoParto = item.tipoParto || "Normal";
+    if (item.obs) f.observacoes = item.obs;
+    if (item.brincoCria) f.brincoBezerro = String(item.brincoCria).trim();
+    if (item.pai) {
+      const t = acharTouro(estado.touros, item.pai);
+      if (t) f.touroId = t.id;
+      else {
+        f.touroId = "__outro__";
+        f.touroOutro = String(item.pai);
+      }
+    }
+  } else if (tipo === "diagnostico") {
+    f.resultado = normResultadoDiag(item.resultado);
+    if (!f.resultado) return { erro: `resultado do toque n\xE3o entendido (${item.resultado})` };
+    if (item.dg !== void 0 && item.dg !== "" && item.dg !== null) {
+      const dg = parseInt(item.dg, 10);
+      if (isNaN(dg) || dg < 0 || dg > 300) return { erro: `DG fora do normal (${item.dg})` };
+      f.dg = dg;
+    }
+    if (item.metodo) f.metodo = item.metodo;
+    if (item.veterinario) f.veterinario = item.veterinario;
+    if (item.motivo) f.motivo = item.motivo;
+    if (item.custo) f.custo = item.custo;
+  } else if (tipo === "iatf") {
+    f.tipoServico = item.tipoServico || "IATF";
+    if (item.tentativa) f.numeroServico = item.tentativa;
+    const ini = parseDataFlex(item.inicioProtocolo, hoje);
+    if (ini) f.dataInicioProtocolo = ini;
+    if (item.touro) {
+      const t = acharTouro(estado.touros, item.touro);
+      if (t) f.touroId = t.id;
+      else {
+        f.touroId = "__outro__";
+        f.touroOutro = String(item.touro);
+      }
+    }
+    if (item.tecnico) f.tecnico = item.tecnico;
+    if (item.custo) f.custo = item.custo;
+    if (item.obs) f.observacoes = item.obs;
+  } else if (tipo === "desmama") {
+    if (!item.brincoCria) return { erro: "brinco da cria em branco" };
+    f.brincoBezerro = String(item.brincoCria).trim();
+    if (item.peso) f.pesoDesmama = item.peso;
+    if (item.idadeDias) f.idadeDias = item.idadeDias;
+  } else if (tipo === "descarte") {
+    if (item.motivo) f.motivo = item.motivo;
+  } else if (tipo === "recria") {
+    if (item.peso) f.pesoAtual = item.peso;
+    if (item.apta) f.aptaReproducao = item.apta;
+    if (item.obs) f.observacoes = item.obs;
+  } else if (tipo === "insumo") {
+    ["produto", "quantidade", "unidade", "custo", "categoriaAnimal"].forEach((k) => {
+      if (item[k] !== void 0 && item[k] !== "") f[k] = item[k];
+    });
+  } else if (tipo === "venda") {
+    ["categoria", "animais", "pesoTotal", "valorArroba", "valorTotal", "frete", "comprador"].forEach((k) => {
+      if (item[k] !== void 0 && item[k] !== "") f[k] = item[k];
+    });
+  } else if (tipo === "cadastro") {
+    if (!String(item.brinco ?? "").trim()) return { erro: "brinco em branco" };
+    f.brinco = String(item.brinco).trim();
+    ["categoria", "raca", "lote", "partosAnteriores"].forEach((k) => {
+      if (item[k] !== void 0 && item[k] !== "") f[k] = item[k];
+    });
+    const dn = parseDataFlex(item.dataNascimento, hoje);
+    if (dn) f.dataNascimento = dn;
+    if (item.status) f.statusInicial = item.status;
+  }
+  return { form: f };
+}
+function jaExiste(tipo, form, estado) {
+  const { eventos, matrizes } = estado;
+  if (tipo === "cadastro") return matrizes.some((m) => String(m.brinco).trim() === String(form.brinco).trim());
+  if (tipo === "desmama") return eventos.some((e) => e.tipo === "desmama" && e.brincoBezerro === form.brincoBezerro && e.data === form.data);
+  if (tipo === "nascimento") {
+    return eventos.some((e) => e.tipo === "nascimento" && e.data === form.data && (form.matrizId && e.matrizId === form.matrizId || form.brincoBezerro && e.brincoBezerro === form.brincoBezerro));
+  }
+  if (tipo === "diagnostico") return eventos.some((e) => e.tipo === "diagnostico" && e.matrizId === form.matrizId && e.data === form.data);
+  if (["iatf", "descarte", "recria"].includes(tipo)) return eventos.some((e) => e.tipo === tipo && e.matrizId === form.matrizId && e.data === form.data);
+  return false;
+}
+function aplicarLote(estado, itens, opcoes) {
+  const op = opcoes || {};
+  const hoje = op.hoje || todayISO();
+  const now = op.now || (/* @__PURE__ */ new Date()).toISOString();
+  let atual = estado;
+  const aplicados = [];
+  const rejeitados = [];
+  const avisos = [];
+  const eventosParaGravar = [];
+  const matrizesMap = /* @__PURE__ */ new Map();
+  const tourosParaGravar = [];
+  itens.forEach((item, indice) => {
+    const conv = itemParaFormulario(item, atual, hoje);
+    if (conv.erro) {
+      rejeitados.push({ indice, item, motivo: conv.erro });
+      return;
+    }
+    const form = conv.form;
+    const brincoMae = form._matrizBrinco;
+    delete form._matrizBrinco;
+    if (item.tipo === "nascimento" && form.sexo && !form.brincoBezerro) {
+      const sug = sugerirBrincoBezerro(form.data, form.sexo, atual.eventos);
+      if (sug) {
+        form.brincoBezerro = sug;
+        avisos.push({ indice, aviso: `brinco da cria sugerido: ${sug}` });
+      }
+    }
+    const faltando = camposFaltando(item.tipo, form);
+    if (faltando.length) {
+      rejeitados.push({ indice, item, motivo: `faltou: ${faltando.map((c) => c.label).join(", ")}` });
+      return;
+    }
+    if (!item.forcar && jaExiste(item.tipo, form, atual)) {
+      rejeitados.push({ indice, item, motivo: "esse lan\xE7amento j\xE1 existe (mesma matriz/cria e data)" });
+      return;
+    }
+    if (item.tipo === "nascimento" && form.matrizId) {
+      const m0 = atual.matrizes.find((x) => x.id === form.matrizId);
+      if (m0 && m0.status !== "Cheia") avisos.push({ indice, aviso: `matriz ${m0.brinco} estava ${m0.status}, n\xE3o Cheia; confira se o toque dela foi lan\xE7ado` });
+    }
+    const r = aplicarLancamento(atual, item.tipo, form, { id: novoId(), now });
+    atual = r.estado;
+    r.eventosNovos.forEach((e) => eventosParaGravar.push({ tipo: e.tipo, evento: e }));
+    r.matrizesAlteradas.forEach((m) => matrizesMap.set(m.id, m));
+    r.tourosNovos.forEach((t) => tourosParaGravar.push(t));
+    aplicados.push({ indice, item, mae: brincoMae || "", form, eventos: r.eventosNovos, matrizes: r.matrizesAlteradas });
+  });
+  return {
+    estado: atual,
+    aplicados,
+    rejeitados,
+    avisos,
+    eventosParaGravar,
+    matrizesParaGravar: [...matrizesMap.values()],
+    tourosParaGravar
+  };
+}
+var listaBrincos = (arr) => arr.join(", ");
+function relatorioPrevisaoParto(matrizes, eventos, hoje) {
+  hoje = hoje || todayISO();
+  const cheias = linhasPrevisao(matrizes, eventos, "Cheia", hoje, "");
+  const atrasadas = cheias.filter((l) => l.dias !== null && l.dias < 0);
+  const futuras = cheias.filter((l) => l.dias !== null && l.dias >= 0);
+  const semPrev = cheias.filter((l) => l.dias === null);
+  const porMes = /* @__PURE__ */ new Map();
+  futuras.forEach((l) => {
+    const k = l.previsao.slice(0, 7);
+    if (!porMes.has(k)) porMes.set(k, []);
+    porMes.get(k).push(l.matriz.brinco);
+  });
+  const linhasMes = [];
+  if (atrasadas.length) linhasMes.push({ periodo: "Atrasadas", qtd: atrasadas.length, brincos: listaBrincos(atrasadas.map((l) => l.matriz.brinco)) });
+  [...porMes.keys()].sort().forEach((k) => linhasMes.push({ periodo: mesCurto(k), qtd: porMes.get(k).length, brincos: listaBrincos(porMes.get(k)) }));
+  if (semPrev.length) linhasMes.push({ periodo: "Sem previs\xE3o", qtd: semPrev.length, brincos: listaBrincos(semPrev.map((l) => l.matriz.brinco)) });
+  const prox30 = futuras.filter((l) => l.dias <= 30).length;
+  return {
+    titulo: "Previs\xE3o de parto",
+    resumo: [
+      { rotulo: "Cheias", valor: cheias.length },
+      { rotulo: "Atrasadas", valor: atrasadas.length },
+      { rotulo: "Pr\xF3ximos 30 dias", valor: prox30 },
+      { rotulo: "Sem previs\xE3o calculada", valor: semPrev.length }
+    ],
+    secoes: [
+      {
+        titulo: "Partos previstos por m\xEAs",
+        nota: `C\xE1lculo: toque menos os dias de gesta\xE7\xE3o (DG) mais ${PERIODO_GESTACAO_DIAS} dias; sem DG, a IATF mais recente mais ${PERIODO_GESTACAO_DIAS}. "Atrasadas" s\xE3o as que j\xE1 passaram da data: confira se pariram.`,
+        colunas: [{ k: "periodo", label: "Per\xEDodo" }, { k: "qtd", label: "Vacas", align: "right", mono: true }, { k: "brincos", label: "Brincos", mono: true }],
+        linhas: linhasMes
+      },
+      {
+        titulo: "Vaca por vaca",
+        colunas: [
+          { k: "brinco", label: "Brinco", mono: true },
+          { k: "categoria", label: "Categoria" },
+          { k: "previsao", label: "Previs\xE3o", mono: true },
+          { k: "dias", label: "Dias", align: "right", mono: true }
+        ],
+        linhas: cheias.map((l) => ({
+          brinco: l.matriz.brinco,
+          categoria: [l.matriz.categoria, l.matriz.raca].filter(Boolean).join(" \xB7 "),
+          previsao: l.previsao ? formatarDataBR(l.previsao) : "\u2014",
+          dias: l.dias === null ? "\u2014" : l.dias
+        }))
+      }
+    ]
+  };
+}
+function relatorioNascimentos(matrizes, eventos, touros, ano) {
+  const nascs = filtrarPorAno(eventos, ano).filter((e) => e.tipo === "nascimento");
+  const mapa = mapaBrincos(matrizes);
+  const vivos = nascs.filter((n) => n.resultadoParto !== "Natimorto");
+  const machos = vivos.filter((n) => n.sexo === "Macho").length;
+  const femeas = vivos.filter((n) => n.sexo === "F\xEAmea").length;
+  const semSexo = vivos.length - machos - femeas;
+  const natimortos = nascs.length - vivos.length;
+  const contar = (lista) => {
+    const v = lista.filter((n) => n.resultadoParto !== "Natimorto");
+    return {
+      machos: v.filter((n) => n.sexo === "Macho").length,
+      femeas: v.filter((n) => n.sexo === "F\xEAmea").length,
+      semSexo: v.filter((n) => n.sexo !== "Macho" && n.sexo !== "F\xEAmea").length,
+      natimortos: lista.length - v.length,
+      total: lista.length
+    };
+  };
+  const meses = /* @__PURE__ */ new Map();
+  nascs.forEach((n) => {
+    const k = (n.data || "").slice(0, 7) || "sem-data";
+    if (!meses.has(k)) meses.set(k, []);
+    meses.get(k).push(n);
+  });
+  const linhasMes = [...meses.keys()].sort().map((k) => ({ periodo: k === "sem-data" ? "Sem data" : mesCurto(k), ...contar(meses.get(k)) }));
+  if (linhasMes.length) linhasMes.push({ periodo: "Total", ...contar(nascs) });
+  const pais = /* @__PURE__ */ new Map();
+  nascs.forEach((n) => {
+    const nome = nomeTouroEvento(n, touros) || "Pai n\xE3o informado";
+    if (!pais.has(nome)) pais.set(nome, []);
+    pais.get(nome).push(n);
+  });
+  const linhasPai = [...pais.entries()].sort((a, b) => b[1].length - a[1].length).map(([nome, lista]) => ({ pai: nome, ...contar(lista) }));
+  const colSexo = [
+    { k: "machos", label: "Machos", align: "right", mono: true },
+    { k: "femeas", label: "F\xEAmeas", align: "right", mono: true },
+    { k: "semSexo", label: "Sem sexo", align: "right", mono: true },
+    { k: "natimortos", label: "Natim.", align: "right", mono: true },
+    { k: "total", label: "Total", align: "right", mono: true }
+  ];
+  const pct = (x, base) => base ? `${Math.round(x / base * 100)}%` : "\u2014";
+  return {
+    titulo: `Nascimentos por sexo \xB7 ${rotuloAno(ano)}`,
+    resumo: [
+      { rotulo: "Nascimentos", valor: nascs.length },
+      { rotulo: "Machos", valor: `${machos} (${pct(machos, machos + femeas)})` },
+      { rotulo: "F\xEAmeas", valor: `${femeas} (${pct(femeas, machos + femeas)})` },
+      { rotulo: "Natimortos", valor: natimortos },
+      { rotulo: "Vivos sem sexo anotado", valor: semSexo }
+    ],
+    secoes: [
+      { titulo: "Por m\xEAs", colunas: [{ k: "periodo", label: "M\xEAs" }, ...colSexo], linhas: linhasMes },
+      { titulo: "Por pai (touro / s\xEAmen)", colunas: [{ k: "pai", label: "Pai" }, ...colSexo], linhas: linhasPai },
+      {
+        titulo: "Lan\xE7amentos",
+        colunas: [
+          { k: "data", label: "Data", mono: true },
+          { k: "mae", label: "M\xE3e", mono: true },
+          { k: "cria", label: "Cria", mono: true },
+          { k: "sexo", label: "Sexo" },
+          { k: "resultado", label: "Resultado" }
+        ],
+        linhas: [...nascs].sort((a, b) => (b.data || "").localeCompare(a.data || "")).map((n) => ({
+          data: formatarDataBR(n.data),
+          mae: mapa[n.matrizId] || "\u2014",
+          cria: n.brincoBezerro || "\u2014",
+          sexo: n.sexo || "\u2014",
+          resultado: n.resultadoParto || ""
+        }))
+      }
+    ]
+  };
+}
+function gestacoesDe(matrizId, eventos) {
+  const diags = eventos.filter((e) => e.tipo === "diagnostico" && e.matrizId === matrizId && e.resultado === "Prenhe" && e.data).sort((a, b) => a.data.localeCompare(b.data));
+  const partos = eventos.filter((e) => e.tipo === "nascimento" && e.matrizId === matrizId && e.data).map((e) => e.data).sort();
+  const iatfs = eventos.filter((e) => e.tipo === "iatf" && e.matrizId === matrizId && e.data).map((e) => e.data).sort();
+  const grupos = [];
+  diags.forEach((d) => {
+    const g = grupos[grupos.length - 1];
+    const mesmaGestacao = g && diasEntre(g.ultima, d.data) <= 150 && !partos.some((p) => p > g.ultima && p <= d.data);
+    if (mesmaGestacao) {
+      g.diags.push(d);
+      g.ultima = d.data;
+    } else grupos.push({ diags: [d], primeira: d.data, ultima: d.data });
+  });
+  return grupos.map((g) => {
+    const comDG = [...g.diags].reverse().find((d) => d.dg !== "" && d.dg !== null && d.dg !== void 0 && !isNaN(parseInt(d.dg, 10)));
+    let concepcao = null;
+    if (comDG) concepcao = addDias(comDG.data, -parseInt(comDG.dg, 10));
+    else {
+      const candidatas = iatfs.filter((i) => i <= g.primeira && diasEntre(i, g.primeira) <= 90);
+      if (candidatas.length) concepcao = candidatas[candidatas.length - 1];
+    }
+    const partoAnterior = concepcao ? [...partos].reverse().find((p) => p < concepcao) : null;
+    const diasAbertos = concepcao && partoAnterior ? diasEntre(partoAnterior, concepcao) : null;
+    return { primeira: g.primeira, concepcao, partoAnterior: partoAnterior || null, diasAbertos: diasAbertos !== null && diasAbertos > 0 && diasAbertos < 700 ? diasAbertos : null };
+  });
+}
+function mediaOuNull(nums) {
+  const v = nums.filter((n) => n !== null && n !== void 0 && !isNaN(n));
+  return v.length ? Math.round(v.reduce((s, n) => s + n, 0) / v.length) : null;
+}
+function relatorioMelhoresVacas(matrizes, eventos, ano) {
+  const noPeriodo = (d) => ano === "todos" || anoDe(d) === ano;
+  const linhas = matrizes.map((m) => {
+    const servicos = eventos.filter((e) => e.tipo === "iatf" && e.matrizId === m.id && noPeriodo(e.data)).length;
+    const gest = gestacoesDe(m.id, eventos).filter((g) => noPeriodo(g.primeira));
+    const partos = eventos.filter((e) => e.tipo === "nascimento" && e.matrizId === m.id && noPeriodo(e.data)).length;
+    const datasPartos = eventos.filter((e) => e.tipo === "nascimento" && e.matrizId === m.id && e.data).map((e) => e.data).sort();
+    const intervalos = [];
+    for (let i = 1; i < datasPartos.length; i++) {
+      const d = diasEntre(datasPartos[i - 1], datasPartos[i]);
+      if (d > 200 && d < 900) intervalos.push(d);
+    }
+    const prenhezes = gest.length;
+    return {
+      m,
+      servicos,
+      prenhezes,
+      partos,
+      taxa: servicos ? Math.min(100, Math.round(prenhezes / servicos * 100)) : null,
+      diasAbertos: mediaOuNull(gest.map((g) => g.diasAbertos)),
+      ipp: mediaOuNull(intervalos)
+    };
+  }).filter((l) => l.servicos > 0 || l.prenhezes > 0);
+  linhas.sort((a, b) => b.prenhezes - a.prenhezes || (b.taxa ?? -1) - (a.taxa ?? -1) || (a.diasAbertos ?? 9999) - (b.diasAbertos ?? 9999) || String(a.m.brinco).localeCompare(String(b.m.brinco), "pt-BR", { numeric: true }));
+  const colunas = [
+    { k: "pos", label: "#", align: "right", mono: true },
+    { k: "brinco", label: "Brinco", mono: true },
+    { k: "servicos", label: "IATF", align: "right", mono: true },
+    { k: "prenhezes", label: "Prenhez", align: "right", mono: true },
+    { k: "taxa", label: "Taxa", align: "right", mono: true },
+    { k: "diasAbertos", label: "Dias abertos", align: "right", mono: true },
+    { k: "ipp", label: "Interv. partos", align: "right", mono: true },
+    { k: "partos", label: "Partos", align: "right", mono: true }
+  ];
+  const fmt = (l, i) => ({
+    pos: i + 1,
+    brinco: l.m.brinco,
+    servicos: l.servicos,
+    prenhezes: l.prenhezes,
+    taxa: l.taxa === null ? "\u2014" : `${l.taxa}%`,
+    diasAbertos: l.diasAbertos === null ? "\u2014" : l.diasAbertos,
+    ipp: l.ipp === null ? "\u2014" : l.ipp,
+    partos: l.partos
+  });
+  const comPrenhez = linhas.filter((l) => l.prenhezes > 0);
+  const observar = linhas.filter((l) => l.servicos >= 2 && l.prenhezes === 0);
+  return {
+    titulo: `Melhores vacas em prenhez \xB7 ${rotuloAno(ano)}`,
+    resumo: [
+      { rotulo: "Vacas com IATF ou toque no per\xEDodo", valor: linhas.length },
+      { rotulo: "Com prenhez confirmada", valor: comPrenhez.length },
+      { rotulo: "Para observar (2+ IATF, sem prenhez)", valor: observar.length }
+    ],
+    secoes: [
+      {
+        titulo: "Ranking",
+        nota: 'Ordem: mais prenhezes, depois melhor taxa (prenhez por IATF), depois menos dias abertos (do parto at\xE9 a concep\xE7\xE3o). "Interv. partos" usa todo o hist\xF3rico lan\xE7ado. Tra\xE7o (\u2014) = faltou informa\xE7\xE3o para calcular.',
+        colunas,
+        linhas: comPrenhez.slice(0, 25).map(fmt)
+      },
+      {
+        titulo: "Para observar",
+        nota: "Duas ou mais IATF no per\xEDodo e nenhuma prenhez confirmada. Vale rever com o veterin\xE1rio.",
+        colunas: colunas.filter((c) => ["pos", "brinco", "servicos", "prenhezes", "partos"].includes(c.k)),
+        linhas: observar.map(fmt)
+      }
+    ]
+  };
+}
+function relatorioIATF(matrizes, eventos, touros, ano) {
+  const todas = eventos.filter((e) => e.tipo === "iatf" && e.data);
+  const doAno = filtrarPorAno(todas, ano);
+  const resultadoDe = (iatf) => {
+    const proximas = todas.filter((x) => x.matrizId === iatf.matrizId && x.data > iatf.data).map((x) => x.data).sort();
+    const limite = proximas.length ? proximas[0] : addDias(iatf.data, 150);
+    const diags = eventos.filter((e) => e.tipo === "diagnostico" && e.matrizId === iatf.matrizId && e.data > iatf.data && e.data <= limite).sort((a, b) => a.data.localeCompare(b.data));
+    if (diags.some((d) => d.resultado === "Prenhe")) return "Prenhe";
+    if (diags.length) return "Vazia";
+    return "Sem diagn\xF3stico";
+  };
+  const itens = doAno.map((e) => ({ e, r: resultadoDe(e) }));
+  const contar = (lista) => {
+    const prenhes = lista.filter((x) => x.r === "Prenhe").length;
+    const vazias = lista.filter((x) => x.r === "Vazia").length;
+    const sem = lista.length - prenhes - vazias;
+    return { total: lista.length, prenhes, vazias, sem, taxa: prenhes + vazias ? `${Math.round(prenhes / (prenhes + vazias) * 100)}%` : "\u2014" };
+  };
+  const agrupar = (chaveFn) => {
+    const mapa = /* @__PURE__ */ new Map();
+    itens.forEach((x) => {
+      const k = chaveFn(x.e);
+      if (!mapa.has(k)) mapa.set(k, []);
+      mapa.get(k).push(x);
+    });
+    return mapa;
+  };
+  const cols = [
+    { k: "total", label: "IATF", align: "right", mono: true },
+    { k: "prenhes", label: "Prenhes", align: "right", mono: true },
+    { k: "vazias", label: "Vazias", align: "right", mono: true },
+    { k: "sem", label: "Sem diag.", align: "right", mono: true },
+    { k: "taxa", label: "Taxa", align: "right", mono: true }
+  ];
+  const porData = agrupar((e) => e.data);
+  const porTent = agrupar((e) => e.numeroServico || "N\xE3o informada");
+  const porTouro = agrupar((e) => nomeTouroEvento(e, touros) || "Touro/s\xEAmen n\xE3o informado");
+  const porTipo = agrupar((e) => e.tipoServico || "IATF");
+  const total = contar(itens);
+  const custo = doAno.reduce((s, e) => s + (parseFloat(e.custo) || 0), 0);
+  return {
+    titulo: `IATF \xB7 ${rotuloAno(ano)}`,
+    resumo: [
+      { rotulo: "IATF / coberturas", valor: total.total },
+      { rotulo: "Prenhes", valor: total.prenhes },
+      { rotulo: "Vazias", valor: total.vazias },
+      { rotulo: "Sem diagn\xF3stico ainda", valor: total.sem },
+      { rotulo: "Taxa de prenhez (diagnosticadas)", valor: total.taxa },
+      ...custo > 0 ? [{ rotulo: "Custo lan\xE7ado (R$)", valor: custo.toFixed(2) }] : []
+    ],
+    secoes: [
+      {
+        titulo: "Por data (lote de IATF)",
+        nota: "Resultado = o que o toque seguinte registrou para aquela vaca (at\xE9 a pr\xF3xima IATF dela, no m\xE1ximo 150 dias).",
+        colunas: [{ k: "chave", label: "Data", mono: true }, ...cols],
+        linhas: [...porData.keys()].sort().map((k) => ({ chave: formatarDataBR(k), ...contar(porData.get(k)) }))
+      },
+      { titulo: "Por tentativa", colunas: [{ k: "chave", label: "Tentativa" }, ...cols], linhas: [...porTent.keys()].sort().map((k) => ({ chave: k, ...contar(porTent.get(k)) })) },
+      { titulo: "Por touro / s\xEAmen", colunas: [{ k: "chave", label: "Touro / s\xEAmen" }, ...cols], linhas: [...porTouro.keys()].sort().map((k) => ({ chave: k, ...contar(porTouro.get(k)) })) },
+      { titulo: "Por tipo de servi\xE7o", colunas: [{ k: "chave", label: "Tipo" }, ...cols], linhas: [...porTipo.keys()].sort().map((k) => ({ chave: k, ...contar(porTipo.get(k)) })) }
+    ]
+  };
+}
+function relatorioSituacaoVacas(matrizes, eventos, hoje) {
+  hoje = hoje || todayISO();
+  const brincosDe = (arr) => listaBrincos(arr.map((m) => m.brinco));
+  const contarPor = (campo, vazioRotulo) => {
+    const mapa = /* @__PURE__ */ new Map();
+    matrizes.forEach((m) => {
+      const k = m[campo] || vazioRotulo;
+      if (!mapa.has(k)) mapa.set(k, []);
+      mapa.get(k).push(m);
+    });
+    return [...mapa.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, lista]) => ({
+      chave: k,
+      total: lista.length,
+      cheias: lista.filter((m) => m.status === "Cheia").length,
+      vazias: lista.filter((m) => m.status === "Vazia").length,
+      descarte: lista.filter((m) => m.status === "Descarte").length
+    }));
+  };
+  const cols = [
+    { k: "total", label: "Total", align: "right", mono: true },
+    { k: "cheias", label: "Cheias", align: "right", mono: true },
+    { k: "vazias", label: "Vazias", align: "right", mono: true },
+    { k: "descarte", label: "Descarte", align: "right", mono: true }
+  ];
+  const cheias = matrizes.filter((m) => m.status === "Cheia");
+  const vazias = matrizes.filter((m) => m.status === "Vazia");
+  const descarte = matrizes.filter((m) => m.status === "Descarte");
+  const prev = (m) => previsaoPartoInfo(m.id, eventos);
+  const cheiasEmDia = cheias.filter((m) => {
+    const p = prev(m);
+    return p && p.data && diasEntre(hoje, p.data) >= 0;
+  });
+  const cheiasAtrasadas = cheias.filter((m) => {
+    const p = prev(m);
+    return p && p.data && diasEntre(hoje, p.data) < 0;
+  });
+  const cheiasSemPrev = cheias.filter((m) => {
+    const p = prev(m);
+    return !p || !p.data;
+  });
+  const diasDesdeParto = (m) => {
+    const u = ultimoPartoDe(m.id, eventos);
+    return u ? diasEntre(u, hoje) : null;
+  };
+  const vaziasRecentes = vazias.filter((m) => {
+    const d = diasDesdeParto(m);
+    return d !== null && d <= 60;
+  });
+  const vaziasACobrir = vazias.filter((m) => {
+    const d = diasDesdeParto(m);
+    return d !== null && d > 60;
+  });
+  const vaziasSemParto = vazias.filter((m) => diasDesdeParto(m) === null);
+  const semHistorico = matrizes.filter((m) => m.status !== "Descarte" && !eventos.some((e) => (e.tipo === "iatf" || e.tipo === "diagnostico") && e.matrizId === m.id));
+  const bucket = (rotulo, arr) => ({ situacao: rotulo, qtd: arr.length, brincos: brincosDe(arr) });
+  return {
+    titulo: "Situa\xE7\xE3o das vacas \xB7 hoje",
+    resumo: [
+      { rotulo: "Matrizes", valor: matrizes.length },
+      { rotulo: "Cheias", valor: cheias.length },
+      { rotulo: "Vazias", valor: vazias.length },
+      { rotulo: "Descarte", valor: descarte.length },
+      { rotulo: "Sem IATF nem toque lan\xE7ados", valor: semHistorico.length }
+    ],
+    secoes: [
+      {
+        titulo: "Situa\xE7\xE3o reprodutiva",
+        nota: 'Vazia "a cobrir" = mais de 60 dias desde o \xFAltimo parto lan\xE7ado. Vazia sem parto lan\xE7ado = a vaca n\xE3o tem nascimento registrado no sistema.',
+        colunas: [{ k: "situacao", label: "Situa\xE7\xE3o" }, { k: "qtd", label: "Vacas", align: "right", mono: true }, { k: "brincos", label: "Brincos", mono: true }],
+        linhas: [
+          bucket("Cheia, parto no prazo", cheiasEmDia),
+          bucket("Cheia, parto atrasado (conferir)", cheiasAtrasadas),
+          bucket("Cheia, sem previs\xE3o calculada", cheiasSemPrev),
+          bucket("Vazia, parto recente (at\xE9 60 dias)", vaziasRecentes),
+          bucket("Vazia, a cobrir (mais de 60 dias do parto)", vaziasACobrir),
+          bucket("Vazia, sem parto lan\xE7ado", vaziasSemParto),
+          bucket("Descarte", descarte)
+        ]
+      },
+      { titulo: "Por categoria", colunas: [{ k: "chave", label: "Categoria" }, ...cols], linhas: contarPor("categoria", "Sem categoria") },
+      { titulo: "Por ra\xE7a", colunas: [{ k: "chave", label: "Ra\xE7a" }, ...cols], linhas: contarPor("raca", "Ra\xE7a n\xE3o informada") },
+      { titulo: "Por lote", colunas: [{ k: "chave", label: "Lote" }, ...cols], linhas: contarPor("lote", "Sem lote") }
+    ]
+  };
+}
+var RELATORIOS = [
+  { id: "previsao", titulo: "Previs\xE3o de parto", porAno: false },
+  { id: "nascimentos", titulo: "Nascimentos por sexo", porAno: true },
+  { id: "melhores", titulo: "Melhores vacas em prenhez", porAno: true },
+  { id: "iatf", titulo: "IATF", porAno: true },
+  { id: "situacao", titulo: "Situa\xE7\xE3o das vacas", porAno: false }
+];
+function montarRelatorio(id, { matrizes, touros, eventos }, ano, hoje) {
+  if (id === "previsao") return relatorioPrevisaoParto(matrizes, eventos, hoje);
+  if (id === "nascimentos") return relatorioNascimentos(matrizes, eventos, touros, ano);
+  if (id === "melhores") return relatorioMelhoresVacas(matrizes, eventos, ano);
+  if (id === "iatf") return relatorioIATF(matrizes, eventos, touros, ano);
+  return relatorioSituacaoVacas(matrizes, eventos, hoje);
+}
+function linhasPlanilha(tipo, { matrizes, touros, eventos }) {
+  const brincoMap = mapaBrincos(matrizes);
+  const nomeTouro = (e) => nomeTouroEvento(e, touros);
+  if (tipo === "matrizes") {
+    return matrizes.map((m) => ({
+      "Brinco": m.brinco,
+      "Categoria": m.categoria,
+      "Ra\xE7a": m.raca || "",
+      "Lote": m.lote || "",
+      "Data Nasc.": formatarDataBR(m.dataNascimento) || "",
+      "Status": m.status,
+      "Partos (Fazenda)": eventos.filter((e) => e.tipo === "nascimento" && e.matrizId === m.id).length,
+      "Partos Ant.": m.partosAnteriores || 0,
+      "\xDAltimo Parto": formatarDataBR(ultimoPartoDe(m.id, eventos)) || "",
+      "N\xBA Cria": numeroCriaUltimoParto(m.id, eventos)
+    }));
+  }
+  if (tipo === "touros") {
+    return touros.map((t) => {
+      const usadas = eventos.filter((e) => e.tipo === "iatf" && e.touroId === t.id).length;
+      const adquiridas = parseInt(t.doses) || 0;
+      return {
+        "Nome": t.nome,
+        "Ra\xE7a": t.raca,
+        "Fornecedor": t.fornecedor || "",
+        "Ano": t.anoAquisicao || "",
+        "Doses Adq.": adquiridas,
+        "Doses Usadas": usadas,
+        "Doses Rest.": adquiridas ? adquiridas - usadas : "",
+        "Custo/Dose (R$)": t.custoDose || "",
+        "Observa\xE7\xF5es": t.observacoes || ""
+      };
+    });
+  }
+  const evs = eventos.filter((e) => e.tipo === tipo);
+  if (tipo === "nascimento") {
+    return evs.map((e) => ({
+      "Data": formatarDataBR(e.data),
+      "Matriz": brincoMap[e.matrizId] || "",
+      "Resultado": e.resultadoParto || "",
+      "Sexo": e.sexo || "",
+      "Peso (kg)": e.pesoNascer || "",
+      "Brinco Bezerro": e.brincoBezerro || "",
+      "Pelagem": e.pelagem || "",
+      "Pai": nomeTouro(e),
+      "Tipo Parto": e.tipoParto || "",
+      "Observa\xE7\xF5es": e.observacoes || ""
+    }));
+  }
+  if (tipo === "desmama") {
+    return evs.map((e) => ({ "Data": formatarDataBR(e.data), "Brinco Bezerro": e.brincoBezerro || "", "Peso (kg)": e.pesoDesmama || "", "Idade (dias)": e.idadeDias || "" }));
+  }
+  if (tipo === "recria") {
+    return evs.map((e) => ({ "Data": formatarDataBR(e.data), "Novilha": brincoMap[e.matrizId] || "", "Peso Atual (kg)": e.pesoAtual || "", "Apta Reprodu\xE7\xE3o": e.aptaReproducao || "", "Observa\xE7\xF5es": e.observacoes || "" }));
+  }
+  if (tipo === "iatf") {
+    return evs.map((e) => ({
+      "Data": formatarDataBR(e.data),
+      "Matriz": brincoMap[e.matrizId] || "",
+      "Tipo": e.tipoServico || "",
+      "N\xBA Tent.": e.numeroServico || "",
+      "In\xEDcio Protocolo": formatarDataBR(e.dataInicioProtocolo) || "",
+      "Touro/S\xEAmen": nomeTouro(e),
+      "T\xE9cnico": e.tecnico || "",
+      "Custo (R$)": e.custo || "",
+      "Observa\xE7\xF5es": e.observacoes || ""
+    }));
+  }
+  if (tipo === "diagnostico") {
+    return evs.map((e) => ({
+      "Data": formatarDataBR(e.data),
+      "Matriz": brincoMap[e.matrizId] || "",
+      "Resultado": e.resultado || "",
+      "M\xE9todo": e.metodo || "",
+      "DG (dias)": e.dg || "",
+      "Veterin\xE1rio": e.veterinario || "",
+      "Custo (R$)": e.custo || "",
+      "Motivo (se descarte)": e.motivo || ""
+    }));
+  }
+  if (tipo === "venda") {
+    return evs.map((e) => ({
+      "Data": formatarDataBR(e.data),
+      "Categoria": e.categoria || "",
+      "Animais": e.animais || "",
+      "Peso Total (kg)": e.pesoTotal || "",
+      "Valor Arroba (R$)": e.valorArroba || "",
+      "Valor Total (R$)": e.valorTotal || "",
+      "Frete/Comiss\xE3o (R$)": e.frete || "",
+      "Comprador": e.comprador || ""
+    }));
+  }
+  if (tipo === "insumo") {
+    return evs.map((e) => ({ "Data": formatarDataBR(e.data), "Produto": e.produto || "", "Quantidade": e.quantidade || "", "Unidade": e.unidade || "", "Custo (R$)": e.custo || "", "Categoria Animal": e.categoriaAnimal || "" }));
+  }
+  if (tipo === "descarte") {
+    return evs.map((e) => ({
+      "Data": formatarDataBR(e.data),
+      "Matriz": brincoMap[e.matrizId] || "",
+      "Motivo": e.motivo || "",
+      "Origem": e.origemDiagnostico ? "Diagn\xF3stico veterin\xE1rio" : "Lan\xE7amento manual"
+    }));
+  }
+  return [];
+}
+var ABAS_EXCEL = [
+  ["Matrizes", "matrizes"],
+  ["Nascimentos", "nascimento"],
+  ["Desmama", "desmama"],
+  ["Recria", "recria"],
+  ["IATF", "iatf"],
+  ["Diagn\xF3sticos", "diagnostico"],
+  ["Vendas", "venda"],
+  ["Insumos", "insumo"],
+  ["Descartes", "descarte"],
+  ["Touros", "touros"]
+];
+
+// src/estilos.js
+var CSS = `
+:root{
+  --bg:#131B16; --s1:#1C2620; --s2:#243029; --line:#33423A; --line2:#2B382F;
+  --tx:#EFEADD; --mut:#A9B5AA; --amber:#E0A458; --amber-bg:rgba(224,164,88,.14);
+  --green:#8DBB78; --late:#F0937A; --late-bg:rgba(240,147,122,.14); --blue:#8FB4C9;
+  --disp:'Newsreader',Georgia,'Times New Roman',serif;
+  --body:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);font-family:var(--body);-webkit-text-size-adjust:100%}
+button,input,select,textarea{font-family:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---- estrutura ---- */
+.app{min-height:100vh;display:flex}
+.side{display:none}
+.main{flex:1;min-width:0;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+.wrap{max-width:1000px;margin:0 auto;padding:0 16px}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(19,27,22,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topbar .in{max-width:1000px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px}
+.brand{display:flex;flex-direction:column;line-height:1.05;min-width:0;flex:1}
+.brand small{font:600 10.5px var(--mono);letter-spacing:.14em;color:var(--amber);text-transform:uppercase}
+.brand b{font:600 21px var(--disp);letter-spacing:.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 10px;border-radius:6px;border:1px solid var(--line);background:var(--s1);color:var(--tx);font:600 12.5px var(--mono);letter-spacing:.04em}
+.chip select{appearance:none;-webkit-appearance:none;background:transparent;border:none;font:600 12.5px var(--mono);color:inherit;padding:0 2px;height:100%;cursor:pointer}
+.chip select option{background:var(--s1);color:var(--tx)}
+.chip.lock{width:40px;justify-content:center;padding:0}
+.chip.on{border-color:var(--amber);color:var(--amber)}
+
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;height:calc(64px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:var(--s1);border-top:1px solid var(--line)}
+.bnav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:none;background:transparent;color:var(--mut);font:600 10.5px var(--mono);letter-spacing:.07em;text-transform:uppercase;border-top:3px solid transparent;margin-top:-1px;min-width:0}
+.bnav button[aria-current=page]{color:var(--amber);border-top-color:var(--amber);background:var(--bg)}
+.bnav svg{width:21px;height:21px}
+
+.banner-teste{background:var(--amber);color:#1B140A;font:600 12.5px var(--body);padding:8px 16px;display:flex;gap:10px;align-items:center;justify-content:center;text-align:center;flex-wrap:wrap}
+.banner-teste button{border:1.5px solid #1B140A;background:transparent;border-radius:5px;padding:3px 10px;font:600 12px var(--mono);color:#1B140A}
+.aviso{display:flex;gap:10px;align-items:flex-start;background:var(--late-bg);border:1px solid var(--late);border-radius:8px;padding:10px 12px;margin:14px 0;font-size:14px;line-height:1.4}
+.aviso.info{background:var(--amber-bg);border-color:var(--amber)}
+.aviso.ok{background:rgba(141,187,120,.12);border-color:var(--green)}
+.aviso button.x{margin-left:auto;background:none;border:none;color:var(--mut);padding:2px}
+
+@media (min-width:900px){
+  .side{display:flex;flex-direction:column;width:244px;flex:none;position:sticky;top:0;height:100vh;padding:22px 16px;background:var(--s1);border-right:1px solid var(--line);gap:6px}
+  .side .brand{margin-bottom:18px;padding:0 6px;flex:none}
+  .side .brand b{font-size:25px;white-space:normal}
+  .side nav{display:flex;flex-direction:column;gap:2px}
+  .side nav button{display:flex;align-items:center;gap:12px;height:46px;padding:0 12px;border:none;border-left:3px solid transparent;border-radius:0 6px 6px 0;background:transparent;color:var(--mut);font:600 14px var(--body);text-align:left}
+  .side nav button svg{width:19px;height:19px;flex:none}
+  .side nav button:hover{background:var(--s2);color:var(--tx)}
+  .side nav button[aria-current=page]{background:var(--s2);color:var(--amber);border-left-color:var(--amber)}
+  .side .foot{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+  .side .chip{height:42px;width:100%;justify-content:space-between}
+  .bnav{display:none}
+  .topbar{display:none}
+  .main{padding-bottom:48px}
+  .wrap{padding:0 28px}
+}
+
+/* ---- t\xEDtulos de tela ---- */
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;padding:22px 0 14px}
+.head small{display:block;white-space:nowrap;font:600 11px var(--mono);letter-spacing:.14em;color:var(--amber);text-transform:uppercase;margin-bottom:4px}
+.head h1{margin:0;font:600 34px/1 var(--disp);letter-spacing:-.005em}
+.head .acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center;margin-left:auto}
+.sub{color:var(--mut);font-size:14px;line-height:1.45;margin:0 2px 14px}
+.h2{font:600 21px var(--disp);margin:26px 0 10px;display:flex;align-items:baseline;gap:10px}
+.h2 small{font:500 12px var(--mono);color:var(--mut);letter-spacing:.04em}
+
+/* ---- abas de \xEDndice (caderno) ---- */
+.itabs{display:flex;gap:4px;overflow-x:auto;margin-bottom:-1px;position:relative;z-index:1;scrollbar-width:none;padding-top:2px}
+.itabs::-webkit-scrollbar{display:none}
+.itab{flex:none;height:44px;padding:0 16px;border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;background:var(--bg);color:var(--mut);font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.itab[aria-selected=true]{background:var(--s1);color:var(--amber);box-shadow:inset 0 3px 0 var(--amber);height:46px;margin-top:-2px}
+.sheet{border:1px solid var(--line);border-radius:0 8px 8px 8px;background:var(--s1);box-shadow:4px 4px 0 rgba(0,0,0,.28)}
+.sheet.pad{padding:16px}
+@media (min-width:600px){.sheet.pad{padding:22px}}
+
+/* ---- formul\xE1rios ---- */
+.fld{margin-bottom:14px}
+.fld>label,.fld>.lbl{display:block;font:600 11.5px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+.fld .req{color:var(--amber)}
+.in,.fld input,.fld select,.fld textarea{width:100%;min-height:48px;padding:10px 12px;border-radius:6px;border:1px solid var(--line);background:var(--bg);font-size:16px;color:var(--tx)}
+.fld input[type=date]{font-family:var(--mono)}
+.fld textarea{min-height:200px;font:13px/1.45 var(--mono);resize:vertical}
+.fld .hint{font-size:12.5px;color:var(--mut);margin-top:5px}
+.grid2{display:grid;gap:0 14px}
+@media (min-width:640px){.grid2{grid-template-columns:1fr 1fr}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border-radius:6px;border:1.5px solid var(--amber);background:var(--amber);color:#1B140A;font:700 15px var(--body)}
+.btn.wide{width:100%}
+.btn.ghost{background:transparent;color:var(--amber)}
+.btn.quiet{background:var(--s2);border-color:var(--line);color:var(--tx)}
+.btn.sm{min-height:38px;padding:0 12px;font-size:13px}
+.btn.ok{background:var(--green);border-color:var(--green)}
+.btn:disabled{opacity:.55;cursor:default}
+.spin{animation:giro 1s linear infinite}
+@keyframes giro{to{transform:rotate(360deg)}}
+
+
+/* escolha r\xE1pida (at\xE9 3 op\xE7\xF5es) */
+.seg{display:flex;gap:6px}
+.seg button{flex:1;min-height:48px;padding:6px 8px;border:1px solid var(--line);background:var(--bg);border-radius:6px;font:600 15px var(--body);color:var(--tx)}
+.seg button[aria-pressed=true]{background:var(--amber-bg);border-color:var(--amber);color:var(--amber)}
+
+/* seletor de matriz com busca */
+.picker{position:relative}
+.picker .sug{position:absolute;left:0;right:0;top:100%;z-index:15;margin-top:2px;background:var(--s2);border:1px solid var(--line);border-radius:6px;max-height:280px;overflow:auto;box-shadow:0 8px 22px rgba(0,0,0,.45)}
+.picker .sug button{display:flex;width:100%;justify-content:space-between;align-items:center;gap:10px;min-height:48px;padding:6px 12px;border:none;border-bottom:1px solid var(--line2);background:transparent;text-align:left}
+.picker .sug button:hover,.picker .sug button.act{background:var(--s1)}
+.picker .sel{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:6px 12px;border-radius:6px;border:1px solid var(--amber);background:var(--amber-bg)}
+.picker .sel b{font:600 19px var(--mono)}
+
+/* ---- livro-caixa (linhas de caderno) ---- */
+.led-h,.led-r{display:grid;grid-template-columns:var(--cols);gap:8px;align-items:center;padding:0 16px}
+.led-h{padding-top:9px;padding-bottom:9px;border-bottom:1px solid var(--line);font:600 10.5px var(--mono);letter-spacing:.08em;color:var(--mut);text-transform:uppercase}
+.led-r{min-height:60px;padding-top:6px;padding-bottom:6px;border-bottom:1px solid var(--line2);width:100%;background:transparent;border-left:none;border-right:none;border-top:none;text-align:left;color:inherit}
+button.led-r:hover{background:var(--s2)}
+.led-r .b{font:600 17px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.led-r .two{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.led-r .two b{font-weight:600;font-size:15px}
+.led-r .two span{font-size:13px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.led-r .m{font:500 14px var(--mono)}
+.led-r .r{text-align:right;font:600 15px var(--mono)}
+.led-h .r{text-align:right}
+
+.cols-reb{--cols:84px minmax(0,1fr) 84px}
+@media (min-width:700px){.cols-reb{--cols:84px minmax(0,1fr) 110px 120px 110px}}
+.late{color:var(--late)} .soon{color:var(--amber)} .good{color:var(--green)} .mut{color:var(--mut)}
+.hide-s{display:none}
+@media (min-width:700px){.hide-s{display:block}}
+.bar-sum{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--bg);font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.search{display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--line)}
+.search svg{width:19px;height:19px;color:var(--mut);flex:none}
+.search input{flex:1;min-width:0;height:52px;border:none;background:transparent;font-size:18px;outline:none}
+.empty{padding:34px 16px;text-align:center;color:var(--mut);font-size:14.5px}
+.detalhe{padding:12px 16px 16px;background:var(--bg);border-bottom:1px solid var(--line2);font-size:14px;line-height:1.5;color:var(--mut)}
+.detalhe b{color:var(--tx)}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font:600 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;border:1px solid currentColor}
+
+/* ---- sum\xE1rio com pontinhos ---- */
+.lead{display:flex;align-items:baseline;gap:8px;padding:7px 0;font-size:15px}
+.lead i{flex:1;border-bottom:2px dotted var(--line);min-width:12px;transform:translateY(-3px)}
+.lead b{font:600 16px var(--mono);white-space:nowrap}
+.lead.big b{font:600 22px var(--disp)}
+.lead button{background:none;border:none;padding:0;color:var(--tx);text-align:left;font:inherit;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+
+/* ---- indicadores ---- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.kpi{background:var(--s1);border:1px solid var(--line);border-radius:8px;padding:13px 14px;min-width:0}
+.kpi small{display:block;font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:5px}
+.kpi b{display:block;font:600 30px/1.05 var(--disp)}
+.kpi span{display:block;font-size:12.5px;color:var(--mut);margin-top:3px}
+.panel{background:var(--s1);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
+.panel h3{margin:0 0 8px;font:600 19px var(--disp)}
+.sbar{display:flex;height:16px;border-radius:3px;overflow:hidden;background:var(--s2);margin:8px 0 6px}
+.sbar i{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--mut)}
+.legend span::before{content:'';display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;background:var(--c)}
+.mbars{display:flex;align-items:flex-end;gap:8px;height:150px;padding-top:8px}
+.mbars .c{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;min-width:0}
+.mbars .c i{display:block;width:100%;max-width:46px;background:var(--amber);border-radius:3px 3px 0 0;min-height:2px}
+.mbars .c b{font:600 12px var(--mono)}
+.mbars .c span{font:500 10.5px var(--mono);color:var(--mut)}
+.cols2{display:grid;gap:16px}
+@media (min-width:860px){.cols2{grid-template-columns:1fr 1fr}}
+
+/* ---- tabelas (relat\xF3rios / planilha) ---- */
+.tbwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--s1)}
+table.tb{border-collapse:collapse;width:100%;font-size:14px}
+table.tb th{position:sticky;top:0;background:var(--bg);padding:9px 12px;text-align:left;font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mut);border-bottom:1px solid var(--line);white-space:nowrap}
+table.tb td{padding:8px 12px;border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:top}
+table.tb td.wrapt{white-space:normal;min-width:230px}
+table.tb tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+table.tb .r{text-align:right}
+table.tb .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.nota{font-size:13px;color:var(--mut);margin:6px 2px 10px}
+
+/* confer\xEAncia do lote por foto */
+.lote-item{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:start;padding:11px 14px;border-bottom:1px solid var(--line2)}
+.lote-item:last-child{border-bottom:none}
+.lote-item .n{font:600 13px var(--mono);color:var(--amber);padding-top:2px}
+.lote-item .txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lote-item .txt b{font-weight:600;font-size:14.5px;line-height:1.3}
+.lote-item .txt span{font-size:13px;color:var(--mut);line-height:1.35}
+.lote-item .m{font:500 13px var(--mono);padding-top:2px;white-space:nowrap}
+
+/* ---- janela (modal) ---- */
+.ov{position:fixed;inset:0;z-index:50;background:rgba(5,9,7,.72);display:flex;align-items:flex-end;justify-content:center}
+.ov .box{width:100%;max-width:560px;max-height:92vh;overflow:auto;background:var(--s1);border:1px solid var(--line);border-radius:14px 14px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom))}
+@media (min-width:640px){.ov{align-items:center}.ov .box{border-radius:12px}}
+.ov .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.ov h2{margin:0;font:600 26px var(--disp)}
+.ov .x{width:44px;height:44px;border:none;background:var(--s2);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dotted var(--line);font-size:14px}
+.hist li span:last-child{font-family:var(--mono);color:var(--mut);white-space:nowrap}
+
+details.ferr{margin-top:22px;border:1px dashed var(--line);border-radius:8px;padding:0 14px}
+details.ferr summary{min-height:48px;display:flex;align-items:center;cursor:pointer;color:var(--mut);font:600 12px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+details.ferr .in2{padding:4px 0 16px;display:flex;flex-wrap:wrap;gap:8px}
+.foot-note{margin:30px 0 8px;text-align:center;font:500 11px var(--mono);color:var(--mut);opacity:.75;letter-spacing:.04em}
+
+.loading{display:flex;align-items:center;justify-content:center;gap:10px;min-height:60vh;color:var(--mut);font:500 14px var(--mono)}
+
+@media print{
+  :root{--bg:#fff;--s1:#fff;--s2:#f3f3f3;--line:#999;--line2:#ccc;--tx:#000;--mut:#444;--amber:#7a4a00;--green:#1d5c1d;--late:#a02020}
+  .side,.bnav,.topbar,.noprint,.itabs,.banner-teste,details.ferr{display:none!important}
+  .sheet,.panel,.tbwrap,.kpis{box-shadow:none;break-inside:avoid}
+  .main{padding:0}
+}
+`;
+
+// src/api.js
+var SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbyDBTMVGJGeBj92qtiIRfrzZciWyzgP8mvDx8inCjdvVBb2Erm5laJyuuiwx8YjJQlI/exec";
+var MODO_TESTE = typeof window !== "undefined" && window.MODO_TESTE === true;
+if (typeof window !== "undefined") window.__gravacoesSimuladas = window.__gravacoesSimuladas || [];
+async function lerTudo() {
+  const res = await fetch(`${SHEETS_API_URL}?action=getAll`);
+  const data = await res.json();
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+async function postar(payload) {
+  if (MODO_TESTE) {
+    window.__gravacoesSimuladas.push(payload);
+    await new Promise((r) => setTimeout(r, 150));
+    return { ok: true, simulado: true };
+  }
+  const res = await fetch(SHEETS_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  });
+  let data = null;
+  try {
+    data = await res.json();
+  } catch (e) {
+    throw new Error("a planilha n\xE3o respondeu direito");
+  }
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+
+// src/excel.js
+import * as XLSX from "xlsx";
+var nomeAba = (s) => String(s).replace(/[\\/?*[\]:]/g, " ").slice(0, 31) || "Aba";
+var semAcento2 = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9_-]+/g, "_");
+function exportarExcel({ matrizes, touros, eventos }, ano, hoje) {
+  const evs = filtrarPorAno(eventos, ano);
+  const wb = XLSX.utils.book_new();
+  const kpis = calcularKPIs(matrizes, evs);
+  const resumo = [["Relat\xF3rio Fazenda Ibira\xE7u", ""], ["Gerado em", hoje], ...buildResumoRows(kpis, ano)];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), "Resumo");
+  ABAS_EXCEL.forEach(([nome, tipo]) => {
+    const linhas = linhasPlanilha(tipo, { matrizes, touros, eventos: evs });
+    XLSX.utils.book_append_sheet(wb, linhas.length ? XLSX.utils.json_to_sheet(linhas) : XLSX.utils.aoa_to_sheet([["Sem registros"]]), nomeAba(nome));
+  });
+  const arquivo = `Fazenda_Ibiracu_${ano === "todos" ? "todos_os_anos" : ano}_${hoje}.xlsx`;
+  XLSX.writeFile(wb, arquivo);
+  return arquivo;
+}
+function exportarRelatorioExcel(rel, ano, hoje) {
+  const wb = XLSX.utils.book_new();
+  const topo = [[rel.titulo, ""], ["Gerado em", hoje], ["Ano de gest\xE3o", rotuloAno(ano)], ["", ""], ...rel.resumo.map((r) => [r.rotulo, r.valor])];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(topo), "Resumo");
+  const usados = /* @__PURE__ */ new Set(["Resumo"]);
+  rel.secoes.forEach((s) => {
+    let nome = nomeAba(s.titulo);
+    let n = 2;
+    while (usados.has(nome)) {
+      nome = nomeAba(`${s.titulo} ${n++}`);
+    }
+    usados.add(nome);
+    const aoa = [s.colunas.map((c) => c.label), ...s.linhas.map((l) => s.colunas.map((c) => l[c.k] === void 0 ? "" : l[c.k]))];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), nome);
+  });
+  const arquivo = `${semAcento2(rel.titulo)}_${hoje}.xlsx`;
+  XLSX.writeFile(wb, arquivo);
+  return arquivo;
+}
+
+// src/ui.jsx
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { X, AlertCircle, Info, Check } from "lucide-react";
+var corStatus = (s) => s === "Cheia" ? "var(--green)" : s === "Vazia" ? "var(--amber)" : "var(--late)";
+function Tag({ status }) {
+  return /* @__PURE__ */ React.createElement("span", { className: "tag", style: { color: corStatus(status) } }, status);
+}
+function IndexTabs({ tabs, value, onChange, rotulo }) {
+  return /* @__PURE__ */ React.createElement("div", { className: "itabs", role: "tablist", "aria-label": rotulo }, tabs.map((t) => /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      key: t.id,
+      role: "tab",
+      "aria-selected": value === t.id,
+      className: "itab",
+      onClick: () => onChange(t.id)
+    },
+    t.label,
+    t.count !== void 0 ? ` \xB7 ${t.count}` : ""
+  )));
+}
+function Aviso({ tipo, children, onClose }) {
+  const Icon = tipo === "ok" ? Check : tipo === "info" ? Info : AlertCircle;
+  const cor = tipo === "ok" ? "var(--green)" : tipo === "info" ? "var(--amber)" : "var(--late)";
+  return /* @__PURE__ */ React.createElement("div", { className: `aviso ${tipo || ""}`, role: tipo === "ok" || tipo === "info" ? "status" : "alert" }, /* @__PURE__ */ React.createElement(Icon, { size: 18, color: cor, style: { flex: "none", marginTop: 1 } }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, children), onClose && /* @__PURE__ */ React.createElement("button", { className: "x", onClick: onClose, "aria-label": "Fechar aviso" }, /* @__PURE__ */ React.createElement(X, { size: 16 })));
+}
+function Kpis({ itens }) {
+  return /* @__PURE__ */ React.createElement("div", { className: "kpis" }, itens.map((k) => /* @__PURE__ */ React.createElement("div", { className: "kpi", key: k.rotulo }, /* @__PURE__ */ React.createElement("small", null, k.rotulo), /* @__PURE__ */ React.createElement("b", { style: { ...k.cor ? { color: k.cor } : null, ...k.pequeno ? { fontSize: 22 } : null } }, k.valor), k.sub ? /* @__PURE__ */ React.createElement("span", null, k.sub) : null)));
+}
+function Lead({ rotulo, valor, onClick, big, cor }) {
+  return /* @__PURE__ */ React.createElement("div", { className: `lead${big ? " big" : ""}` }, onClick ? /* @__PURE__ */ React.createElement("button", { onClick }, rotulo) : /* @__PURE__ */ React.createElement("span", null, rotulo), /* @__PURE__ */ React.createElement("i", null), /* @__PURE__ */ React.createElement("b", { style: cor ? { color: cor } : void 0 }, valor));
+}
+function Modal({ titulo, onClose, children, rotulo }) {
+  const ref = useRef(null);
+  const fechar = useRef(onClose);
+  fechar.current = onClose;
   useEffect(() => {
-    loadAll();
+    const onKey = (e) => {
+      if (e.key === "Escape") fechar.current();
+    };
+    window.addEventListener("keydown", onKey);
+    const caixa = ref.current;
+    if (caixa && !caixa.contains(document.activeElement)) caixa.focus();
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
-  useEffect(() => {
-    setForm(formularioInicial(tipoSelecionado));
-  }, [tipoSelecionado]);
-  async function loadAll() {
+  return /* @__PURE__ */ React.createElement("div", { className: "ov", onMouseDown: (e) => {
+    if (e.target === e.currentTarget) onClose();
+  } }, /* @__PURE__ */ React.createElement("div", { className: "box", role: "dialog", "aria-modal": "true", "aria-label": rotulo || titulo, ref, tabIndex: -1 }, /* @__PURE__ */ React.createElement("div", { className: "top" }, /* @__PURE__ */ React.createElement("h2", null, titulo), /* @__PURE__ */ React.createElement("button", { className: "x", onClick: onClose, "aria-label": "Fechar" }, /* @__PURE__ */ React.createElement(X, { size: 20 }))), children));
+}
+function MatrizPicker({ value, onChange, matrizes, filtro, rotulo }) {
+  const [q, setQ] = useState("");
+  const [aberto, setAberto] = useState(false);
+  const sel = matrizes.find((m) => m.id === value);
+  const lista = useMemo(() => {
+    const base = matrizes.filter((m) => m.status !== "Descarte" && (!filtro || filtro(m)));
+    const t = q.trim().toLowerCase();
+    if (!t) return [];
+    const comeca = base.filter((m) => String(m.brinco).toLowerCase().startsWith(t));
+    const contem = base.filter((m) => !String(m.brinco).toLowerCase().startsWith(t) && String(m.brinco).toLowerCase().includes(t));
+    return [...comeca, ...contem].slice(0, 8);
+  }, [matrizes, filtro, q]);
+  if (sel) {
+    return /* @__PURE__ */ React.createElement("div", { className: "picker" }, /* @__PURE__ */ React.createElement("div", { className: "sel", "data-testid": "matriz-escolhida" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("b", null, sel.brinco), /* @__PURE__ */ React.createElement("span", { className: "mut", style: { fontSize: 13.5 } }, [sel.categoria, sel.raca, sel.lote].filter(Boolean).join(" \xB7 ")), /* @__PURE__ */ React.createElement(Tag, { status: sel.status })), /* @__PURE__ */ React.createElement("button", { className: "btn quiet sm", onClick: () => {
+      onChange("");
+      setQ("");
+    } }, "Trocar")));
+  }
+  return /* @__PURE__ */ React.createElement("div", { className: "picker" }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "text",
+      autoComplete: "off",
+      autoCapitalize: "off",
+      "aria-label": rotulo || "Brinco da matriz",
+      placeholder: "Digite o brinco da vaca",
+      value: q,
+      onChange: (e) => {
+        setQ(e.target.value);
+        setAberto(true);
+      },
+      onFocus: () => setAberto(true),
+      onKeyDown: (e) => {
+        if (e.key === "Enter" && lista.length) {
+          onChange(lista[0].id);
+          setQ("");
+        }
+      }
+    }
+  ), aberto && q.trim() && /* @__PURE__ */ React.createElement("div", { className: "sug", role: "listbox" }, lista.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "empty", style: { padding: 14 } }, "Nenhuma matriz com esse brinco."), lista.map((m) => /* @__PURE__ */ React.createElement("button", { key: m.id, role: "option", onClick: () => {
+    onChange(m.id);
+    setQ("");
+    setAberto(false);
+  } }, /* @__PURE__ */ React.createElement("span", { style: { display: "flex", alignItems: "baseline", gap: 10, minWidth: 0 } }, /* @__PURE__ */ React.createElement("b", { className: "num", style: { fontSize: 18 } }, m.brinco), /* @__PURE__ */ React.createElement("span", { className: "mut", style: { fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, [m.categoria, m.raca].filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ React.createElement(Tag, { status: m.status })))));
+}
+function Campo({ campo, value, onChange, matrizes, touros }) {
+  const id = `f-${campo.key}`;
+  const rotulo = /* @__PURE__ */ React.createElement(React.Fragment, null, campo.label, campo.required ? /* @__PURE__ */ React.createElement("span", { className: "req" }, " *") : null);
+  if (campo.type === "select" && campo.options.length <= 3) {
+    return /* @__PURE__ */ React.createElement("div", { className: "fld", role: "group", "aria-label": campo.label }, /* @__PURE__ */ React.createElement("span", { className: "lbl", style: { display: "block", font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 6 } }, rotulo), /* @__PURE__ */ React.createElement("div", { className: "seg" }, campo.options.map((o) => /* @__PURE__ */ React.createElement("button", { key: o, type: "button", "aria-pressed": value === o, onClick: () => onChange(campo.key, value === o && !campo.required ? "" : o) }, o))));
+  }
+  return /* @__PURE__ */ React.createElement("div", { className: "fld" }, /* @__PURE__ */ React.createElement("label", { htmlFor: id }, rotulo), campo.type === "select" && /* @__PURE__ */ React.createElement("select", { id, value: value || "", onChange: (e) => onChange(campo.key, e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Selecione"), campo.options.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o))), campo.type === "matriz" && /* @__PURE__ */ React.createElement(MatrizPicker, { value, onChange: (v) => onChange(campo.key, v), matrizes, rotulo: campo.label }), campo.type === "touro" && /* @__PURE__ */ React.createElement("select", { id, value: value || "", onChange: (e) => onChange(campo.key, e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Selecione"), touros.map((t) => /* @__PURE__ */ React.createElement("option", { key: t.id, value: t.id }, t.nome, t.raca ? ` \u2014 ${t.raca}` : "")), /* @__PURE__ */ React.createElement("option", { value: "__outro__" }, "Outro / n\xE3o cadastrado")), (campo.type === "text" || campo.type === "number" || campo.type === "date") && /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      id,
+      type: campo.type,
+      inputMode: campo.type === "number" ? "decimal" : void 0,
+      value: value || "",
+      onChange: (e) => onChange(campo.key, e.target.value)
+    }
+  ));
+}
+var vazioTxt = (v) => v === "" || v === null || v === void 0 ? "\u2014" : String(v);
+function SecaoRelatorio({ secao }) {
+  return /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h2", { className: "h2" }, secao.titulo, /* @__PURE__ */ React.createElement("small", null, secao.linhas.length, " linha(s)")), secao.nota ? /* @__PURE__ */ React.createElement("p", { className: "nota" }, secao.nota) : null, secao.linhas.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "tbwrap" }, /* @__PURE__ */ React.createElement("div", { className: "empty" }, "Nada para mostrar neste per\xEDodo.")) : /* @__PURE__ */ React.createElement("div", { className: "tbwrap" }, /* @__PURE__ */ React.createElement("table", { className: "tb" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, secao.colunas.map((c) => /* @__PURE__ */ React.createElement("th", { key: c.k, className: c.align === "right" ? "r" : "" }, c.label)))), /* @__PURE__ */ React.createElement("tbody", null, secao.linhas.map((l, i) => {
+    const total = String(l[secao.colunas[0].k]) === "Total";
+    return /* @__PURE__ */ React.createElement("tr", { key: i }, secao.colunas.map((c) => /* @__PURE__ */ React.createElement(
+      "td",
+      {
+        key: c.k,
+        className: `${c.align === "right" ? "r " : ""}${c.mono ? "mono " : ""}${c.k === "brincos" ? "wrapt" : ""}`,
+        style: total ? { fontWeight: 700, color: "var(--amber)" } : void 0
+      },
+      vazioTxt(l[c.k])
+    )));
+  })))));
+}
+function TabelaLinhas({ rows }) {
+  if (!rows || rows.length === 0) {
+    return /* @__PURE__ */ React.createElement("div", { className: "tbwrap" }, /* @__PURE__ */ React.createElement("div", { className: "empty" }, "Nenhum registro neste per\xEDodo."));
+  }
+  const headers = Object.keys(rows[0]);
+  return /* @__PURE__ */ React.createElement("div", { className: "tbwrap" }, /* @__PURE__ */ React.createElement("table", { className: "tb" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, headers.map((h) => /* @__PURE__ */ React.createElement("th", { key: h }, h)))), /* @__PURE__ */ React.createElement("tbody", null, rows.map((r, i) => /* @__PURE__ */ React.createElement("tr", { key: i }, headers.map((h) => /* @__PURE__ */ React.createElement("td", { key: h }, String(r[h] ?? ""))))))));
+}
+
+// src/util.js
+var ROTULO_CURTO = {
+  cadastro: "Nova matriz",
+  touro: "Touro / s\xEAmen",
+  iatf: "IATF",
+  diagnostico: "Toque",
+  nascimento: "Nascimento",
+  desmama: "Desmama",
+  recria: "Recria",
+  venda: "Venda",
+  insumo: "Insumo",
+  descarte: "Descarte"
+};
+var rotuloEvento = (tipo) => (TIPOS_EVENTO.find((t) => t.id === tipo) || {}).label || tipo;
+var ORDEM_LANCAR = ["nascimento", "iatf", "diagnostico", "desmama", "recria", "descarte", "insumo", "venda", "cadastro", "touro"];
+function descreverEvento(e, dados) {
+  const brincos = mapaBrincos(dados.matrizes);
+  const mae = e.matrizId ? brincos[e.matrizId] || "?" : "";
+  const partes = [];
+  if (e.tipo === "nascimento") {
+    if (mae) partes.push(`m\xE3e ${mae}`);
+    if (e.brincoBezerro) partes.push(`cria ${e.brincoBezerro}`);
+    if (e.sexo) partes.push(e.sexo === "Macho" ? "macho" : "f\xEAmea");
+    if (e.resultadoParto === "Natimorto") partes.push("natimorto");
+  } else if (e.tipo === "diagnostico") {
+    if (mae) partes.push(`vaca ${mae}`);
+    if (e.resultado) partes.push(e.resultado.toLowerCase());
+    if (e.dg) partes.push(`DG ${e.dg}`);
+  } else if (e.tipo === "iatf") {
+    if (mae) partes.push(`vaca ${mae}`);
+    const t = nomeTouroEvento(e, dados.touros);
+    if (t) partes.push(t);
+  } else if (e.tipo === "desmama") {
+    if (e.brincoBezerro) partes.push(`cria ${e.brincoBezerro}`);
+    if (e.pesoDesmama) partes.push(`${e.pesoDesmama} kg`);
+  } else if (e.tipo === "venda") {
+    if (e.animais) partes.push(e.animais);
+    if (e.valorTotal) partes.push(`R$ ${e.valorTotal}`);
+  } else if (e.tipo === "insumo") {
+    if (e.produto) partes.push(e.produto);
+    if (e.quantidade) partes.push(`${e.quantidade} ${e.unidade || ""}`.trim());
+  } else if (mae) {
+    partes.push(`vaca ${mae}`);
+  }
+  return [rotuloEvento(e.tipo), ...partes].join(" \xB7 ");
+}
+var fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+// src/telas/Lancar.jsx
+import React3, { useState as useState3, useEffect as useEffect2, useMemo as useMemo2, useRef as useRef2 } from "react";
+import { Save, Check as Check3, Loader2 as Loader22 } from "lucide-react";
+
+// src/telas/Lote.jsx
+import React2, { useState as useState2 } from "react";
+import { ClipboardPaste, Check as Check2, Loader2 } from "lucide-react";
+function lerBlocoLote(texto) {
+  let t = String(texto || "").trim();
+  if (!t) return { erro: "Cole o texto que o Claude devolveu." };
+  t = t.replace(/^```[a-zA-Z]*\s*/m, "").replace(/```\s*$/m, "").trim();
+  let obj;
+  try {
+    obj = JSON.parse(t);
+  } catch (e) {
+    return { erro: "N\xE3o consegui ler o texto colado. Cole o bloco inteiro, do primeiro [ at\xE9 o \xFAltimo ]." };
+  }
+  const itens = Array.isArray(obj) ? obj : obj && Array.isArray(obj.itens) ? obj.itens : null;
+  if (!itens) return { erro: "O texto colado n\xE3o tem uma lista de lan\xE7amentos." };
+  if (itens.length === 0) return { erro: "A lista est\xE1 vazia." };
+  if (itens.length > 200) return { erro: "Muitos lan\xE7amentos de uma vez (mais de 200). Divida em partes." };
+  if (itens.some((i) => !i || typeof i !== "object" || !i.tipo)) return { erro: 'Algum item n\xE3o tem o campo "tipo".' };
+  return { itens };
+}
+function mudancas(aplicado, dados) {
+  const partes = [];
+  aplicado.matrizes.forEach((m) => {
+    const antes = dados.matrizes.find((x) => x.id === m.id);
+    if (!antes) {
+      partes.push(`nova matriz ${m.brinco} (${m.status})`);
+      return;
+    }
+    if (antes.status !== m.status) partes.push(`${m.brinco}: ${antes.status} \u2192 ${m.status}`);
+    if (antes.categoria !== m.categoria) partes.push(`${m.brinco}: ${antes.categoria} \u2192 ${m.categoria}`);
+  });
+  return partes.join(" \xB7 ");
+}
+function LoteFoto({ dados, hoje, onGravarLote, modoTeste }) {
+  const [texto, setTexto] = useState2("");
+  const [erro, setErro] = useState2("");
+  const [prev, setPrev] = useState2(null);
+  const [gravando, setGravando] = useState2(false);
+  const [feito, setFeito] = useState2("");
+  function conferir() {
+    setFeito("");
+    const r = lerBlocoLote(texto);
+    if (r.erro) {
+      setErro(r.erro);
+      setPrev(null);
+      return;
+    }
+    setErro("");
+    setPrev(aplicarLote(dados, r.itens, { hoje }));
+  }
+  async function gravar() {
+    if (!prev || prev.aplicados.length === 0) return;
+    setGravando(true);
+    const r = await onGravarLote(prev);
+    setGravando(false);
+    if (r.ok) {
+      setFeito(r.msg);
+      setPrev(null);
+      setTexto("");
+    } else setErro(r.msg);
+  }
+  return /* @__PURE__ */ React2.createElement("div", null, /* @__PURE__ */ React2.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Lote por foto"), /* @__PURE__ */ React2.createElement("p", { className: "sub" }, "Tire a foto da folha do manejo e mande para o Claude no chat. Ele devolve um bloco de texto com os lan\xE7amentos. Cole aqui, confira o que vai mudar em cada vaca e s\xF3 ent\xE3o grave."), /* @__PURE__ */ React2.createElement("div", { className: "fld" }, /* @__PURE__ */ React2.createElement("label", { htmlFor: "lote-texto" }, "Bloco de lan\xE7amentos"), /* @__PURE__ */ React2.createElement("textarea", { id: "lote-texto", value: texto, onChange: (e) => setTexto(e.target.value), placeholder: '[ { "tipo": "nascimento", "matriz": "3012", "data": "10/10/26", "sexo": "F" } ]', spellCheck: false })), /* @__PURE__ */ React2.createElement("button", { className: "btn wide quiet", onClick: conferir }, /* @__PURE__ */ React2.createElement(ClipboardPaste, { size: 18 }), " Conferir antes de gravar"), erro && /* @__PURE__ */ React2.createElement(Aviso, null, erro), feito && /* @__PURE__ */ React2.createElement(Aviso, { tipo: "ok" }, feito, modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : ""), prev && /* @__PURE__ */ React2.createElement("div", { style: { marginTop: 18 } }, /* @__PURE__ */ React2.createElement("h2", { className: "h2" }, "Confer\xEAncia", /* @__PURE__ */ React2.createElement("small", null, prev.aplicados.length, " para gravar \xB7 ", prev.rejeitados.length, " com problema")), prev.aplicados.length > 0 && /* @__PURE__ */ React2.createElement("div", { className: "sheet", "data-testid": "lote-aplicados" }, prev.aplicados.map((a) => /* @__PURE__ */ React2.createElement("div", { className: "lote-item", key: a.indice, "data-testid": "lote-item" }, /* @__PURE__ */ React2.createElement("span", { className: "n" }, a.indice + 1), /* @__PURE__ */ React2.createElement("div", { className: "txt" }, /* @__PURE__ */ React2.createElement("b", null, descreverEvento(a.eventos[0], prev.estado)), /* @__PURE__ */ React2.createElement("span", null, mudancas(a, dados) || "sem mudan\xE7a no cadastro da vaca")), /* @__PURE__ */ React2.createElement("span", { className: "m mut" }, formatarDataBR(a.eventos[0].data))))), prev.avisos.length > 0 && /* @__PURE__ */ React2.createElement(Aviso, { tipo: "info" }, /* @__PURE__ */ React2.createElement("b", null, "Aten\xE7\xE3o:"), /* @__PURE__ */ React2.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, prev.avisos.map((a, i) => /* @__PURE__ */ React2.createElement("li", { key: i }, "linha ", a.indice + 1, ": ", a.aviso)))), prev.rejeitados.length > 0 && /* @__PURE__ */ React2.createElement(Aviso, null, /* @__PURE__ */ React2.createElement("b", null, "N\xE3o v\xE3o ser gravados:"), /* @__PURE__ */ React2.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 }, "data-testid": "lote-rejeitados" }, prev.rejeitados.map((r, i) => /* @__PURE__ */ React2.createElement("li", { key: i }, "linha ", r.indice + 1, ": ", r.motivo)))), /* @__PURE__ */ React2.createElement("button", { className: "btn wide", disabled: gravando || prev.aplicados.length === 0, onClick: gravar, style: { marginTop: 10 } }, gravando ? /* @__PURE__ */ React2.createElement(Loader2, { size: 18, className: "spin" }) : /* @__PURE__ */ React2.createElement(Check2, { size: 18 }), gravando ? "Gravando..." : `Gravar ${prev.aplicados.length} lan\xE7amento(s)`)));
+}
+
+// src/telas/Lancar.jsx
+function formularioInicial(tipo, hoje) {
+  const f = {};
+  (CAMPOS[tipo] || []).forEach((c) => {
+    if (c.default) f[c.key] = c.default;
+    if (c.key === "data") f.data = hoje;
+  });
+  return f;
+}
+function Lancar({ dados, hoje, ownerMode, preset, onSalvar, onGravarLote, modoTeste }) {
+  const tiposVisiveis = ORDEM_LANCAR.filter((id) => ownerMode || TIPOS_FUNCIONARIO.includes(id));
+  const abas = [
+    ...tiposVisiveis.map((id) => ({ id, label: ROTULO_CURTO[id] })),
+    ...ownerMode ? [{ id: "lote", label: "Lote por foto" }] : []
+  ];
+  const [tipo, setTipo] = useState3("nascimento");
+  const [form, setForm] = useState3(() => formularioInicial("nascimento", hoje));
+  const [erro, setErro] = useState3("");
+  const [dup, setDup] = useState3(false);
+  const [salvo, setSalvo] = useState3("");
+  const timer = useRef2(null);
+  useEffect2(() => {
+    if (!preset) return;
+    setTipo(preset.tipo);
+    setForm({ ...formularioInicial(preset.tipo, hoje), matrizId: preset.matrizId || "" });
+    setErro("");
+    setDup(false);
+    setSalvo("");
+  }, [preset && preset.n]);
+  useEffect2(() => {
+    if (!abas.some((a) => a.id === tipo)) trocarTipo("nascimento");
+  }, [ownerMode]);
+  function trocarTipo(novo) {
+    setTipo(novo);
+    setForm(formularioInicial(novo, hoje));
+    setErro("");
+    setDup(false);
+    setSalvo("");
+  }
+  function atualizar(chave2, valor) {
+    setForm((f) => {
+      const prox = { ...f, [chave2]: valor };
+      if (tipo === "nascimento" && (chave2 === "sexo" || chave2 === "data")) {
+        const automatico = !f.brincoBezerro || f.brincoBezerro === f._sug;
+        if (automatico) {
+          const sug = sugerirBrincoBezerro(prox.data, prox.sexo, dados.eventos);
+          prox.brincoBezerro = sug || "";
+          prox._sug = sug || "";
+        }
+      }
+      return prox;
+    });
+  }
+  function salvar(forcar) {
+    const falt = camposFaltando(tipo, form);
+    if (falt.length) {
+      setErro(`Falta preencher: ${falt.map((c) => c.label).join(", ")}.`);
+      setDup(false);
+      return;
+    }
+    if (!forcar && jaExiste(tipo, form, dados)) {
+      setDup(true);
+      setErro("");
+      return;
+    }
+    setErro("");
+    setDup(false);
+    const { _sug, ...limpo } = form;
+    const msg = onSalvar(tipo, limpo);
+    setSalvo(msg);
+    setForm(formularioInicial(tipo, hoje));
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setSalvo(""), 6e3);
+  }
+  const ultimos = useMemo2(() => {
+    const nasc = dados.eventos.filter((e) => e.tipo === "nascimento" && e.brincoBezerro);
+    const recente = (sexo) => nasc.filter((e) => e.sexo === sexo).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))[0];
+    return { Macho: recente("Macho"), "F\xEAmea": recente("F\xEAmea") };
+  }, [dados.eventos]);
+  const recentes = useMemo2(
+    () => [...dados.eventos].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).slice(0, 6),
+    [dados.eventos]
+  );
+  const campos = (CAMPOS[tipo] || []).filter((c) => !c.showIf || c.showIf(form));
+  const semMatrizes = dados.matrizes.length === 0 && tipo !== "cadastro";
+  return /* @__PURE__ */ React3.createElement("div", { className: "wrap" }, /* @__PURE__ */ React3.createElement("div", { className: "head" }, /* @__PURE__ */ React3.createElement("div", null, /* @__PURE__ */ React3.createElement("small", null, "Livro do rebanho"), /* @__PURE__ */ React3.createElement("h1", null, "Lan\xE7ar"))), /* @__PURE__ */ React3.createElement(IndexTabs, { tabs: abas, value: tipo, onChange: trocarTipo, rotulo: "Tipo de lan\xE7amento" }), /* @__PURE__ */ React3.createElement("div", { className: "sheet pad" }, tipo === "lote" ? /* @__PURE__ */ React3.createElement(LoteFoto, { dados, hoje, onGravarLote, modoTeste }) : /* @__PURE__ */ React3.createElement(React3.Fragment, null, /* @__PURE__ */ React3.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rotuloEvento(tipo)), semMatrizes && /* @__PURE__ */ React3.createElement(Aviso, { tipo: "info" }, ownerMode ? 'Cadastre pelo menos uma matriz em "Nova matriz" para poder lig\xE1-la aos outros lan\xE7amentos.' : "Ainda n\xE3o h\xE1 matrizes no sistema. Fale com o propriet\xE1rio."), tipo === "nascimento" && (ultimos.Macho || ultimos["F\xEAmea"]) && /* @__PURE__ */ React3.createElement("div", { style: { marginBottom: 16 } }, ["F\xEAmea", "Macho"].map((sx) => ultimos[sx] ? /* @__PURE__ */ React3.createElement(Lead, { key: sx, rotulo: sx === "Macho" ? "\xDAltimo macho" : "\xDAltima f\xEAmea", valor: `${ultimos[sx].brincoBezerro} \xB7 ${formatarDataBR(ultimos[sx].data)}` }) : null)), /* @__PURE__ */ React3.createElement("div", { className: "grid2" }, campos.map((c) => /* @__PURE__ */ React3.createElement("div", { key: c.key, style: c.type === "matriz" || c.key === "observacoes" || c.key === "motivo" ? { gridColumn: "1 / -1" } : void 0 }, /* @__PURE__ */ React3.createElement(Campo, { campo: c, value: form[c.key], onChange: atualizar, matrizes: dados.matrizes, touros: dados.touros })))), erro && /* @__PURE__ */ React3.createElement(Aviso, null, erro), dup && /* @__PURE__ */ React3.createElement(Aviso, { tipo: "info" }, "Esse lan\xE7amento parece j\xE1 existir (mesma vaca e mesma data). Confira antes de salvar de novo.", /* @__PURE__ */ React3.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React3.createElement("button", { className: "btn sm", onClick: () => salvar(true) }, "Salvar mesmo assim"), /* @__PURE__ */ React3.createElement("button", { className: "btn quiet sm", onClick: () => setDup(false) }, "Cancelar"))), salvo && /* @__PURE__ */ React3.createElement(Aviso, { tipo: "ok" }, salvo, modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : ""), /* @__PURE__ */ React3.createElement("button", { className: "btn wide", onClick: () => salvar(false), style: { marginTop: 6 } }, /* @__PURE__ */ React3.createElement(Save, { size: 18 }), " Salvar registro"))), tipo !== "lote" && /* @__PURE__ */ React3.createElement(React3.Fragment, null, /* @__PURE__ */ React3.createElement("h2", { className: "h2" }, "\xDAltimos lan\xE7amentos"), /* @__PURE__ */ React3.createElement("div", { className: "sheet" }, recentes.length === 0 ? /* @__PURE__ */ React3.createElement("div", { className: "empty" }, "Nada lan\xE7ado ainda.") : recentes.map((e) => /* @__PURE__ */ React3.createElement("div", { className: "led-r", key: e.id, style: { "--cols": "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React3.createElement("span", { style: { fontSize: 14.5 } }, descreverEvento(e, dados)), /* @__PURE__ */ React3.createElement("span", { className: "m mut" }, formatarDataBR(e.data)))))));
+}
+
+// src/telas/Parto.jsx
+import React4, { useMemo as useMemo3, useState as useState4 } from "react";
+import { Search } from "lucide-react";
+function textoDias(dias) {
+  if (dias === null || dias === void 0) return { t: "\u2014", c: "mut" };
+  if (dias < 0) return { t: `\u2212${Math.abs(dias)}`, c: "late" };
+  if (dias === 0) return { t: "hoje", c: "late" };
+  if (dias <= 15) return { t: `+${dias}`, c: "soon" };
+  return { t: `+${dias}`, c: "good" };
+}
+function Calculo({ info }) {
+  if (!info) return null;
+  if (info.origem === "toque") return /* @__PURE__ */ React4.createElement(React4.Fragment, null, "C\xE1lculo: toque de ", /* @__PURE__ */ React4.createElement("b", null, formatarDataBR(info.base)), " com ", /* @__PURE__ */ React4.createElement("b", null, info.dg), " dias de gesta\xE7\xE3o, completando ", PERIODO_GESTACAO_DIAS, " dias.");
+  if (info.origem === "iatf") return /* @__PURE__ */ React4.createElement(React4.Fragment, null, "C\xE1lculo: IATF de ", /* @__PURE__ */ React4.createElement("b", null, formatarDataBR(info.base)), " mais ", PERIODO_GESTACAO_DIAS, " dias.");
+  return /* @__PURE__ */ React4.createElement(React4.Fragment, null, "Toque de ", /* @__PURE__ */ React4.createElement("b", null, formatarDataBR(info.base)), " sem os dias de gesta\xE7\xE3o (DG) anotados: n\xE3o d\xE1 para calcular a data.");
+}
+function Parto({ dados, hoje, onLancar }) {
+  const [aba, setAba] = useState4("Cheia");
+  const [busca, setBusca] = useState4("");
+  const [aberta, setAberta] = useState4(null);
+  const todasCheias = useMemo3(() => linhasPrevisao(dados.matrizes, dados.eventos, "Cheia", hoje, ""), [dados, hoje]);
+  const nVazias = dados.matrizes.filter((m) => m.status === "Vazia").length;
+  const linhas = useMemo3(() => linhasPrevisao(dados.matrizes, dados.eventos, aba, hoje, busca), [dados, aba, hoje, busca]);
+  const atrasadas = todasCheias.filter((l) => l.dias !== null && l.dias < 0).length;
+  const porVir = todasCheias.filter((l) => l.dias !== null && l.dias >= 0).length;
+  const semPrev = todasCheias.filter((l) => l.dias === null).length;
+  const vaziasSemParto = useMemo3(() => linhasPrevisao(dados.matrizes, dados.eventos, "Vazia", hoje, "").filter((l) => !l.ultimoParto).length, [dados, hoje]);
+  const cols = "84px minmax(0,1fr) 78px 54px";
+  return /* @__PURE__ */ React4.createElement("div", { className: "wrap" }, /* @__PURE__ */ React4.createElement("div", { className: "head" }, /* @__PURE__ */ React4.createElement("div", null, /* @__PURE__ */ React4.createElement("small", null, "Livro do rebanho"), /* @__PURE__ */ React4.createElement("h1", null, "Previs\xE3o de parto"))), /* @__PURE__ */ React4.createElement(
+    IndexTabs,
+    {
+      rotulo: "Situa\xE7\xE3o",
+      value: aba,
+      onChange: (v) => {
+        setAba(v);
+        setAberta(null);
+      },
+      tabs: [{ id: "Cheia", label: "Cheias", count: todasCheias.length }, { id: "Vazia", label: "Vazias", count: nVazias }]
+    }
+  ), /* @__PURE__ */ React4.createElement("section", { className: "sheet" }, /* @__PURE__ */ React4.createElement("label", { className: "search" }, /* @__PURE__ */ React4.createElement(Search, null), /* @__PURE__ */ React4.createElement("input", { placeholder: "Buscar pelo brinco", "aria-label": "Buscar pelo brinco", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React4.createElement("div", { className: "bar-sum" }, aba === "Cheia" ? /* @__PURE__ */ React4.createElement(React4.Fragment, null, /* @__PURE__ */ React4.createElement("span", { className: "late" }, atrasadas, " atrasadas"), /* @__PURE__ */ React4.createElement("span", { className: "good" }, porVir, " por vir"), semPrev > 0 && /* @__PURE__ */ React4.createElement("span", { className: "mut" }, semPrev, " sem previs\xE3o")) : /* @__PURE__ */ React4.createElement(React4.Fragment, null, /* @__PURE__ */ React4.createElement("span", { className: "soon" }, nVazias, " vazias"), vaziasSemParto > 0 && /* @__PURE__ */ React4.createElement("span", { className: "mut" }, vaziasSemParto, " sem parto lan\xE7ado"))), /* @__PURE__ */ React4.createElement("div", { className: "led-h", style: { "--cols": cols } }, /* @__PURE__ */ React4.createElement("span", null, "Brinco"), /* @__PURE__ */ React4.createElement("span", null, "Categoria"), /* @__PURE__ */ React4.createElement("span", null, aba === "Cheia" ? "Previs\xE3o" : "\xDAlt. parto"), /* @__PURE__ */ React4.createElement("span", { className: "r" }, aba === "Cheia" ? "Dias" : "H\xE1 (d)")), linhas.length === 0 && /* @__PURE__ */ React4.createElement("div", { className: "empty" }, busca ? "Nenhuma matriz com esse brinco aqui." : `Nenhuma matriz ${aba === "Cheia" ? "cheia" : "vazia"}.`), linhas.map((l) => {
+    const m = l.matriz;
+    const dd = aba === "Cheia" ? textoDias(l.dias) : { t: l.diasDesdeParto === null ? "\u2014" : String(l.diasDesdeParto), c: "mut" };
+    const data = aba === "Cheia" ? l.previsao : l.ultimoParto;
+    const aberto = aberta === m.id;
+    return /* @__PURE__ */ React4.createElement(React4.Fragment, { key: m.id }, /* @__PURE__ */ React4.createElement("button", { className: "led-r", style: { "--cols": cols }, "aria-expanded": aberto, onClick: () => setAberta(aberto ? null : m.id) }, /* @__PURE__ */ React4.createElement("span", { className: "b" }, m.brinco), /* @__PURE__ */ React4.createElement("span", { className: "two" }, /* @__PURE__ */ React4.createElement("b", null, m.categoria), /* @__PURE__ */ React4.createElement("span", null, [m.raca, m.lote].filter(Boolean).join(" \xB7 ") || "\u2014")), /* @__PURE__ */ React4.createElement("span", { className: "m" }, data ? formatarDataBR(data) : "\u2014"), /* @__PURE__ */ React4.createElement("span", { className: `r ${dd.c}` }, dd.t)), aberto && /* @__PURE__ */ React4.createElement("div", { className: "detalhe" }, aba === "Cheia" && /* @__PURE__ */ React4.createElement("div", null, /* @__PURE__ */ React4.createElement(Calculo, { info: l.info })), l.ultimoParto ? /* @__PURE__ */ React4.createElement("div", null, "\xDAltimo parto: ", /* @__PURE__ */ React4.createElement("b", null, formatarDataBR(l.ultimoParto)), l.numeroCria ? ` (cria ${l.numeroCria})` : "") : /* @__PURE__ */ React4.createElement("div", null, "Nenhum parto lan\xE7ado para esta vaca."), aba === "Cheia" && l.dias !== null && l.dias < 0 && /* @__PURE__ */ React4.createElement("div", { className: "late", style: { marginTop: 4 } }, "A data prevista j\xE1 passou h\xE1 ", Math.abs(l.dias), " dia(s). Confira se ela j\xE1 pariu."), /* @__PURE__ */ React4.createElement("div", { style: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" } }, aba === "Cheia" ? /* @__PURE__ */ React4.createElement("button", { className: "btn sm", onClick: () => onLancar("nascimento", m.id) }, "Lan\xE7ar nascimento desta vaca") : /* @__PURE__ */ React4.createElement("button", { className: "btn sm", onClick: () => onLancar("iatf", m.id) }, "Lan\xE7ar IATF desta vaca"))));
+  })), /* @__PURE__ */ React4.createElement("p", { className: "sub", style: { marginTop: 14 } }, "Dias negativos: a data prevista j\xE1 passou. Confira se a vaca pariu e lance o nascimento. A previs\xE3o olha o hist\xF3rico inteiro da vaca, n\xE3o s\xF3 o ano escolhido."));
+}
+
+// src/telas/Rebanho.jsx
+import React5, { useMemo as useMemo4, useState as useState5 } from "react";
+import { Search as Search2, Lock, Save as Save2 } from "lucide-react";
+function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar }) {
+  const [edit, setEdit] = useState5(false);
+  const [form, setForm] = useState5({ ...m });
+  const hist = useMemo4(
+    () => dados.eventos.filter((e) => e.matrizId === m.id).sort((a, b) => (b.data || "").localeCompare(a.data || "")),
+    [dados.eventos, m.id]
+  );
+  const partos = dados.eventos.filter((e) => e.tipo === "nascimento" && e.matrizId === m.id).length;
+  const ult = ultimoPartoDe(m.id, dados.eventos);
+  const cria = numeroCriaUltimoParto(m.id, dados.eventos);
+  function salvar() {
+    if (!String(form.brinco || "").trim()) return;
+    onSalvar({
+      ...m,
+      brinco: String(form.brinco).trim(),
+      categoria: form.categoria,
+      raca: form.raca || "",
+      lote: form.lote || "",
+      dataNascimento: form.dataNascimento || "",
+      partosAnteriores: parseInt(form.partosAnteriores, 10) || 0,
+      status: form.status
+    });
+    onFechar();
+  }
+  return /* @__PURE__ */ React5.createElement(Modal, { titulo: `Matriz ${m.brinco}`, onClose: onFechar, rotulo: `Matriz ${m.brinco}` }, !edit ? /* @__PURE__ */ React5.createElement(React5.Fragment, null, /* @__PURE__ */ React5.createElement("div", { style: { marginBottom: 6 } }, /* @__PURE__ */ React5.createElement(Tag, { status: m.status })), /* @__PURE__ */ React5.createElement(Lead, { rotulo: "Categoria", valor: m.categoria || "\u2014" }), /* @__PURE__ */ React5.createElement(Lead, { rotulo: "Ra\xE7a", valor: m.raca || "\u2014" }), /* @__PURE__ */ React5.createElement(Lead, { rotulo: "Lote / piquete", valor: m.lote || "\u2014" }), /* @__PURE__ */ React5.createElement(Lead, { rotulo: "Nascimento", valor: m.dataNascimento ? formatarDataBR(m.dataNascimento) : "\u2014" }), /* @__PURE__ */ React5.createElement(Lead, { rotulo: "Partos na fazenda", valor: partos }), /* @__PURE__ */ React5.createElement(Lead, { rotulo: "Partos antes de entrar", valor: m.partosAnteriores || 0 }), /* @__PURE__ */ React5.createElement(Lead, { rotulo: "\xDAltimo parto", valor: ult ? `${formatarDataBR(ult)}${cria ? ` (cria ${cria})` : ""}` : "\u2014" }), /* @__PURE__ */ React5.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Hist\xF3rico", /* @__PURE__ */ React5.createElement("small", null, hist.length, " lan\xE7amento(s)")), hist.length === 0 ? /* @__PURE__ */ React5.createElement("p", { className: "sub" }, "Nada lan\xE7ado para esta vaca ainda.") : /* @__PURE__ */ React5.createElement("ul", { className: "hist", "data-testid": "historico" }, hist.map((e) => /* @__PURE__ */ React5.createElement("li", { key: e.id }, /* @__PURE__ */ React5.createElement("span", null, descreverEvento(e, dados).replace(/ · (mãe|vaca) \S+/, "")), /* @__PURE__ */ React5.createElement("span", null, formatarDataBR(e.data))))), ownerMode ? /* @__PURE__ */ React5.createElement("button", { className: "btn wide", style: { marginTop: 16 }, onClick: () => setEdit(true) }, "Alterar cadastro") : /* @__PURE__ */ React5.createElement("p", { className: "sub", style: { marginTop: 16, display: "flex", gap: 8, alignItems: "center" } }, /* @__PURE__ */ React5.createElement(Lock, { size: 15, style: { flex: "none" } }), " S\xF3 o propriet\xE1rio altera o cadastro. Use o cadeado e a senha.")) : /* @__PURE__ */ React5.createElement(React5.Fragment, null, CAMPOS_EDICAO_MATRIZ.map((c) => /* @__PURE__ */ React5.createElement(Campo, { key: c.key, campo: c, value: form[c.key], onChange: (k, v) => setForm((f) => ({ ...f, [k]: v })), matrizes: [], touros: [] })), /* @__PURE__ */ React5.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React5.createElement("button", { className: "btn", style: { flex: 1 }, onClick: salvar }, /* @__PURE__ */ React5.createElement(Save2, { size: 17 }), " Salvar altera\xE7\xF5es"), /* @__PURE__ */ React5.createElement("button", { className: "btn quiet", onClick: () => setEdit(false) }, "Cancelar"))));
+}
+function Rebanho({ dados, ownerMode, onSalvarMatriz }) {
+  const [aba, setAba] = useState5("matrizes");
+  const [filtro, setFiltro] = useState5("todos");
+  const [busca, setBusca] = useState5("");
+  const [aberta, setAberta] = useState5(null);
+  const lista = useMemo4(() => {
+    const q = busca.trim().toLowerCase();
+    return dados.matrizes.filter((m) => (filtro === "todos" || m.status === filtro) && (!q || String(m.brinco).toLowerCase().includes(q))).slice().sort((a, b) => String(a.brinco).localeCompare(String(b.brinco), "pt-BR", { numeric: true }));
+  }, [dados.matrizes, filtro, busca]);
+  const aberto = aberta ? dados.matrizes.find((m) => m.id === aberta) : null;
+  const contar = (s) => dados.matrizes.filter((m) => m.status === s).length;
+  return /* @__PURE__ */ React5.createElement("div", { className: "wrap" }, /* @__PURE__ */ React5.createElement("div", { className: "head" }, /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("small", null, "Livro do rebanho"), /* @__PURE__ */ React5.createElement("h1", null, "Rebanho"))), /* @__PURE__ */ React5.createElement(
+    IndexTabs,
+    {
+      rotulo: "Cadastros",
+      value: aba,
+      onChange: setAba,
+      tabs: [{ id: "matrizes", label: "Matrizes", count: dados.matrizes.length }, { id: "touros", label: "Touros", count: dados.touros.length }]
+    }
+  ), aba === "matrizes" && /* @__PURE__ */ React5.createElement("section", { className: "sheet" }, /* @__PURE__ */ React5.createElement("label", { className: "search" }, /* @__PURE__ */ React5.createElement(Search2, null), /* @__PURE__ */ React5.createElement("input", { placeholder: "Buscar pelo brinco", "aria-label": "Buscar pelo brinco", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React5.createElement("div", { style: { padding: "10px 16px", borderBottom: "1px solid var(--line)" } }, /* @__PURE__ */ React5.createElement("div", { className: "seg", role: "group", "aria-label": "Filtrar por situa\xE7\xE3o" }, [["todos", "Todas"], ["Cheia", `Cheias ${contar("Cheia")}`], ["Vazia", `Vazias ${contar("Vazia")}`], ["Descarte", `Descarte ${contar("Descarte")}`]].map(([id, rot]) => /* @__PURE__ */ React5.createElement("button", { key: id, "aria-pressed": filtro === id, onClick: () => setFiltro(id), style: { minHeight: 40, fontSize: 13 } }, rot)))), /* @__PURE__ */ React5.createElement("div", { className: "led-h cols-reb" }, /* @__PURE__ */ React5.createElement("span", null, "Brinco"), /* @__PURE__ */ React5.createElement("span", null, "Categoria"), /* @__PURE__ */ React5.createElement("span", null, "Situa\xE7\xE3o"), /* @__PURE__ */ React5.createElement("span", { className: "hide-s" }, "Lote"), /* @__PURE__ */ React5.createElement("span", { className: "hide-s" }, "\xDAlt. parto")), lista.length === 0 && /* @__PURE__ */ React5.createElement("div", { className: "empty" }, "Nenhuma matriz encontrada."), lista.map((m) => {
+    const ult = ultimoPartoDe(m.id, dados.eventos);
+    return /* @__PURE__ */ React5.createElement("button", { key: m.id, className: "led-r cols-reb", onClick: () => setAberta(m.id), "aria-label": `Abrir matriz ${m.brinco}` }, /* @__PURE__ */ React5.createElement("span", { className: "b" }, m.brinco), /* @__PURE__ */ React5.createElement("span", { className: "two" }, /* @__PURE__ */ React5.createElement("b", null, m.categoria), /* @__PURE__ */ React5.createElement("span", null, m.raca || "\u2014")), /* @__PURE__ */ React5.createElement("span", null, /* @__PURE__ */ React5.createElement(Tag, { status: m.status })), /* @__PURE__ */ React5.createElement("span", { className: "hide-s m mut" }, m.lote || "\u2014"), /* @__PURE__ */ React5.createElement("span", { className: "hide-s m mut" }, ult ? formatarDataBR(ult) : "\u2014"));
+  })), aba === "touros" && /* @__PURE__ */ React5.createElement("section", { className: "sheet" }, dados.touros.length === 0 ? /* @__PURE__ */ React5.createElement("div", { className: "empty" }, "Nenhum touro / s\xEAmen cadastrado ainda.", ownerMode ? " Cadastre em Lan\xE7ar \u2192 Touro / s\xEAmen." : "", /* @__PURE__ */ React5.createElement("div", { style: { marginTop: 6, fontSize: 13 } }, 'Enquanto n\xE3o houver cadastro, os relat\xF3rios mostram o pai como "n\xE3o informado".')) : dados.touros.map((t) => {
+    const usadas = dados.eventos.filter((e) => e.tipo === "iatf" && e.touroId === t.id).length;
+    const adq = parseInt(t.doses, 10) || 0;
+    const rest = adq - usadas;
+    return /* @__PURE__ */ React5.createElement("div", { className: "led-r", key: t.id, style: { "--cols": ownerMode ? "minmax(0,1fr) auto" : "1fr", minHeight: 64 } }, /* @__PURE__ */ React5.createElement("span", { className: "two" }, /* @__PURE__ */ React5.createElement("b", null, t.nome), /* @__PURE__ */ React5.createElement("span", null, [t.raca, t.fornecedor, t.anoAquisicao].filter(Boolean).join(" \xB7 "))), ownerMode && adq > 0 && /* @__PURE__ */ React5.createElement("span", { className: "r", style: { color: rest <= 0 ? "var(--late)" : rest <= 5 ? "var(--amber)" : "var(--green)" } }, rest, " dose(s)", /* @__PURE__ */ React5.createElement("div", { style: { font: "500 11.5px var(--body)", color: "var(--mut)" } }, usadas, " de ", adq, t.custoDose ? ` \xB7 ${fmtBRL(t.custoDose)}` : "")));
+  })), !ownerMode && /* @__PURE__ */ React5.createElement("p", { className: "sub", style: { marginTop: 14, display: "flex", gap: 8, alignItems: "center" } }, /* @__PURE__ */ React5.createElement(Lock, { size: 15, style: { flex: "none" } }), " Modo funcion\xE1rio: aqui voc\xEA consulta. Alterar cadastro \xE9 s\xF3 com a senha do propriet\xE1rio."), aberto && /* @__PURE__ */ React5.createElement(ModalMatriz, { key: aberto.id, m: aberto, dados, ownerMode, onSalvar: onSalvarMatriz, onFechar: () => setAberta(null) }));
+}
+
+// src/telas/Painel.jsx
+import React6, { useMemo as useMemo5, useState as useState6 } from "react";
+import { Download, RefreshCw } from "lucide-react";
+function Painel({ anoSel, dados, ano, hoje, go, onExcel, onSync, onRecarregar, modoTeste, sincronizando }) {
+  const [confirmar, setConfirmar] = useState6(false);
+  const evsAno = useMemo5(() => filtrarPorAno(dados.eventos, ano), [dados.eventos, ano]);
+  const k = useMemo5(() => calcularKPIs(dados.matrizes, evsAno), [dados.matrizes, evsAno]);
+  const cheias = useMemo5(() => linhasPrevisao(dados.matrizes, dados.eventos, "Cheia", hoje, ""), [dados, hoje]);
+  const atrasadas = cheias.filter((l) => l.dias !== null && l.dias < 0).length;
+  const semPrev = cheias.filter((l) => l.dias === null).length;
+  const sinal = cheias.filter((l) => l.dias !== null && l.dias >= 0 && l.dias <= 30).length;
+  const nascSemMae = evsAno.filter((e) => e.tipo === "nascimento" && !e.matrizId).length;
+  const semRacaLote = dados.matrizes.filter((m) => m.status !== "Descarte" && (!m.raca || !m.lote)).length;
+  const brincos = {};
+  dados.matrizes.forEach((m) => {
+    brincos[m.brinco] = (brincos[m.brinco] || 0) + 1;
+  });
+  const duplicados = Object.values(brincos).filter((n) => n > 1).length;
+  const porMes = useMemo5(() => {
+    const mapa = {};
+    evsAno.filter((e) => e.tipo === "nascimento" && e.data).forEach((e) => {
+      const kk = e.data.slice(0, 7);
+      mapa[kk] = (mapa[kk] || 0) + 1;
+    });
+    return Object.entries(mapa).sort().slice(-12);
+  }, [evsAno]);
+  const maxMes = Math.max(1, ...porMes.map(([, n]) => n));
+  const recentes = useMemo5(
+    () => [...dados.eventos].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).slice(0, 8),
+    [dados.eventos]
+  );
+  const ativos = k.cheias + k.vazias;
+  const pc = (n) => ativos ? n / ativos * 100 : 0;
+  const rot = rotuloAno(ano);
+  const pendencias = [
+    atrasadas > 0 && { rotulo: "Previs\xF5es de parto j\xE1 vencidas (conferir se pariram)", valor: atrasadas, onClick: () => go("parto"), cor: "var(--late)" },
+    semPrev > 0 && { rotulo: "Cheias sem previs\xE3o calculada", valor: semPrev, onClick: () => go("parto") },
+    nascSemMae > 0 && { rotulo: `Nascimentos de ${rot} sem a m\xE3e informada`, valor: nascSemMae },
+    semRacaLote > 0 && { rotulo: "Matrizes sem ra\xE7a ou lote no cadastro", valor: semRacaLote, onClick: () => go("rebanho") },
+    duplicados > 0 && { rotulo: "Brincos repetidos no cadastro", valor: duplicados, cor: "var(--late)" }
+  ].filter(Boolean);
+  return /* @__PURE__ */ React6.createElement("div", { className: "wrap" }, /* @__PURE__ */ React6.createElement("div", { className: "head" }, /* @__PURE__ */ React6.createElement("div", null, /* @__PURE__ */ React6.createElement("small", null, "Propriet\xE1rio \xB7 ", rot), /* @__PURE__ */ React6.createElement("h1", null, "Painel")), /* @__PURE__ */ React6.createElement("div", { className: "acts noprint" }, anoSel, /* @__PURE__ */ React6.createElement("button", { className: "btn ghost sm", onClick: onExcel }, /* @__PURE__ */ React6.createElement(Download, { size: 16 }), " Excel de ", rot))), /* @__PURE__ */ React6.createElement("h2", { className: "h2", style: { marginTop: 4 } }, "Rebanho hoje", /* @__PURE__ */ React6.createElement("small", null, formatarDataBR(hoje))), /* @__PURE__ */ React6.createElement(Kpis, { itens: [
+    { rotulo: "Matrizes", valor: k.total },
+    { rotulo: "Cheias", valor: k.cheias, cor: "var(--green)", sub: `${pc(k.cheias).toFixed(0)}% das ativas` },
+    { rotulo: "Vazias", valor: k.vazias, cor: "var(--amber)", sub: `${pc(k.vazias).toFixed(0)}% das ativas` },
+    { rotulo: "Descarte", valor: k.descartes, cor: "var(--late)" }
+  ] }), /* @__PURE__ */ React6.createElement("div", { className: "panel", style: { marginTop: 12 } }, /* @__PURE__ */ React6.createElement("div", { className: "sbar", role: "img", "aria-label": `${k.cheias} cheias, ${k.vazias} vazias, ${k.descartes} em descarte` }, /* @__PURE__ */ React6.createElement("i", { style: { width: `${k.total ? k.cheias / k.total * 100 : 0}%`, background: "var(--green)" } }), /* @__PURE__ */ React6.createElement("i", { style: { width: `${k.total ? k.vazias / k.total * 100 : 0}%`, background: "var(--amber)" } }), /* @__PURE__ */ React6.createElement("i", { style: { width: `${k.total ? k.descartes / k.total * 100 : 0}%`, background: "var(--late)" } })), /* @__PURE__ */ React6.createElement("div", { className: "legend" }, /* @__PURE__ */ React6.createElement("span", { style: { "--c": "var(--green)" } }, "Cheias"), /* @__PURE__ */ React6.createElement("span", { style: { "--c": "var(--amber)" } }, "Vazias"), /* @__PURE__ */ React6.createElement("span", { style: { "--c": "var(--late)" } }, "Descarte")), /* @__PURE__ */ React6.createElement(Lead, { rotulo: "Partos previstos nos pr\xF3ximos 30 dias", valor: sinal, onClick: () => go("parto") }), /* @__PURE__ */ React6.createElement(Lead, { rotulo: "Novilhas em recria", valor: k.emRecria })), /* @__PURE__ */ React6.createElement("h2", { className: "h2" }, "Movimento de ", rot), /* @__PURE__ */ React6.createElement(Kpis, { itens: [
+    { rotulo: "Nascimentos", valor: k.nascimentos + k.natimortos, sub: `${k.machos} machos \xB7 ${k.femeas} f\xEAmeas` },
+    { rotulo: "IATF / coberturas", valor: k.iatfs },
+    { rotulo: "Toques", valor: k.diagnosticos, sub: k.diagnosticos ? `${k.taxaPrenhez.toFixed(0)}% prenhes` : "nenhum no per\xEDodo" },
+    { rotulo: "Desmamas", valor: k.desmamas, sub: k.desmamas ? `peso m\xE9dio ${k.pesoMedioDesmama.toFixed(0)} kg` : "nenhuma no per\xEDodo" }
+  ] }), /* @__PURE__ */ React6.createElement("div", { className: "cols2", style: { marginTop: 16 } }, /* @__PURE__ */ React6.createElement("div", { className: "panel" }, /* @__PURE__ */ React6.createElement("h3", null, "Nascimentos por m\xEAs"), porMes.length === 0 ? /* @__PURE__ */ React6.createElement("p", { className: "sub" }, "Nenhum nascimento lan\xE7ado em ", rot, ".") : /* @__PURE__ */ React6.createElement("div", { className: "mbars", role: "img", "aria-label": "Nascimentos por m\xEAs" }, porMes.map(([mes, n]) => /* @__PURE__ */ React6.createElement("div", { className: "c", key: mes }, /* @__PURE__ */ React6.createElement("b", null, n), /* @__PURE__ */ React6.createElement("i", { style: { height: `${n / maxMes * 100}%` } }), /* @__PURE__ */ React6.createElement("span", null, mesCurto(mes))))), /* @__PURE__ */ React6.createElement(Lead, { rotulo: "Perda ao nascer (natimortos)", valor: `${k.taxaPerda.toFixed(0)}% \xB7 ${k.natimortos}`, cor: k.taxaPerda > 5 ? "var(--late)" : void 0 })), /* @__PURE__ */ React6.createElement("div", { className: "panel" }, /* @__PURE__ */ React6.createElement("h3", null, "A conferir"), pendencias.length === 0 ? /* @__PURE__ */ React6.createElement("p", { className: "sub" }, "Nada pendente. Tudo em ordem.") : pendencias.map((p) => /* @__PURE__ */ React6.createElement(Lead, { key: p.rotulo, rotulo: p.rotulo, valor: p.valor, onClick: p.onClick, cor: p.cor })))), /* @__PURE__ */ React6.createElement("h2", { className: "h2" }, "Dinheiro de ", rot), /* @__PURE__ */ React6.createElement(Kpis, { itens: [
+    { rotulo: "Vendas", valor: fmtBRL(k.receitaTotal), pequeno: true },
+    { rotulo: "Custos", valor: fmtBRL(k.custoTotal), pequeno: true, sub: "IATF, toque, insumo e frete" },
+    { rotulo: "Custo por bezerro", valor: fmtBRL(k.custoPorBezerro), pequeno: true, cor: "var(--amber)" },
+    { rotulo: "Margem", valor: fmtBRL(k.margem), pequeno: true, cor: k.margem >= 0 ? "var(--green)" : "var(--late)" }
+  ] }), k.receitaTotal === 0 && k.custoTotal === 0 && /* @__PURE__ */ React6.createElement("p", { className: "sub", style: { marginTop: 8 } }, "Ainda n\xE3o h\xE1 vendas ou custos lan\xE7ados em ", rot, "."), /* @__PURE__ */ React6.createElement("h2", { className: "h2" }, "Atividade recente"), /* @__PURE__ */ React6.createElement("div", { className: "sheet" }, recentes.length === 0 ? /* @__PURE__ */ React6.createElement("div", { className: "empty" }, "Nada lan\xE7ado ainda.") : recentes.map((e) => /* @__PURE__ */ React6.createElement("div", { className: "led-r", key: e.id, style: { "--cols": "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React6.createElement("span", { style: { fontSize: 14.5 } }, descreverEvento(e, dados)), /* @__PURE__ */ React6.createElement("span", { className: "m mut" }, formatarDataBR(e.data))))), /* @__PURE__ */ React6.createElement("details", { className: "ferr noprint" }, /* @__PURE__ */ React6.createElement("summary", null, "Ferramentas avan\xE7adas"), /* @__PURE__ */ React6.createElement("div", { className: "in2" }, /* @__PURE__ */ React6.createElement("button", { className: "btn quiet sm", onClick: onRecarregar }, /* @__PURE__ */ React6.createElement(RefreshCw, { size: 15 }), " Recarregar dados da planilha"), /* @__PURE__ */ React6.createElement("button", { className: "btn quiet sm", onClick: () => setConfirmar(true), disabled: sincronizando }, /* @__PURE__ */ React6.createElement(RefreshCw, { size: 15 }), " Sincronizar planilha agora")), confirmar && /* @__PURE__ */ React6.createElement(Aviso, { tipo: "info" }, "Isso regrava a planilha inteira com o que est\xE1 na tela (nada se perde; atualiza f\xF3rmulas, formata\xE7\xE3o e a aba Resumo). ", modoTeste ? "No modo teste n\xE3o faz nada de verdade." : "Pode levar alguns segundos.", /* @__PURE__ */ React6.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8 } }, /* @__PURE__ */ React6.createElement("button", { className: "btn sm", onClick: async () => {
+    setConfirmar(false);
+    await onSync();
+  } }, "Confirmar"), /* @__PURE__ */ React6.createElement("button", { className: "btn quiet sm", onClick: () => setConfirmar(false) }, "Cancelar")))));
+}
+
+// src/telas/Relatorios.jsx
+import React7, { useMemo as useMemo6, useState as useState7 } from "react";
+import { Printer, Download as Download2 } from "lucide-react";
+var NOMES_CURTOS = { previsao: "Parto", nascimentos: "Nascimentos", melhores: "Melhores vacas", iatf: "IATF", situacao: "Situa\xE7\xE3o" };
+function Relatorios({ anoSel, dados, ano, hoje, onExcel, onExcelRelatorio }) {
+  const [aba, setAba] = useState7("previsao");
+  const [tipoPlan, setTipoPlan] = useState7("matrizes");
+  const abas = [...RELATORIOS.map((r) => ({ id: r.id, label: NOMES_CURTOS[r.id] || r.titulo })), { id: "planilha", label: "Planilha" }];
+  const def = RELATORIOS.find((r) => r.id === aba);
+  const rel = useMemo6(() => def ? montarRelatorio(aba, dados, ano, hoje) : null, [aba, dados, ano, hoje]);
+  const evsAno = useMemo6(() => filtrarPorAno(dados.eventos, ano), [dados.eventos, ano]);
+  const linhasPlan = useMemo6(
+    () => aba === "planilha" ? linhasPlanilha(tipoPlan, { matrizes: dados.matrizes, touros: dados.touros, eventos: evsAno }) : [],
+    [aba, tipoPlan, dados, evsAno]
+  );
+  return /* @__PURE__ */ React7.createElement("div", { className: "wrap" }, /* @__PURE__ */ React7.createElement("div", { className: "head" }, /* @__PURE__ */ React7.createElement("div", null, /* @__PURE__ */ React7.createElement("small", null, "Propriet\xE1rio \xB7 ", rotuloAno(ano)), /* @__PURE__ */ React7.createElement("h1", null, aba === "planilha" ? "Planilha" : "Relat\xF3rios")), /* @__PURE__ */ React7.createElement("div", { className: "acts noprint" }, anoSel, def && /* @__PURE__ */ React7.createElement("button", { className: "btn quiet sm", onClick: () => window.print() }, /* @__PURE__ */ React7.createElement(Printer, { size: 16 }), " Imprimir"), def && /* @__PURE__ */ React7.createElement("button", { className: "btn ghost sm", onClick: () => onExcelRelatorio(rel) }, /* @__PURE__ */ React7.createElement(Download2, { size: 16 }), " Excel deste relat\xF3rio"), aba === "planilha" && /* @__PURE__ */ React7.createElement("button", { className: "btn ghost sm", onClick: onExcel }, /* @__PURE__ */ React7.createElement(Download2, { size: 16 }), " Excel completo de ", rotuloAno(ano)))), /* @__PURE__ */ React7.createElement(IndexTabs, { tabs: abas, value: aba, onChange: setAba, rotulo: "Relat\xF3rios" }), /* @__PURE__ */ React7.createElement("div", { className: "sheet pad" }, def && rel && /* @__PURE__ */ React7.createElement(React7.Fragment, null, /* @__PURE__ */ React7.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rel.titulo), !def.porAno && /* @__PURE__ */ React7.createElement("p", { className: "sub" }, "Este relat\xF3rio mostra a situa\xE7\xE3o de hoje e n\xE3o muda com o ano escolhido."), /* @__PURE__ */ React7.createElement(Kpis, { itens: rel.resumo.map((r) => ({ rotulo: r.rotulo, valor: r.valor })) }), rel.secoes.map((s) => /* @__PURE__ */ React7.createElement(SecaoRelatorio, { key: s.titulo, secao: s }))), aba === "planilha" && /* @__PURE__ */ React7.createElement(React7.Fragment, null, /* @__PURE__ */ React7.createElement("p", { className: "sub" }, "Os dados brutos de cada aba, como est\xE3o na planilha. Os lan\xE7amentos mostram s\xF3 ", rotuloAno(ano), "; matrizes e touros aparecem inteiros."), /* @__PURE__ */ React7.createElement("div", { className: "seg", style: { flexWrap: "wrap", marginBottom: 14 }, role: "group", "aria-label": "Aba da planilha" }, ABAS_EXCEL.map(([nome, tipo]) => /* @__PURE__ */ React7.createElement("button", { key: tipo, "aria-pressed": tipoPlan === tipo, onClick: () => setTipoPlan(tipo), style: { flex: "0 0 auto", minHeight: 40, fontSize: 13 } }, nome))), /* @__PURE__ */ React7.createElement(TabelaLinhas, { rows: linhasPlan }))));
+}
+
+// src/app.jsx
+var OWNER_PIN = typeof __PIN_TESTE__ !== "undefined" ? __PIN_TESTE__ : "1537";
+var VAZIO = { matrizes: [], touros: [], eventos: [] };
+function Marca() {
+  return /* @__PURE__ */ React8.createElement("div", { className: "brand" }, /* @__PURE__ */ React8.createElement("small", null, "Fazenda Ibira\xE7u"), /* @__PURE__ */ React8.createElement("b", null, "Gest\xE3o da Pecu\xE1ria"));
+}
+function SeletorAno({ ano, anos, onChange }) {
+  return /* @__PURE__ */ React8.createElement("label", { className: "chip", title: "Ano de gest\xE3o" }, /* @__PURE__ */ React8.createElement("span", { className: "sr" }, "Ano de gest\xE3o"), /* @__PURE__ */ React8.createElement("span", { "aria-hidden": "true" }, "ANO"), /* @__PURE__ */ React8.createElement("select", { "aria-label": "Ano de gest\xE3o", value: String(ano), onChange: (e) => onChange(e.target.value === "todos" ? "todos" : Number(e.target.value)) }, anos.map((a) => /* @__PURE__ */ React8.createElement("option", { key: a, value: a }, a)), /* @__PURE__ */ React8.createElement("option", { value: "todos" }, "Todos")), /* @__PURE__ */ React8.createElement(ChevronDown, { size: 14, "aria-hidden": "true" }));
+}
+function GestaoPecuaria() {
+  const [tab, setTab] = useState8("lancar");
+  const [dados, setDados] = useState8(VAZIO);
+  const dadosRef = useRef3(VAZIO);
+  const [loading, setLoading] = useState8(true);
+  const [aviso, setAviso] = useState8(null);
+  const [versaoScript, setVersaoScript] = useState8(null);
+  const [ownerMode, setOwnerMode] = useState8(false);
+  const [pinAberto, setPinAberto] = useState8(false);
+  const [pin, setPin] = useState8("");
+  const [pinErro, setPinErro] = useState8(false);
+  const [hoje, setHoje] = useState8(todayISO());
+  const [ano, setAno] = useState8(() => anoDe(todayISO()));
+  const [pendentes, setPendentes] = useState8(0);
+  const [sincronizando, setSincronizando] = useState8(false);
+  const [preset, setPreset] = useState8(null);
+  const fila = useRef3(Promise.resolve());
+  function commit(novo) {
+    dadosRef.current = novo;
+    setDados(novo);
+  }
+  useEffect3(() => {
+    const f = () => setHoje(todayISO());
+    document.addEventListener("visibilitychange", f);
+    return () => document.removeEventListener("visibilitychange", f);
+  }, []);
+  useEffect3(() => {
+    carregar();
+  }, []);
+  async function carregar() {
     setLoading(true);
-    setSyncMsg('');
+    setAviso(null);
     try {
-      const res = await fetch(`${SHEETS_API_URL}?action=getAll`);
-      const data = await res.json();
-      if (data && data.error) throw new Error(data.error);
-      const dados = normalizarDados(data);
-      setMatrizes(dados.matrizes);
-      setTouros(dados.touros);
-      setEventos(dados.eventos);
+      const data = await lerTudo();
+      commit(normalizarDados(data));
       const v = Number(data.versao) || 0;
       setVersaoScript(v);
       if (v < VERSAO_MINIMA_SCRIPT) {
-        setSyncMsg(`ATENÇÃO: o script da planilha está desatualizado (versão ${v || 'antiga'}). O que você lançar aparece na tela, mas NÃO está sendo gravado na planilha. Avise o responsável pelo sistema.`);
+        setAviso({ tipo: "erro", texto: `ATEN\xC7\xC3O: o script da planilha est\xE1 desatualizado (vers\xE3o ${v || "antiga"}). O que voc\xEA lan\xE7ar aparece na tela, mas N\xC3O est\xE1 sendo gravado na planilha. Avise o respons\xE1vel pelo sistema.` });
       }
     } catch (e) {
-      console.error('Erro ao carregar dados da planilha', e);
-      setSyncMsg('Não consegui falar com a planilha agora. Verifique a internet e tente de novo. Os dados na tela podem estar desatualizados.');
+      console.error("Erro ao carregar dados da planilha", e);
+      setAviso({ tipo: "erro", texto: "N\xE3o consegui falar com a planilha agora. Verifique a internet e tente de novo. Os dados na tela podem estar desatualizados." });
     }
     setLoading(false);
-  }
-
-  // Envia uma gravação e CONFERE a resposta (antes, um erro devolvido pela planilha passava despercebido)
-  async function postar(payload) {
-    const res = await fetch(SHEETS_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8'
-      },
-      body: JSON.stringify(payload)
-    });
-    let data = null;
-    try {
-      data = await res.json();
-    } catch (e) {
-      throw new Error('a planilha não respondeu direito');
-    }
-    if (data && data.error) throw new Error(data.error);
-    return data;
   }
   async function gravar(payload, rotulo) {
     try {
       await postar(payload);
+      return true;
     } catch (e) {
       console.error(`Erro ao gravar (${rotulo})`, e);
-      setSyncMsg(`Não consegui gravar na planilha (${rotulo}): ${e.message}. O registro aparece na tela, mas pode sumir ao recarregar. Tente salvar de novo.`);
+      setAviso({ tipo: "erro", texto: `N\xE3o consegui gravar na planilha (${rotulo}): ${e.message}. O registro aparece na tela, mas pode sumir ao recarregar. Tente salvar de novo.` });
+      return false;
     }
   }
-  async function syncToSheets(m, t, ev) {
-    const resumo = buildResumoRows(calcularKPIs(m, ev));
-    await gravar({
-      action: 'syncAll',
-      matrizes: m,
-      touros: t,
-      eventos: ev,
-      resumo
-    }, 'sincronização completa');
+  function enfileirar(payload, rotulo) {
+    setPendentes((n) => n + 1);
+    fila.current = fila.current.then(() => gravar(payload, rotulo)).then(() => setPendentes((n) => n - 1));
   }
-
-  // Gravações leves (uma linha só) — usadas no dia a dia, pra lançar rápido sem reescrever a planilha inteira
-  async function syncEventoAppend(evento) {
-    await gravar({
-      action: 'appendEvento',
-      tipo: evento.tipo,
-      evento
-    }, 'lançamento');
+  function salvarLancamento(tipo, form) {
+    const antes = dadosRef.current;
+    const r = aplicarLancamento(antes, tipo, form);
+    commit(r.estado);
+    r.eventosNovos.forEach((e) => enfileirar({ action: "appendEvento", tipo: e.tipo, evento: e }, "lan\xE7amento"));
+    r.matrizesAlteradas.forEach((m) => enfileirar({ action: "upsertMatriz", matriz: m }, "matriz"));
+    r.tourosNovos.forEach((t) => enfileirar({ action: "appendTouro", touro: t }, "touro"));
+    if (tipo === "cadastro") return `Matriz ${r.matrizesAlteradas[0].brinco} cadastrada.`;
+    if (tipo === "touro") return `Touro ${r.tourosNovos[0].nome} cadastrado.`;
+    const mudou = r.matrizesAlteradas.map((m) => {
+      const a = antes.matrizes.find((x) => x.id === m.id);
+      const partes = [];
+      if (a && a.status !== m.status) partes.push(`${a.status} \u2192 ${m.status}`);
+      if (a && a.categoria !== m.categoria) partes.push(`${a.categoria} \u2192 ${m.categoria}`);
+      return partes.length ? `${m.brinco}: ${partes.join(", ")}` : "";
+    }).filter(Boolean);
+    return `Salvo: ${descreverEvento(r.eventosNovos[0], r.estado)}.${mudou.length ? ` Atualizado: ${mudou.join("; ")}.` : ""}`;
   }
-  async function syncMatrizUpsert(matriz) {
-    await gravar({
-      action: 'upsertMatriz',
-      matriz
-    }, 'matriz');
+  function salvarMatriz(m) {
+    const d = dadosRef.current;
+    commit({ ...d, matrizes: d.matrizes.map((x) => x.id === m.id ? m : x) });
+    enfileirar({ action: "upsertMatriz", matriz: m }, "matriz");
   }
-  async function syncTouroAppend(touro) {
-    await gravar({
-      action: 'appendTouro',
-      touro
-    }, 'touro');
-  }
-  async function persistAll(m, t, ev) {
-    setMatrizes(m);
-    setTouros(t);
-    setEventos(ev);
-    await syncToSheets(m, t, ev);
-  }
-  function updateField(key, value) {
-    setForm(f => {
-      const next = {
-        ...f,
-        [key]: value
-      };
-      if (tipoSelecionado === 'nascimento' && (key === 'sexo' || key === 'data') && !f.brincoBezerro) {
-        const sugestao = sugerirBrincoBezerro(next.data, next.sexo, eventos);
-        if (sugestao) next.brincoBezerro = sugestao;
-      }
-      return next;
-    });
-  }
-  function abrirEdicaoMatriz(m) {
-    setEditandoMatriz(m);
-    setFormEdicaoMatriz({
-      ...m
-    });
-  }
-  function fecharEdicaoMatriz() {
-    setEditandoMatriz(null);
-    setFormEdicaoMatriz({});
-  }
-  function salvarEdicaoMatriz() {
-    const atualizada = {
-      ...editandoMatriz,
-      brinco: formEdicaoMatriz.brinco,
-      categoria: formEdicaoMatriz.categoria,
-      raca: formEdicaoMatriz.raca || '',
-      lote: formEdicaoMatriz.lote || '',
-      dataNascimento: formEdicaoMatriz.dataNascimento || '',
-      partosAnteriores: parseInt(formEdicaoMatriz.partosAnteriores) || 0,
-      status: formEdicaoMatriz.status
-    };
-    setMatrizes(matrizes.map(m => m.id === atualizada.id ? atualizada : m));
-    syncMatrizUpsert(atualizada);
-    fecharEdicaoMatriz();
-  }
-  async function handleSalvar() {
-    const campos = CAMPOS[tipoSelecionado];
-    const faltando = campos.filter(c => c.required && (!c.showIf || c.showIf(form)) && !form[c.key]);
-    if (faltando.length) {
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus(null), 2500);
-      return;
+  async function gravarLote(res) {
+    if (!MODO_TESTE && (versaoScript || 0) < 8) {
+      return { ok: false, msg: "O script da planilha est\xE1 desatualizado e n\xE3o aceita lote. Avise o respons\xE1vel pelo sistema." };
     }
-    setSaveStatus('saving');
-    const now = new Date().toISOString();
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    if (tipoSelecionado === 'cadastro') {
-      const nova = {
-        id,
-        brinco: form.brinco,
-        categoria: form.categoria || 'Novilha',
-        raca: form.raca || '',
-        lote: form.lote || '',
-        dataNascimento: form.dataNascimento || '',
-        partosAnteriores: parseInt(form.partosAnteriores) || 0,
-        status: form.statusInicial || 'Vazia',
-        createdAt: now
-      };
-      setMatrizes([...matrizes, nova]);
-      syncMatrizUpsert(nova);
-    } else if (tipoSelecionado === 'touro') {
-      const novo = {
-        id,
-        nome: form.nome,
-        raca: form.raca,
-        fornecedor: form.fornecedor || '',
-        anoAquisicao: form.anoAquisicao || '',
-        doses: parseInt(form.doses) || 0,
-        custoDose: parseFloat(form.custoDose) || 0,
-        observacoes: form.observacoes || '',
-        createdAt: now
-      };
-      setTouros([...touros, novo]);
-      syncTouroAppend(novo);
-    } else if (tipoSelecionado === 'descarte') {
-      const matrizesNext = matrizes.map(m => m.id === form.matrizId ? {
-        ...m,
-        status: 'Descarte'
-      } : m);
-      const novoEvento = {
-        id,
-        tipo: 'descarte',
-        ...form,
-        createdAt: now
-      };
-      setMatrizes(matrizesNext);
-      setEventos([...eventos, novoEvento]);
-      syncEventoAppend(novoEvento);
-      const matrizAtualizada = matrizesNext.find(m => m.id === form.matrizId);
-      if (matrizAtualizada) syncMatrizUpsert(matrizAtualizada);
-    } else if (tipoSelecionado === 'diagnostico') {
-      const novoStatus = form.resultado === 'Prenhe' ? 'Cheia' : form.resultado === 'Descarte' ? 'Descarte' : 'Vazia';
-      const matrizesNext = matrizes.map(m => m.id === form.matrizId ? {
-        ...m,
-        status: novoStatus
-      } : m);
-      const eventosNovos = [{
-        id,
-        tipo: 'diagnostico',
-        ...form,
-        createdAt: now
-      }];
-      if (form.resultado === 'Descarte') {
-        eventosNovos.push({
-          id: `${id}-desc`,
-          tipo: 'descarte',
-          matrizId: form.matrizId,
-          data: form.data,
-          motivo: form.motivo || 'Identificado no diagnóstico veterinário',
-          origemDiagnostico: true,
-          createdAt: now
-        });
-      }
-      setMatrizes(matrizesNext);
-      setEventos([...eventos, ...eventosNovos]);
-      eventosNovos.forEach(syncEventoAppend);
-      const matrizAtualizada = matrizesNext.find(m => m.id === form.matrizId);
-      if (matrizAtualizada) syncMatrizUpsert(matrizAtualizada);
-    } else if (tipoSelecionado === 'nascimento') {
-      const novoEvento = {
-        id,
-        tipo: 'nascimento',
-        ...form,
-        createdAt: now
-      };
-      const eventosNext = [...eventos, novoEvento];
-      let matrizesNext = matrizes;
-      let matrizAtualizada = null;
-      if (form.matrizId) {
-        const partosNaFazenda = eventosNext.filter(e => e.tipo === 'nascimento' && e.matrizId === form.matrizId).length;
-        matrizesNext = matrizes.map(m => {
-          if (m.id !== form.matrizId) return m;
-          let categoria = m.categoria;
-          if (categoria === 'Novilha' && partosNaFazenda >= 1) categoria = 'Primípara';else if (categoria === 'Primípara' && partosNaFazenda >= 2) categoria = 'Multípara';
-          matrizAtualizada = {
-            ...m,
-            categoria,
-            status: m.status === 'Cheia' ? 'Vazia' : m.status
-          }; // pariu: deixa de estar prenhe
-          return matrizAtualizada;
-        });
-      }
-      setMatrizes(matrizesNext);
-      setEventos(eventosNext);
-      syncEventoAppend(novoEvento);
-      if (matrizAtualizada) syncMatrizUpsert(matrizAtualizada);
+    try {
+      const itens = res.eventosParaGravar;
+      for (let i = 0; i < itens.length; i += 40) await postar({ action: "appendEventos", itens: itens.slice(i, i + 40) });
+      if (res.matrizesParaGravar.length) await postar({ action: "upsertMatrizes", matrizes: res.matrizesParaGravar });
+      for (const t of res.tourosParaGravar) await postar({ action: "appendTouro", touro: t });
+    } catch (e) {
+      console.error("Erro ao gravar lote", e);
+      return { ok: false, msg: `N\xE3o consegui gravar tudo: ${e.message}. Use "Recarregar dados" nas ferramentas avan\xE7adas do Painel para ver o que chegou na planilha antes de tentar de novo, para n\xE3o duplicar.` };
+    }
+    commit(res.estado);
+    return { ok: true, msg: `Gravados ${res.eventosParaGravar.length} lan\xE7amento(s) e ${res.matrizesParaGravar.length} matriz(es) atualizada(s).` };
+  }
+  async function sincronizarTudo() {
+    setSincronizando(true);
+    const d = dadosRef.current;
+    const a = anoDe(hoje);
+    const resumo = buildResumoRows(calcularKPIs(d.matrizes, filtrarPorAno(d.eventos, a)), a);
+    const ok = await gravar({ action: "syncAll", matrizes: d.matrizes, touros: d.touros, eventos: d.eventos, resumo }, "sincroniza\xE7\xE3o completa");
+    setSincronizando(false);
+    if (ok) setAviso({ tipo: "ok", texto: `Planilha sincronizada${MODO_TESTE ? " (modo teste: simulado)" : ""}. A aba Resumo mostra o ano ${a}.` });
+  }
+  function tentarEntrar() {
+    if (pin === OWNER_PIN) {
+      setOwnerMode(true);
+      setPinAberto(false);
+      setPin("");
+      setPinErro(false);
+      setTab("painel");
     } else {
-      const novoEvento = {
-        id,
-        tipo: tipoSelecionado,
-        ...form,
-        createdAt: now
-      };
-      setEventos([...eventos, novoEvento]);
-      syncEventoAppend(novoEvento);
+      setPinErro(true);
     }
-    setSaveStatus('saved');
-    setForm(formularioInicial(tipoSelecionado));
-    setTimeout(() => setSaveStatus(null), 2000);
   }
-  async function importarDadosReais() {
-    const now = new Date().toISOString();
-    const m = [{
-      "id": "reb-2020",
-      "brinco": "2020",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Leiteiras",
-      "dataNascimento": "2022-01-01",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-2031",
-      "brinco": "2031",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2022-01-11",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2026",
-      "brinco": "2026",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Leiteiras",
-      "dataNascimento": "2022-01-13",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2033",
-      "brinco": "2033",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2022-01-14",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-2036",
-      "brinco": "2036",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2022-01-17",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2025",
-      "brinco": "2025",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Paridas",
-      "dataNascimento": "2022-01-21",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2024",
-      "brinco": "2024",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2022-01-25",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3004",
-      "brinco": "3004",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2022-12-28",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3005",
-      "brinco": "3005",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-01-02",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3006",
-      "brinco": "3006",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-01-04",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3008",
-      "brinco": "3008",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-01-07",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3009",
-      "brinco": "3009",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-01-09",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3012",
-      "brinco": "3012",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-01-13",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3013",
-      "brinco": "3013",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-01-14",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3014",
-      "brinco": "3014",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Leiteiras",
-      "dataNascimento": "2023-01-18",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3015",
-      "brinco": "3015",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-01-18",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3016",
-      "brinco": "3016",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-01-24",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3019",
-      "brinco": "3019",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-03-03",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3021",
-      "brinco": "3021",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-03-04",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3026",
-      "brinco": "3026",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-03-11",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3028",
-      "brinco": "3028",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-03-26",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3030",
-      "brinco": "3030",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-03-28",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3033",
-      "brinco": "3033",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-04-12",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3036",
-      "brinco": "3036",
-      "categoria": "Novilha",
-      "raca": "Aberdeen",
-      "lote": "Paridas",
-      "dataNascimento": "2023-08-02",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3037",
-      "brinco": "3037",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-08-11",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3039",
-      "brinco": "3039",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-08-20",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3040",
-      "brinco": "3040",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-08-21",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3042",
-      "brinco": "3042",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-08-23",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3045",
-      "brinco": "3045",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-08-27",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3046",
-      "brinco": "3046",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-08-28",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3047",
-      "brinco": "3047",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-08-29",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3049",
-      "brinco": "3049",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-08-29",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3052",
-      "brinco": "3052",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-09-02",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3059",
-      "brinco": "3059",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-10-04",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3065",
-      "brinco": "3065",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-10-08",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3067",
-      "brinco": "3067",
-      "categoria": "Novilha",
-      "raca": "Aberdeen",
-      "lote": "Paridas",
-      "dataNascimento": "2023-10-10",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3068",
-      "brinco": "3068",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-10-10",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3069",
-      "brinco": "3069",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-10-12",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3070",
-      "brinco": "3070",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-10-14",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3071",
-      "brinco": "3071",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-10-14",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3077",
-      "brinco": "3077",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-10-21",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3084",
-      "brinco": "3084",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-10-27",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3087",
-      "brinco": "3087",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-10-30",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3088",
-      "brinco": "3088",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-11-01",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3091",
-      "brinco": "3091",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-11-10",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3095",
-      "brinco": "3095",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-11-14",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-3098",
-      "brinco": "3098",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2023-11-22",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-4008",
-      "brinco": "4008",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2024-01-20",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-4011",
-      "brinco": "4011",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2024-01-22",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-4007",
-      "brinco": "4007",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2024-01-25",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-4018",
-      "brinco": "4018",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2024-02-10",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-4026",
-      "brinco": "4026",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2024-03-08",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-4034",
-      "brinco": "4034",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2024-04-29",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-4049",
-      "brinco": "4049",
-      "categoria": "Vaca",
-      "raca": "Preta",
-      "lote": "Leiteiras",
-      "dataNascimento": "2024-09-03",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-4052",
-      "brinco": "4052",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2024-09-20",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-4053",
-      "brinco": "4053",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2024-09-27",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-4064",
-      "brinco": "4064",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2024-10-22",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-4065",
-      "brinco": "4065",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2024-10-23",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-4067",
-      "brinco": "4067",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2024-10-25",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-4076",
-      "brinco": "4076",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2024-11-16",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-5004",
-      "brinco": "5004",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "2025-01-16",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-5557",
-      "brinco": "5557",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Leiteiras",
-      "dataNascimento": "2025-01-18",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5006",
-      "brinco": "5006",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-01-21",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5008",
-      "brinco": "5008",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-01-21",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5010",
-      "brinco": "5010",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Novilhas",
-      "dataNascimento": "2025-01-23",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5014",
-      "brinco": "5014",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-01-24",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5016",
-      "brinco": "5016",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Leiteiras",
-      "dataNascimento": "2025-01-25",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5506",
-      "brinco": "5506",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-01-26",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5507",
-      "brinco": "5507",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-01-26",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5508",
-      "brinco": "5508",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-01-26",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5035",
-      "brinco": "5035",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-03-22",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5537",
-      "brinco": "5537",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-03-23",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5538",
-      "brinco": "5538",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-03-24",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5539",
-      "brinco": "5539",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-03-26",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5541",
-      "brinco": "5541",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-03-27",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5542",
-      "brinco": "5542",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-03-27",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5038",
-      "brinco": "5038",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-03-28",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5039",
-      "brinco": "5039",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-03-28",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5040",
-      "brinco": "5040",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-03-28",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5543",
-      "brinco": "5543",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-03-28",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5036",
-      "brinco": "5036",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-03-29",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5041",
-      "brinco": "5041",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-03-29",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5043",
-      "brinco": "5043",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-04-03",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5047",
-      "brinco": "5047",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Leiteiras",
-      "dataNascimento": "2025-04-21",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5049",
-      "brinco": "5049",
-      "categoria": "Novilha",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "2025-04-29",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-41",
-      "brinco": "41",
-      "categoria": "Vaca",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-172",
-      "brinco": "172",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-180",
-      "brinco": "180",
-      "categoria": "Vaca",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-203",
-      "brinco": "203",
-      "categoria": "Vaca",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-204",
-      "brinco": "204",
-      "categoria": "Vaca",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-230",
-      "brinco": "230",
-      "categoria": "Vaca",
-      "raca": "Gir",
-      "lote": "Leiteiras",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-232",
-      "brinco": "232",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Leiteiras",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-233",
-      "brinco": "233",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Leiteiras",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-543",
-      "brinco": "543",
-      "categoria": "Vaca",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-679",
-      "brinco": "679",
-      "categoria": "Vaca",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-806",
-      "brinco": "806",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1010",
-      "brinco": "1010",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1011",
-      "brinco": "1011",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Leiteiras",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1012",
-      "brinco": "1012",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1014",
-      "brinco": "1014",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1016",
-      "brinco": "1016",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-1017",
-      "brinco": "1017",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1021",
-      "brinco": "1021",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-1027",
-      "brinco": "1027",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1032",
-      "brinco": "1032",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Leiteiras",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-1037",
-      "brinco": "1037",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1057",
-      "brinco": "1057",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1106",
-      "brinco": "1106",
-      "categoria": "Vaca",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1111",
-      "brinco": "1111",
-      "categoria": "Vaca",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-1115",
-      "brinco": "1115",
-      "categoria": "Vaca",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1120",
-      "brinco": "1120",
-      "categoria": "Vaca",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1194",
-      "brinco": "1194",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1288",
-      "brinco": "1288",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-1422",
-      "brinco": "1422",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2021",
-      "brinco": "2021",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2039",
-      "brinco": "2039",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-2040",
-      "brinco": "2040",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2042",
-      "brinco": "2042",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-2046",
-      "brinco": "2046",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2048",
-      "brinco": "2048",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-2050",
-      "brinco": "2050",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-2051",
-      "brinco": "2051",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-3101",
-      "brinco": "3101",
-      "categoria": "Novilha",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2054",
-      "brinco": "2054",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2060",
-      "brinco": "2060",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2061",
-      "brinco": "2061",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2070",
-      "brinco": "2070",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-2072",
-      "brinco": "2072",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2074",
-      "brinco": "2074",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2078",
-      "brinco": "2078",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-2081",
-      "brinco": "2081",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2101",
-      "brinco": "2101",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-2116",
-      "brinco": "2116",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-2118",
-      "brinco": "2118",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-4080",
-      "brinco": "4080",
-      "categoria": "Novilha",
-      "raca": "Sindi",
-      "lote": "Novilhas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-2164",
-      "brinco": "2164",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-5044",
-      "brinco": "5044",
-      "categoria": "Vaca",
-      "raca": "Cruzada",
-      "lote": "Leiteiras",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-6075",
-      "brinco": "6075",
-      "categoria": "Vaca",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-7050",
-      "brinco": "7050",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-7064",
-      "brinco": "7064",
-      "categoria": "Vaca",
-      "raca": "",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-7068",
-      "brinco": "7068",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-7081",
-      "brinco": "7081",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-8001",
-      "brinco": "8001",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-8002",
-      "brinco": "8002",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-8005",
-      "brinco": "8005",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-8008",
-      "brinco": "8008",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22011",
-      "brinco": "22011",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22013",
-      "brinco": "22013",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Leiteiras",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22017",
-      "brinco": "22017",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22019",
-      "brinco": "22019",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Leiteiras",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22022",
-      "brinco": "22022",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22023",
-      "brinco": "22023",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22024",
-      "brinco": "22024",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22028",
-      "brinco": "22028",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22117",
-      "brinco": "22117",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Leiteiras",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22152",
-      "brinco": "22152",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22155",
-      "brinco": "22155",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22156",
-      "brinco": "22156",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22157",
-      "brinco": "22157",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22158",
-      "brinco": "22158",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22159",
-      "brinco": "22159",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22163",
-      "brinco": "22163",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22165",
-      "brinco": "22165",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Leiteiras",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22166",
-      "brinco": "22166",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22167",
-      "brinco": "22167",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22168",
-      "brinco": "22168",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22191",
-      "brinco": "22191",
-      "categoria": "Vaca",
-      "raca": "Aberdeen",
-      "lote": "Leiteiras",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22194",
-      "brinco": "22194",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22196",
-      "brinco": "22196",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22203",
-      "brinco": "22203",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22205",
-      "brinco": "22205",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22210",
-      "brinco": "22210",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22212",
-      "brinco": "22212",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22213",
-      "brinco": "22213",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22220",
-      "brinco": "22220",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22223",
-      "brinco": "22223",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-22224",
-      "brinco": "22224",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-22229",
-      "brinco": "22229",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }, {
-      "id": "reb-219/1413",
-      "brinco": "219/1413",
-      "categoria": "Vaca",
-      "raca": "Nelore",
-      "lote": "Paridas",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "reb-E5",
-      "brinco": "E5",
-      "categoria": "Vaca",
-      "raca": "Gir",
-      "lote": "Leiteiras",
-      "dataNascimento": "",
-      "partosAnteriores": 0,
-      "status": "Cheia",
-      "createdAt": now
-    }];
-    const ev = [{
-      "id": "imp-1",
-      "tipo": "nascimento",
-      "data": "2026-01-24",
-      "resultadoParto": "Natimorto",
-      "sexo": "Macho",
-      "brincoBezerro": "5012",
-      "createdAt": now
-    }, {
-      "id": "imp-2",
-      "tipo": "nascimento",
-      "data": "2026-03-20",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6001",
-      "matrizId": "reb-5044",
-      "createdAt": now
-    }, {
-      "id": "imp-3",
-      "tipo": "nascimento",
-      "data": "2026-03-21",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6003",
-      "matrizId": "reb-3045",
-      "createdAt": now
-    }, {
-      "id": "imp-4",
-      "tipo": "nascimento",
-      "data": "2026-03-21",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6002",
-      "createdAt": now
-    }, {
-      "id": "imp-5",
-      "tipo": "nascimento",
-      "data": "2026-03-22",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6004",
-      "matrizId": "reb-3030",
-      "createdAt": now
-    }, {
-      "id": "imp-6",
-      "tipo": "nascimento",
-      "data": "2026-03-24",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6005",
-      "matrizId": "reb-7050",
-      "createdAt": now
-    }, {
-      "id": "imp-7",
-      "tipo": "nascimento",
-      "data": "2026-03-27",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6006",
-      "matrizId": "reb-2061",
-      "createdAt": now
-    }, {
-      "id": "imp-8",
-      "tipo": "nascimento",
-      "data": "2026-03-27",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6007",
-      "matrizId": "reb-172",
-      "createdAt": now
-    }, {
-      "id": "imp-9",
-      "tipo": "nascimento",
-      "data": "2026-03-27",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6501",
-      "matrizId": "reb-3005",
-      "createdAt": now
-    }, {
-      "id": "imp-10",
-      "tipo": "nascimento",
-      "data": "2026-03-27",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6502",
-      "matrizId": "reb-22024",
-      "createdAt": now
-    }, {
-      "id": "imp-11",
-      "tipo": "nascimento",
-      "data": "2026-03-27",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6503",
-      "matrizId": "reb-2054",
-      "createdAt": now
-    }, {
-      "id": "imp-12",
-      "tipo": "nascimento",
-      "data": "2026-03-28",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6504",
-      "matrizId": "reb-22152",
-      "createdAt": now
-    }, {
-      "id": "imp-13",
-      "tipo": "nascimento",
-      "data": "2026-03-28",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6505",
-      "matrizId": "reb-3019",
-      "createdAt": now
-    }, {
-      "id": "imp-14",
-      "tipo": "nascimento",
-      "data": "2026-03-30",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6008",
-      "matrizId": "reb-2051",
-      "createdAt": now
-    }, {
-      "id": "imp-15",
-      "tipo": "nascimento",
-      "data": "2026-03-30",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6009",
-      "matrizId": "reb-22023",
-      "createdAt": now
-    }, {
-      "id": "imp-16",
-      "tipo": "nascimento",
-      "data": "2026-03-30",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6010",
-      "matrizId": "reb-4053",
-      "createdAt": now
-    }, {
-      "id": "imp-17",
-      "tipo": "nascimento",
-      "data": "2026-03-30",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6506",
-      "matrizId": "reb-1194",
-      "createdAt": now
-    }, {
-      "id": "imp-18",
-      "tipo": "nascimento",
-      "data": "2026-03-31",
-      "resultadoParto": "Natimorto",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6011",
-      "matrizId": "reb-7081",
-      "createdAt": now
-    }, {
-      "id": "imp-19",
-      "tipo": "nascimento",
-      "data": "2026-03-31",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6012",
-      "matrizId": "reb-1422",
-      "createdAt": now
-    }, {
-      "id": "imp-20",
-      "tipo": "nascimento",
-      "data": "2026-03-31",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6507",
-      "matrizId": "reb-3008",
-      "createdAt": now
-    }, {
-      "id": "imp-21",
-      "tipo": "nascimento",
-      "data": "2026-03-31",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6508",
-      "createdAt": now
-    }, {
-      "id": "imp-22",
-      "tipo": "nascimento",
-      "data": "2026-03-31",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6509",
-      "matrizId": "reb-22203",
-      "createdAt": now
-    }, {
-      "id": "imp-23",
-      "tipo": "nascimento",
-      "data": "2026-03-31",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6510",
-      "createdAt": now
-    }, {
-      "id": "imp-24",
-      "tipo": "nascimento",
-      "data": "2026-04-02",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6013",
-      "matrizId": "reb-2040",
-      "createdAt": now
-    }, {
-      "id": "imp-25",
-      "tipo": "nascimento",
-      "data": "2026-04-02",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6014",
-      "matrizId": "reb-22163",
-      "createdAt": now
-    }, {
-      "id": "imp-26",
-      "tipo": "nascimento",
-      "data": "2026-04-02",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6015",
-      "matrizId": "reb-41",
-      "createdAt": now
-    }, {
-      "id": "imp-27",
-      "tipo": "nascimento",
-      "data": "2026-04-02",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6511",
-      "createdAt": now
-    }, {
-      "id": "imp-28",
-      "tipo": "nascimento",
-      "data": "2026-04-04",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6512",
-      "matrizId": "reb-1120",
-      "createdAt": now
-    }, {
-      "id": "imp-29",
-      "tipo": "nascimento",
-      "data": "2026-04-04",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6513",
-      "matrizId": "reb-4065",
-      "createdAt": now
-    }, {
-      "id": "imp-30",
-      "tipo": "nascimento",
-      "data": "2026-04-04",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6514",
-      "matrizId": "reb-8002",
-      "createdAt": now
-    }, {
-      "id": "imp-31",
-      "tipo": "nascimento",
-      "data": "2026-04-04",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6515",
-      "matrizId": "reb-1288",
-      "createdAt": now
-    }, {
-      "id": "imp-32",
-      "tipo": "nascimento",
-      "data": "2026-04-12",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6516",
-      "matrizId": "reb-3004",
-      "createdAt": now
-    }, {
-      "id": "imp-33",
-      "tipo": "nascimento",
-      "data": "2026-04-12",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6517",
-      "matrizId": "reb-22205",
-      "createdAt": now
-    }, {
-      "id": "imp-34",
-      "tipo": "nascimento",
-      "data": "2026-04-12",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6518",
-      "matrizId": "reb-1106",
-      "createdAt": now
-    }, {
-      "id": "imp-35",
-      "tipo": "nascimento",
-      "data": "2026-04-12",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6519",
-      "matrizId": "reb-22168",
-      "createdAt": now
-    }, {
-      "id": "imp-36",
-      "tipo": "nascimento",
-      "data": "2026-04-13",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6016",
-      "matrizId": "reb-1011",
-      "createdAt": now
-    }, {
-      "id": "imp-37",
-      "tipo": "nascimento",
-      "data": "2026-04-19",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6521",
-      "matrizId": "reb-22158",
-      "createdAt": now
-    }, {
-      "id": "imp-38",
-      "tipo": "nascimento",
-      "data": "2026-04-19",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6017",
-      "matrizId": "reb-2036",
-      "createdAt": now
-    }, {
-      "id": "imp-39",
-      "tipo": "nascimento",
-      "data": "2026-04-19",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6520",
-      "matrizId": "reb-2081",
-      "createdAt": now
-    }, {
-      "id": "imp-40",
-      "tipo": "nascimento",
-      "data": "2026-04-25",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6018",
-      "createdAt": now
-    }, {
-      "id": "imp-41",
-      "tipo": "nascimento",
-      "data": "2026-05-09",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6522",
-      "matrizId": "reb-2072",
-      "createdAt": now
-    }, {
-      "id": "imp-42",
-      "tipo": "nascimento",
-      "data": "2026-05-17",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6019",
-      "matrizId": "reb-8005",
-      "createdAt": now
-    }, {
-      "id": "imp-43",
-      "tipo": "nascimento",
-      "data": "2026-05-20",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6020",
-      "matrizId": "reb-543",
-      "createdAt": now
-    }, {
-      "id": "imp-44",
-      "tipo": "nascimento",
-      "data": "2026-05-20",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6524",
-      "matrizId": "reb-2039",
-      "createdAt": now
-    }, {
-      "id": "imp-45",
-      "tipo": "nascimento",
-      "data": "2026-05-13",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6523",
-      "matrizId": "reb-180",
-      "createdAt": now
-    }, {
-      "id": "imp-46",
-      "tipo": "nascimento",
-      "data": "2026-05-26",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6525",
-      "matrizId": "reb-3046",
-      "createdAt": now
-    }, {
-      "id": "imp-47",
-      "tipo": "nascimento",
-      "data": "2026-04-27",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6021",
-      "matrizId": "reb-3052",
-      "createdAt": now
-    }, {
-      "id": "imp-48",
-      "tipo": "nascimento",
-      "data": "2026-05-25",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6526",
-      "matrizId": "reb-22213",
-      "createdAt": now
-    }, {
-      "id": "imp-49",
-      "tipo": "nascimento",
-      "data": "2026-05-26",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6022",
-      "createdAt": now
-    }, {
-      "id": "imp-50",
-      "tipo": "nascimento",
-      "data": "2026-05-31",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6527",
-      "matrizId": "reb-2042",
-      "createdAt": now
-    }, {
-      "id": "imp-51",
-      "tipo": "nascimento",
-      "data": "2026-05-31",
-      "resultadoParto": "Vivo",
-      "sexo": "Fêmea",
-      "brincoBezerro": "6023",
-      "matrizId": "reb-3012",
-      "createdAt": now
-    }, {
-      "id": "imp-52",
-      "tipo": "nascimento",
-      "data": "2026-05-31",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6528",
-      "matrizId": "reb-4076",
-      "createdAt": now
-    }, {
-      "id": "imp-53",
-      "tipo": "nascimento",
-      "data": "2026-06-02",
-      "resultadoParto": "Vivo",
-      "sexo": "Macho",
-      "brincoBezerro": "6529",
-      "matrizId": "reb-3037",
-      "createdAt": now
-    }, {
-      "id": "imp-54",
-      "tipo": "diagnostico",
-      "matrizId": "reb-7064",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-55",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22011",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-56",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2101",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-57",
-      "tipo": "diagnostico",
-      "matrizId": "reb-543",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-58",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3021",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-59",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3013",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-60",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22156",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-61",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3046",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-62",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22191",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-63",
-      "tipo": "diagnostico",
-      "matrizId": "reb-6075",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-64",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3037",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-65",
-      "tipo": "diagnostico",
-      "matrizId": "reb-4076",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-66",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22157",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-67",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3065",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-68",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22213",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-69",
-      "tipo": "diagnostico",
-      "matrizId": "reb-1021",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-70",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22017",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-71",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3026",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-72",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3016",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-73",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22220",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-74",
-      "tipo": "diagnostico",
-      "matrizId": "reb-8001",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-75",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3042",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-76",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3014",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-77",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2039",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-78",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22019",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-79",
-      "tipo": "diagnostico",
-      "matrizId": "reb-1016",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-80",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2020",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-81",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3009",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-82",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3036",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-83",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3052",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-84",
-      "tipo": "diagnostico",
-      "matrizId": "reb-230",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-85",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22013",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-86",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3012",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-87",
-      "tipo": "diagnostico",
-      "matrizId": "reb-4049",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-88",
-      "tipo": "diagnostico",
-      "matrizId": "reb-232",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-89",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3069",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-90",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22196",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-91",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22223",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-92",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3084",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-93",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3068",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-94",
-      "tipo": "diagnostico",
-      "matrizId": "reb-8008",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-95",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22229",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-96",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22212",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-97",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3033",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-98",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2033",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-99",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3077",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-100",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3071",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-101",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3095",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-102",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3067",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-103",
-      "tipo": "diagnostico",
-      "matrizId": "reb-4008",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-104",
-      "tipo": "diagnostico",
-      "matrizId": "reb-1032",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-105",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22166",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-106",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2116",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-107",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2118",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-108",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2050",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-109",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22165",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-110",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3091",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-111",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3087",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-112",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3088",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-113",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3101",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-114",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3070",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-115",
-      "tipo": "diagnostico",
-      "matrizId": "reb-4034",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-116",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3040",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-117",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3059",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-118",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3039",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-119",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3049",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-120",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22167",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-121",
-      "tipo": "diagnostico",
-      "matrizId": "reb-4026",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-122",
-      "tipo": "diagnostico",
-      "matrizId": "reb-180",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-123",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2048",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-124",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22210",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-125",
-      "tipo": "diagnostico",
-      "matrizId": "reb-1111",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-126",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22028",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-127",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22022",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-128",
-      "tipo": "diagnostico",
-      "matrizId": "reb-4011",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-129",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2060",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-130",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2024",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-131",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2042",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-132",
-      "tipo": "diagnostico",
-      "matrizId": "reb-4007",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-133",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2078",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-134",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22194",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-135",
-      "tipo": "diagnostico",
-      "matrizId": "reb-233",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-136",
-      "tipo": "diagnostico",
-      "matrizId": "reb-22155",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-137",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3098",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-138",
-      "tipo": "diagnostico",
-      "matrizId": "reb-5004",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-139",
-      "tipo": "diagnostico",
-      "matrizId": "reb-7068",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-140",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3047",
-      "data": "2026-05-09",
-      "resultado": "Vazia",
-      "createdAt": now
-    }, {
-      "id": "imp-141",
-      "tipo": "diagnostico",
-      "matrizId": "reb-3028",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-142",
-      "tipo": "diagnostico",
-      "matrizId": "reb-2070",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-143",
-      "tipo": "diagnostico",
-      "matrizId": "reb-E5",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-144",
-      "tipo": "diagnostico",
-      "matrizId": "reb-8005",
-      "data": "2026-05-09",
-      "resultado": "Prenhe",
-      "createdAt": now
-    }, {
-      "id": "imp-145",
-      "tipo": "iatf",
-      "matrizId": "reb-1011",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-146",
-      "tipo": "iatf",
-      "matrizId": "reb-1106",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-147",
-      "tipo": "iatf",
-      "matrizId": "reb-1120",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-148",
-      "tipo": "iatf",
-      "matrizId": "reb-1194",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-149",
-      "tipo": "iatf",
-      "matrizId": "reb-1288",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-150",
-      "tipo": "iatf",
-      "matrizId": "reb-1422",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-151",
-      "tipo": "iatf",
-      "matrizId": "reb-172",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-152",
-      "tipo": "iatf",
-      "matrizId": "reb-2036",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-153",
-      "tipo": "iatf",
-      "matrizId": "reb-2040",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-154",
-      "tipo": "iatf",
-      "matrizId": "reb-2051",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-155",
-      "tipo": "iatf",
-      "matrizId": "reb-2054",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-156",
-      "tipo": "iatf",
-      "matrizId": "reb-2061",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-157",
-      "tipo": "iatf",
-      "matrizId": "reb-2072",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-158",
-      "tipo": "iatf",
-      "matrizId": "reb-2081",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-159",
-      "tipo": "iatf",
-      "matrizId": "reb-22011",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-160",
-      "tipo": "iatf",
-      "matrizId": "reb-22023",
-      "tipoServico": "Repasse (monta natural)",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "Touro natural",
-      "createdAt": now
-    }, {
-      "id": "imp-161",
-      "tipo": "iatf",
-      "matrizId": "reb-22024",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-162",
-      "tipo": "iatf",
-      "matrizId": "reb-22152",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-163",
-      "tipo": "iatf",
-      "matrizId": "reb-22163",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-164",
-      "tipo": "iatf",
-      "matrizId": "reb-22168",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-165",
-      "tipo": "iatf",
-      "matrizId": "reb-22203",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-166",
-      "tipo": "iatf",
-      "matrizId": "reb-22205",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "Com Implante",
-      "createdAt": now
-    }, {
-      "id": "imp-167",
-      "tipo": "iatf",
-      "matrizId": "reb-22220",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-168",
-      "tipo": "iatf",
-      "matrizId": "reb-22224",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-169",
-      "tipo": "iatf",
-      "matrizId": "reb-232",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-170",
-      "tipo": "iatf",
-      "matrizId": "reb-3004",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-171",
-      "tipo": "iatf",
-      "matrizId": "reb-3005",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-172",
-      "tipo": "iatf",
-      "matrizId": "reb-3006",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "24 dias – Touro",
-      "createdAt": now
-    }, {
-      "id": "imp-173",
-      "tipo": "iatf",
-      "matrizId": "reb-3008",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-174",
-      "tipo": "iatf",
-      "matrizId": "reb-3015",
-      "tipoServico": "Repasse (monta natural)",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "Touro natural",
-      "createdAt": now
-    }, {
-      "id": "imp-175",
-      "tipo": "iatf",
-      "matrizId": "reb-3016",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-176",
-      "tipo": "iatf",
-      "matrizId": "reb-3019",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-177",
-      "tipo": "iatf",
-      "matrizId": "reb-3030",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-178",
-      "tipo": "iatf",
-      "matrizId": "reb-3045",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-179",
-      "tipo": "iatf",
-      "matrizId": "reb-3047",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-180",
-      "tipo": "iatf",
-      "matrizId": "reb-3067",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-181",
-      "tipo": "iatf",
-      "matrizId": "reb-3070",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-182",
-      "tipo": "iatf",
-      "matrizId": "reb-3071",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-183",
-      "tipo": "iatf",
-      "matrizId": "reb-3084",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-184",
-      "tipo": "iatf",
-      "matrizId": "reb-3101",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-185",
-      "tipo": "iatf",
-      "matrizId": "reb-4008",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-186",
-      "tipo": "iatf",
-      "matrizId": "reb-4026",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-187",
-      "tipo": "iatf",
-      "matrizId": "reb-4034",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-188",
-      "tipo": "iatf",
-      "matrizId": "reb-4053",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-189",
-      "tipo": "iatf",
-      "matrizId": "reb-4065",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-190",
-      "tipo": "iatf",
-      "matrizId": "reb-5044",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-191",
-      "tipo": "iatf",
-      "matrizId": "reb-7050",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-192",
-      "tipo": "iatf",
-      "matrizId": "reb-7081",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }, {
-      "id": "imp-193",
-      "tipo": "iatf",
-      "matrizId": "reb-8002",
-      "tipoServico": "IATF",
-      "data": "2026-05-30",
-      "dataInicioProtocolo": "2026-05-19",
-      "observacoes": "",
-      "createdAt": now
-    }];
-    await persistAll(m, [], ev);
-    setTab('dashboard');
+  function sairDoModoDono() {
+    setOwnerMode(false);
+    if (tab === "painel" || tab === "relatorios") setTab("lancar");
   }
-  async function seedDemo() {
-    const now = new Date().toISOString();
-    const m = [{
-      id: 'demo-m1',
-      brinco: '101',
-      categoria: 'Multípara',
-      raca: 'Nelore',
-      lote: 'Piquete 3',
-      dataNascimento: '2019-03-10',
-      status: 'Cheia',
-      createdAt: now
-    }, {
-      id: 'demo-m2',
-      brinco: '102',
-      categoria: 'Multípara',
-      raca: 'Nelore',
-      lote: 'Piquete 3',
-      dataNascimento: '2018-05-22',
-      status: 'Cheia',
-      partosAnteriores: 1,
-      createdAt: now
-    }, {
-      id: 'demo-m3',
-      brinco: '103',
-      categoria: 'Primípara',
-      raca: 'Nelore',
-      lote: 'Piquete 2',
-      dataNascimento: '2021-01-15',
-      status: 'Vazia',
-      createdAt: now
-    }, {
-      id: 'demo-m4',
-      brinco: '104',
-      categoria: 'Multípara',
-      raca: 'Nelore',
-      lote: 'Piquete 3',
-      dataNascimento: '2017-07-30',
-      status: 'Descarte',
-      createdAt: now
-    }, {
-      id: 'demo-m5',
-      brinco: '105',
-      categoria: 'Novilha',
-      raca: 'Nelore',
-      lote: 'Piquete 1',
-      dataNascimento: '2023-02-01',
-      status: 'Vazia',
-      createdAt: now
-    }, {
-      id: 'demo-m6',
-      brinco: '106',
-      categoria: 'Novilha',
-      raca: 'Nelore',
-      lote: 'Piquete 1',
-      dataNascimento: '2023-04-12',
-      status: 'Vazia',
-      createdAt: now
-    }, {
-      id: 'demo-m7',
-      brinco: '107',
-      categoria: 'Multípara',
-      raca: 'Nelore',
-      lote: 'Piquete 3',
-      dataNascimento: '2016-09-05',
-      status: 'Descarte',
-      createdAt: now
-    }, {
-      id: 'demo-m8',
-      brinco: '108',
-      categoria: 'Primípara',
-      raca: 'Nelore',
-      lote: 'Piquete 2',
-      dataNascimento: '2020-11-20',
-      status: 'Cheia',
-      createdAt: now
-    }];
-    const t = [{
-      id: 'demo-t1',
-      nome: 'Sêmen Nelore PO 88',
-      raca: 'Nelore',
-      fornecedor: 'Central Genética ABC',
-      anoAquisicao: '2026',
-      doses: 40,
-      custoDose: 45,
-      observacoes: '',
-      createdAt: now
-    }, {
-      id: 'demo-t2',
-      nome: 'Touro Angus 5',
-      raca: 'Angus',
-      fornecedor: 'Próprio - monta natural',
-      anoAquisicao: '',
-      doses: 0,
-      custoDose: 0,
-      observacoes: 'Touro de repasse do plantel',
-      createdAt: now
-    }, {
-      id: 'demo-t3',
-      nome: 'Sêmen Brangus 2',
-      raca: 'Brangus',
-      fornecedor: 'Central Genética XYZ',
-      anoAquisicao: '2025',
-      doses: 20,
-      custoDose: 38,
-      observacoes: '',
-      createdAt: now
-    }, {
-      id: 'demo-t4',
-      nome: 'Touro Nelore 12',
-      raca: 'Nelore',
-      fornecedor: 'Próprio - monta natural',
-      anoAquisicao: '',
-      doses: 0,
-      custoDose: 0,
-      observacoes: 'Touro de repasse do plantel',
-      createdAt: now
-    }];
-    const ev = [{
-      id: 'demo-e1',
-      tipo: 'iatf',
-      matrizId: 'demo-m1',
-      tipoServico: 'IATF',
-      numeroServico: '1ª',
-      data: '2026-01-15',
-      dataInicioProtocolo: '2026-01-06',
-      touroId: 'demo-t1',
-      tecnico: 'Dr. João',
-      custo: '45',
-      observacoes: 'Protocolo padrão, sem intercorrências',
-      createdAt: now
-    }, {
-      id: 'demo-e2',
-      tipo: 'iatf',
-      matrizId: 'demo-m3',
-      tipoServico: 'IATF',
-      numeroServico: '1ª',
-      data: '2026-01-15',
-      dataInicioProtocolo: '2026-01-06',
-      touroId: 'demo-t1',
-      tecnico: 'Dr. João',
-      custo: '45',
-      createdAt: now
-    }, {
-      id: 'demo-e3',
-      tipo: 'iatf',
-      matrizId: 'demo-m4',
-      tipoServico: 'Repasse (monta natural)',
-      numeroServico: '2ª',
-      data: '2026-01-20',
-      touroId: 'demo-t4',
-      tecnico: 'Dr. João',
-      custo: '0',
-      createdAt: now
-    }, {
-      id: 'demo-e4',
-      tipo: 'iatf',
-      matrizId: 'demo-m8',
-      tipoServico: 'IATF',
-      numeroServico: '1ª',
-      data: '2026-01-15',
-      dataInicioProtocolo: '2026-01-06',
-      touroId: 'demo-t1',
-      tecnico: 'Dr. João',
-      custo: '45',
-      createdAt: now
-    }, {
-      id: 'demo-e5',
-      tipo: 'diagnostico',
-      matrizId: 'demo-m1',
-      data: '2026-02-20',
-      resultado: 'Prenhe',
-      metodo: 'Ultrassom',
-      dg: '35',
-      veterinario: 'Dr. Carlos',
-      custo: '30',
-      createdAt: now
-    }, {
-      id: 'demo-e6',
-      tipo: 'diagnostico',
-      matrizId: 'demo-m3',
-      data: '2026-02-20',
-      resultado: 'Vazia',
-      metodo: 'Ultrassom',
-      veterinario: 'Dr. Carlos',
-      custo: '30',
-      createdAt: now
-    }, {
-      id: 'demo-e7',
-      tipo: 'diagnostico',
-      matrizId: 'demo-m4',
-      data: '2026-02-25',
-      resultado: 'Descarte',
-      metodo: 'Toque retal',
-      motivo: 'Baixa fertilidade, não prenhou em duas tentativas',
-      veterinario: 'Dr. Carlos',
-      custo: '25',
-      createdAt: now
-    }, {
-      id: 'demo-e7b',
-      tipo: 'descarte',
-      matrizId: 'demo-m4',
-      data: '2026-02-25',
-      motivo: 'Baixa fertilidade, não prenhou em duas tentativas',
-      origemDiagnostico: true,
-      createdAt: now
-    }, {
-      id: 'demo-e8',
-      tipo: 'diagnostico',
-      matrizId: 'demo-m8',
-      data: '2026-02-20',
-      resultado: 'Prenhe',
-      metodo: 'Ultrassom',
-      dg: '35',
-      veterinario: 'Dr. Carlos',
-      custo: '30',
-      createdAt: now
-    }, {
-      id: 'demo-e9',
-      tipo: 'nascimento',
-      matrizId: 'demo-m2',
-      data: '2025-09-15',
-      resultadoParto: 'Vivo',
-      sexo: 'Fêmea',
-      pesoNascer: '32',
-      brincoBezerro: '201',
-      touroId: 'demo-t2',
-      tipoParto: 'Normal',
-      createdAt: now
-    }, {
-      id: 'demo-e10',
-      tipo: 'nascimento',
-      matrizId: 'demo-m4',
-      data: '2025-10-02',
-      resultadoParto: 'Natimorto',
-      sexo: 'Macho',
-      pesoNascer: '0',
-      touroId: 'demo-t3',
-      tipoParto: 'Distócico (com dificuldade)',
-      observacoes: 'Parto difícil, bezerro não resistiu',
-      createdAt: now
-    }, {
-      id: 'demo-e11',
-      tipo: 'nascimento',
-      matrizId: 'demo-m7',
-      data: '2025-11-11',
-      resultadoParto: 'Vivo',
-      sexo: 'Macho',
-      pesoNascer: '34',
-      brincoBezerro: '202',
-      touroId: 'demo-t2',
-      tipoParto: 'Normal',
-      createdAt: now
-    }, {
-      id: 'demo-e12',
-      tipo: 'desmama',
-      brincoBezerro: '201',
-      data: '2026-04-20',
-      pesoDesmama: '178',
-      idadeDias: '217',
-      createdAt: now
-    }, {
-      id: 'demo-e13',
-      tipo: 'desmama',
-      brincoBezerro: '202',
-      data: '2026-05-25',
-      pesoDesmama: '195',
-      idadeDias: '195',
-      createdAt: now
-    }, {
-      id: 'demo-e14',
-      tipo: 'recria',
-      matrizId: 'demo-m5',
-      data: '2026-05-01',
-      pesoAtual: '260',
-      aptaReproducao: 'Ainda não',
-      createdAt: now
-    }, {
-      id: 'demo-e15',
-      tipo: 'recria',
-      matrizId: 'demo-m6',
-      data: '2026-05-01',
-      pesoAtual: '310',
-      aptaReproducao: 'Sim, apta',
-      createdAt: now
-    }, {
-      id: 'demo-e16',
-      tipo: 'venda',
-      data: '2026-03-15',
-      categoria: 'Vaca de descarte',
-      animais: '1 vaca (107)',
-      pesoTotal: '480',
-      valorArroba: '260',
-      valorTotal: '4160',
-      frete: '150',
-      comprador: 'Leilão Paragominas',
-      createdAt: now
-    }, {
-      id: 'demo-e17',
-      tipo: 'venda',
-      data: '2026-06-01',
-      categoria: 'Bezerro(a) (mamando)',
-      animais: '2 bezerros (201, 202)',
-      pesoTotal: '373',
-      valorArroba: '280',
-      valorTotal: '3480',
-      frete: '120',
-      comprador: 'Frigorífico Central',
-      createdAt: now
-    }, {
-      id: 'demo-e18',
-      tipo: 'insumo',
-      data: '2026-01-10',
-      produto: 'Sal Mineral',
-      quantidade: '200',
-      unidade: 'kg',
-      custo: '850',
-      categoriaAnimal: 'Matrizes',
-      createdAt: now
-    }, {
-      id: 'demo-e19',
-      tipo: 'insumo',
-      data: '2026-03-05',
-      produto: 'Vacina',
-      quantidade: '12',
-      unidade: 'dose',
-      custo: '340',
-      categoriaAnimal: 'Matrizes',
-      createdAt: now
-    }, {
-      id: 'demo-e20',
-      tipo: 'descarte',
-      matrizId: 'demo-m7',
-      data: '2026-02-20',
-      motivo: 'Idade avançada / baixa fertilidade',
-      createdAt: now
-    }];
-    await persistAll(m, t, ev);
-    setTab('dashboard');
+  function mudarTab(t) {
+    setPreset(null);
+    setTab(t);
   }
-  async function clearAll() {
-    await persistAll([], [], []);
+  function lancarDaVaca(tipo, matrizId) {
+    setPreset({ tipo, matrizId, n: Date.now() });
+    setTab("lancar");
   }
-  const brincoMap = useMemo(() => Object.fromEntries(matrizes.map(m => [m.id, m.brinco])), [matrizes]);
-  const ultimosNascimentos = useMemo(() => {
-    const nasc = eventos.filter(e => e.tipo === 'nascimento' && e.brincoBezerro);
-    const maisRecente = sexo => nasc.filter(e => e.sexo === sexo).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0];
-    return {
-      Macho: maisRecente('Macho'),
-      Fêmea: maisRecente('Fêmea')
-    };
-  }, [eventos]);
-  const touroNomeMap = useMemo(() => Object.fromEntries(touros.map(t => [t.id, t.nome])), [touros]);
-  const nomeTouroEvento = e => (e.touroId === '__outro__' ? e.touroOutro : touroNomeMap[e.touroId]) || '';
-  const kpis = useMemo(() => calcularKPIs(matrizes, eventos), [matrizes, eventos]);
-  const statusData = [{
-    name: 'Cheias',
-    value: kpis.cheias,
-    color: C.cheia
-  }, {
-    name: 'Vazias',
-    value: kpis.vazias,
-    color: C.vazia
-  }, {
-    name: 'Descarte',
-    value: kpis.descartes,
-    color: C.descarte
-  }].filter(d => d.value > 0);
-  const nascimentosPorMes = useMemo(() => {
-    const map = {};
-    eventos.filter(e => e.tipo === 'nascimento').forEach(e => {
-      const mes = (e.data || '').slice(0, 7);
-      if (mes) map[mes] = (map[mes] || 0) + 1;
-    });
-    return Object.entries(map).sort().map(([mes, qtd]) => {
-      const [ano, m] = mes.split('-');
-      return {
-        mes: `${m}/${ano.slice(2)}`,
-        qtd
-      };
-    });
-  }, [eventos]);
-  const atividadeRecente = useMemo(() => [...eventos].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 8), [eventos]);
-  const matrizesFiltradas = useMemo(() => matrizes.filter(m => (filtroStatus === 'todos' || m.status === filtroStatus) && (!busca || m.brinco.toLowerCase().includes(busca.toLowerCase()))), [matrizes, filtroStatus, busca]);
-  const tabButtonStyle = active => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    padding: '10px 16px',
-    borderRadius: 10,
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: 14,
-    fontWeight: 600,
-    background: active ? C.accent : 'transparent',
-    color: active ? '#1B140A' : C.textMuted
-  });
-  const eventoLabel = tipo => TIPOS_EVENTO.find(t => t.id === tipo)?.label || tipo;
-  function getSheetRows(tipo) {
-    if (tipo === 'matrizes') {
-      return matrizes.map(m => ({
-        'Brinco': m.brinco,
-        'Categoria': m.categoria,
-        'Raça': m.raca || '',
-        'Lote': m.lote || '',
-        'Data Nasc.': formatarDataBR(m.dataNascimento) || '',
-        'Status': m.status,
-        'Partos (Fazenda)': eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === m.id).length,
-        'Partos Ant.': m.partosAnteriores || 0,
-        'Último Parto': formatarDataBR(ultimoPartoDe(m.id, eventos)) || '',
-        'Nº Cria': numeroCriaUltimoParto(m.id, eventos)
-      }));
-    }
-    if (tipo === 'touros') {
-      return touros.map(t => {
-        const usadas = eventos.filter(e => e.tipo === 'iatf' && e.touroId === t.id).length;
-        const adquiridas = parseInt(t.doses) || 0;
-        return {
-          'Nome': t.nome,
-          'Raça': t.raca,
-          'Fornecedor': t.fornecedor || '',
-          'Ano': t.anoAquisicao || '',
-          'Doses Adq.': adquiridas,
-          'Doses Usadas': usadas,
-          'Doses Rest.': adquiridas ? adquiridas - usadas : '',
-          'Custo/Dose (R$)': t.custoDose || ''
-        };
-      });
-    }
-    const evs = eventos.filter(e => e.tipo === tipo);
-    if (tipo === 'nascimento') {
-      return evs.map(e => ({
-        'Data': formatarDataBR(e.data),
-        'Matriz': brincoMap[e.matrizId] || '',
-        'Resultado': e.resultadoParto || '',
-        'Sexo': e.sexo || '',
-        'Peso (kg)': e.pesoNascer || '',
-        'Brinco Bezerro': e.brincoBezerro || '',
-        'Pelagem': e.pelagem || '',
-        'Pai': nomeTouroEvento(e),
-        'Tipo Parto': e.tipoParto || ''
-      }));
-    }
-    if (tipo === 'desmama') {
-      return evs.map(e => ({
-        'Data': formatarDataBR(e.data),
-        'Brinco Bezerro': e.brincoBezerro || '',
-        'Peso (kg)': e.pesoDesmama || '',
-        'Idade (dias)': e.idadeDias || ''
-      }));
-    }
-    if (tipo === 'recria') {
-      return evs.map(e => ({
-        'Data': formatarDataBR(e.data),
-        'Novilha': brincoMap[e.matrizId] || '',
-        'Peso Atual (kg)': e.pesoAtual || '',
-        'Apta Reprodução': e.aptaReproducao || ''
-      }));
-    }
-    if (tipo === 'iatf') {
-      return evs.map(e => ({
-        'Data': formatarDataBR(e.data),
-        'Matriz': brincoMap[e.matrizId] || '',
-        'Tipo': e.tipoServico || '',
-        'Nº Tent.': e.numeroServico || '',
-        'Touro/Sêmen': nomeTouroEvento(e),
-        'Técnico': e.tecnico || '',
-        'Custo (R$)': e.custo || ''
-      }));
-    }
-    if (tipo === 'diagnostico') {
-      return evs.map(e => ({
-        'Data': formatarDataBR(e.data),
-        'Matriz': brincoMap[e.matrizId] || '',
-        'Resultado': e.resultado || '',
-        'Método': e.metodo || '',
-        'DG (dias)': e.dg || '',
-        'Veterinário': e.veterinario || '',
-        'Custo (R$)': e.custo || ''
-      }));
-    }
-    if (tipo === 'venda') {
-      return evs.map(e => ({
-        'Data': formatarDataBR(e.data),
-        'Categoria': e.categoria || '',
-        'Animais': e.animais || '',
-        'Peso Total (kg)': e.pesoTotal || '',
-        'Valor Total (R$)': e.valorTotal || '',
-        'Frete (R$)': e.frete || '',
-        'Comprador': e.comprador || ''
-      }));
-    }
-    if (tipo === 'insumo') {
-      return evs.map(e => ({
-        'Data': formatarDataBR(e.data),
-        'Produto': e.produto || '',
-        'Quantidade': e.quantidade || '',
-        'Unidade': e.unidade || '',
-        'Custo (R$)': e.custo || '',
-        'Categoria Animal': e.categoriaAnimal || ''
-      }));
-    }
-    if (tipo === 'descarte') {
-      return evs.map(e => ({
-        'Data': formatarDataBR(e.data),
-        'Matriz': brincoMap[e.matrizId] || '',
-        'Motivo': e.motivo || ''
-      }));
-    }
-    return [];
-  }
-  function exportarExcel() {
-    const wb = XLSX.utils.book_new();
-    const hoje = todayISO();
-
-    // ---- Resumo ----
-    const resumo = [['Relatório Fazenda Ibiraçu', ''], ['Gerado em', hoje], [''], ['Total de matrizes', kpis.total], ['Cheias', kpis.cheias], ['Vazias', kpis.vazias], ['Descarte', kpis.descartes], ['Novilhas em recria', kpis.emRecria], ['Taxa de prenhez (%)', kpis.taxaPrenhez.toFixed(1)], [''], ['Nascimentos', kpis.nascimentos], ['Natimortos', kpis.natimortos], ['Taxa de perda ao nascer (%)', kpis.taxaPerda.toFixed(1)], ['Nascimentos: machos', kpis.machos], ['Nascimentos: fêmeas', kpis.femeas], ['Desmamas', kpis.desmamas], ['Taxa de desmama (%)', kpis.taxaDesmama.toFixed(1)], ['Peso médio na desmama (kg)', kpis.pesoMedioDesmama.toFixed(1)], [''], ['Receita total de vendas (R$)', kpis.receitaTotal.toFixed(2)], ['Custo total (IATF+diagnóstico+insumo+frete) (R$)', kpis.custoTotal.toFixed(2)], ['Custo por bezerro (R$)', kpis.custoPorBezerro.toFixed(2)], ['Margem (vendas - custos) (R$)', kpis.margem.toFixed(2)]];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), 'Resumo');
-
-    // ---- Matrizes ----
-    const matrizesSheet = matrizes.map(m => ({
-      'Brinco': m.brinco,
-      'Categoria': m.categoria,
-      'Raça': m.raca || '',
-      'Lote': m.lote || '',
-      'Data Nascimento': formatarDataBR(m.dataNascimento) || '',
-      'Status': m.status,
-      'Partos na Fazenda': eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === m.id).length,
-      'Último Parto': formatarDataBR(ultimoPartoDe(m.id, eventos)) || '',
-      'Nº Cria (Último Parto)': numeroCriaUltimoParto(m.id, eventos),
-      'Partos Anteriores': m.partosAnteriores || 0
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(matrizesSheet), 'Matrizes');
-
-    // ---- Nascimentos ----
-    const nascSheet = eventos.filter(e => e.tipo === 'nascimento').map(e => ({
-      'Data': formatarDataBR(e.data),
-      'Matriz (mãe)': brincoMap[e.matrizId] || '',
-      'Resultado': e.resultadoParto || '',
-      'Sexo': e.sexo || '',
-      'Peso ao Nascer (kg)': e.pesoNascer || '',
-      'Brinco do Bezerro': e.brincoBezerro || '',
-      'Pelagem': e.pelagem || '',
-      'Pai (touro/sêmen)': nomeTouroEvento(e),
-      'Tipo de Parto': e.tipoParto || '',
-      'Observações': e.observacoes || ''
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(nascSheet), 'Nascimentos');
-
-    // ---- Desmama ----
-    const desmamaSheet = eventos.filter(e => e.tipo === 'desmama').map(e => ({
-      'Data': formatarDataBR(e.data),
-      'Brinco do Bezerro': e.brincoBezerro || '',
-      'Peso na Desmama (kg)': e.pesoDesmama || '',
-      'Idade (dias)': e.idadeDias || ''
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(desmamaSheet), 'Desmama');
-
-    // ---- Recria ----
-    const recriaSheet = eventos.filter(e => e.tipo === 'recria').map(e => ({
-      'Data': formatarDataBR(e.data),
-      'Novilha': brincoMap[e.matrizId] || '',
-      'Peso Atual (kg)': e.pesoAtual || '',
-      'Apta para Reprodução': e.aptaReproducao || '',
-      'Observações': e.observacoes || ''
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(recriaSheet), 'Recria');
-
-    // ---- IATF ----
-    const iatfSheet = eventos.filter(e => e.tipo === 'iatf').map(e => ({
-      'Data': formatarDataBR(e.data),
-      'Matriz': brincoMap[e.matrizId] || '',
-      'Tipo': e.tipoServico || '',
-      'Nº Tentativa': e.numeroServico || '',
-      'Início Protocolo': formatarDataBR(e.dataInicioProtocolo) || '',
-      'Touro/Sêmen': nomeTouroEvento(e),
-      'Técnico': e.tecnico || '',
-      'Custo (R$)': e.custo || '',
-      'Observações': e.observacoes || ''
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(iatfSheet), 'IATF');
-
-    // ---- Diagnósticos ----
-    const diagSheet = eventos.filter(e => e.tipo === 'diagnostico').map(e => ({
-      'Data': formatarDataBR(e.data),
-      'Matriz': brincoMap[e.matrizId] || '',
-      'Resultado': e.resultado || '',
-      'Método': e.metodo || '',
-      'DG (dias)': e.dg || '',
-      'Veterinário': e.veterinario || '',
-      'Custo (R$)': e.custo || '',
-      'Motivo (se descarte)': e.motivo || ''
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(diagSheet), 'Diagnósticos');
-
-    // ---- Vendas ----
-    const vendaSheet = eventos.filter(e => e.tipo === 'venda').map(e => ({
-      'Data': formatarDataBR(e.data),
-      'Categoria': e.categoria || '',
-      'Animais': e.animais || '',
-      'Peso Total (kg)': e.pesoTotal || '',
-      'Valor Arroba (R$)': e.valorArroba || '',
-      'Valor Total (R$)': e.valorTotal || '',
-      'Frete/Comissão (R$)': e.frete || '',
-      'Comprador': e.comprador || ''
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vendaSheet), 'Vendas');
-
-    // ---- Insumos ----
-    const insumoSheet = eventos.filter(e => e.tipo === 'insumo').map(e => ({
-      'Data': formatarDataBR(e.data),
-      'Produto': e.produto || '',
-      'Quantidade': e.quantidade || '',
-      'Unidade': e.unidade || '',
-      'Custo (R$)': e.custo || '',
-      'Categoria de Animal': e.categoriaAnimal || ''
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(insumoSheet), 'Insumos');
-
-    // ---- Descartes ----
-    const descarteSheet = eventos.filter(e => e.tipo === 'descarte').map(e => ({
-      'Data': formatarDataBR(e.data),
-      'Matriz': brincoMap[e.matrizId] || '',
-      'Motivo': e.motivo || '',
-      'Origem': e.origemDiagnostico ? 'Diagnóstico veterinário' : 'Lançamento manual'
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(descarteSheet), 'Descartes');
-
-    // ---- Touros ----
-    const tourosSheet = touros.map(t => {
-      const usadas = eventos.filter(e => e.tipo === 'iatf' && e.touroId === t.id).length;
-      const adquiridas = parseInt(t.doses) || 0;
-      return {
-        'Nome': t.nome,
-        'Raça': t.raca,
-        'Fornecedor': t.fornecedor || '',
-        'Ano Aquisição': t.anoAquisicao || '',
-        'Doses Adquiridas': adquiridas,
-        'Doses Usadas': usadas,
-        'Doses Restantes': adquiridas ? adquiridas - usadas : '',
-        'Custo/Dose (R$)': t.custoDose || '',
-        'Observações': t.observacoes || ''
-      };
-    });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tourosSheet), 'Touros');
-    XLSX.writeFile(wb, `Relatorio_Fazenda_Ibiracu_${hoje}.xlsx`);
-  }
+  const anos = useMemo7(() => anosDisponiveis(dados.eventos, hoje), [dados.eventos, hoje]);
+  const itensNav = [
+    ownerMode && { id: "painel", label: "Painel", Icon: LayoutDashboard },
+    { id: "lancar", label: "Lan\xE7ar", Icon: Plus },
+    { id: "parto", label: "Parto", Icon: CalendarClock },
+    { id: "rebanho", label: "Rebanho", Icon: List },
+    ownerMode && { id: "relatorios", label: "Relat\xF3rios", Icon: FileText }
+  ].filter(Boolean);
+  const anoSel = /* @__PURE__ */ React8.createElement(SeletorAno, { ano, anos, onChange: setAno });
+  const botaoDono = ownerMode ? /* @__PURE__ */ React8.createElement("button", { className: "chip on", onClick: sairDoModoDono, "aria-label": "Sair do modo propriet\xE1rio", title: "Voltar para o modo funcion\xE1rio" }, /* @__PURE__ */ React8.createElement(Unlock, { size: 15 }), " DONO") : /* @__PURE__ */ React8.createElement("button", { className: "chip lock", onClick: () => {
+    setPinAberto(true);
+    setPin("");
+    setPinErro(false);
+  }, "aria-label": "Entrar como propriet\xE1rio", title: "Entrar como propriet\xE1rio" }, /* @__PURE__ */ React8.createElement(Lock2, { size: 16 }));
   if (loading) {
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        background: C.bg,
-        minHeight: 400,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: C.textMuted
-      }
-    }, /*#__PURE__*/React.createElement(Loader2, {
-      size: 20,
-      style: {
-        marginRight: 8
-      },
-      className: "animate-spin"
-    }), " Carregando...");
+    return /* @__PURE__ */ React8.createElement("div", { className: "app" }, /* @__PURE__ */ React8.createElement("style", null, CSS), /* @__PURE__ */ React8.createElement("div", { className: "main" }, /* @__PURE__ */ React8.createElement("div", { className: "loading" }, /* @__PURE__ */ React8.createElement(Loader23, { size: 20, className: "spin" }), " Abrindo o livro do rebanho...")));
   }
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: C.bg,
-      color: C.text,
-      minHeight: '100%',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '20px 16px 60px'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      maxWidth: 880,
-      margin: '0 auto'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 18
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      letterSpacing: 1.5,
-      color: C.accent,
-      textTransform: 'uppercase',
-      fontWeight: 700
-    }
-  }, "Fazenda Ibira\xE7u"), /*#__PURE__*/React.createElement("h1", {
-    style: {
-      fontFamily: 'Georgia, serif',
-      fontSize: 26,
-      margin: '2px 0 0',
-      fontWeight: 700
-    }
-  }, "Gest\xE3o da Pecu\xE1ria")), syncMsg && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: 8,
-      background: 'rgba(181,83,60,0.15)',
-      border: `1px solid ${C.descarte}`,
-      borderRadius: 10,
-      padding: '10px 14px',
-      marginBottom: 16,
-      fontSize: 13
-    }
-  }, /*#__PURE__*/React.createElement(AlertCircle, {
-    size: 16,
-    color: C.descarte,
-    style: {
-      flexShrink: 0,
-      marginTop: 1
-    }
-  }), /*#__PURE__*/React.createElement("span", {
-    style: {
-      flex: 1
-    }
-  }, syncMsg), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setSyncMsg(''),
-    style: {
-      background: 'none',
-      border: 'none',
-      color: C.textMuted,
-      cursor: 'pointer',
-      padding: 0
-    },
-    "aria-label": "Fechar aviso"
-  }, /*#__PURE__*/React.createElement(X, {
-    size: 15
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 6,
-      marginBottom: 20,
-      background: C.surface,
-      padding: 6,
-      borderRadius: 12,
-      border: `1px solid ${C.border}`,
-      flexWrap: 'wrap'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    style: tabButtonStyle(tab === 'lancar'),
-    onClick: () => setTab('lancar')
-  }, /*#__PURE__*/React.createElement(Plus, {
-    size: 16
-  }), " Lan\xE7ar"), /*#__PURE__*/React.createElement("button", {
-    style: tabButtonStyle(tab === 'previsao'),
-    onClick: () => setTab('previsao')
-  }, /*#__PURE__*/React.createElement(CalendarClock, {
-    size: 16
-  }), " Previs\xE3o de Parto"), ownerMode && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
-    style: tabButtonStyle(tab === 'dashboard'),
-    onClick: () => setTab('dashboard')
-  }, /*#__PURE__*/React.createElement(LayoutDashboard, {
-    size: 16
-  }), " Dashboard"), /*#__PURE__*/React.createElement("button", {
-    style: tabButtonStyle(tab === 'matrizes'),
-    onClick: () => setTab('matrizes')
-  }, /*#__PURE__*/React.createElement(List, {
-    size: 16
-  }), " Matrizes"), /*#__PURE__*/React.createElement("button", {
-    style: tabButtonStyle(tab === 'touros'),
-    onClick: () => setTab('touros')
-  }, /*#__PURE__*/React.createElement(Dna, {
-    size: 16
-  }), " Touros"), /*#__PURE__*/React.createElement("button", {
-    style: tabButtonStyle(tab === 'planilha'),
-    onClick: () => setTab('planilha')
-  }, /*#__PURE__*/React.createElement(Table, {
-    size: 16
-  }), " Planilha")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginLeft: 'auto',
-      display: 'flex',
-      alignItems: 'center'
-    }
-  }, ownerMode ? /*#__PURE__*/React.createElement("button", {
-    onClick: bloquear,
-    title: "Voltar para o modo funcion\xE1rio",
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 5,
-      padding: '9px 12px',
-      borderRadius: 10,
-      border: 'none',
-      background: 'transparent',
-      color: C.textMuted,
-      fontSize: 12.5,
-      cursor: 'pointer'
-    }
-  }, /*#__PURE__*/React.createElement(Unlock, {
-    size: 14
-  }), " Propriet\xE1rio") : /*#__PURE__*/React.createElement("button", {
-    onClick: () => setShowPinInput(v => !v),
-    title: "Entrar como propriet\xE1rio",
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 5,
-      padding: '9px 12px',
-      borderRadius: 10,
-      border: 'none',
-      background: 'transparent',
-      color: C.textMuted,
-      fontSize: 12.5,
-      cursor: 'pointer'
-    }
-  }, /*#__PURE__*/React.createElement(Lock, {
-    size: 14
-  })))), showPinInput && !ownerMode && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8,
-      alignItems: 'center',
-      background: C.surface,
-      border: `1px solid ${C.border}`,
-      borderRadius: 10,
-      padding: 10,
-      marginBottom: 16
-    }
-  }, /*#__PURE__*/React.createElement("input", {
-    type: "password",
-    inputMode: "numeric",
-    placeholder: "PIN do propriet\xE1rio",
-    value: pinValue,
-    onChange: e => {
-      setPinValue(e.target.value);
-      setPinError(false);
-    },
-    onKeyDown: e => {
-      if (e.key === 'Enter') tentarDesbloquear();
-    },
-    style: {
-      flex: 1,
-      padding: '8px 10px',
-      borderRadius: 8,
-      border: `1px solid ${pinError ? C.danger : C.border}`,
-      background: C.surfaceAlt,
-      color: C.text,
-      fontSize: 14
-    }
-  }), /*#__PURE__*/React.createElement("button", {
-    onClick: tentarDesbloquear,
-    style: {
-      padding: '8px 14px',
-      borderRadius: 8,
-      border: 'none',
-      background: C.accent,
-      color: '#1B140A',
-      fontWeight: 700,
-      fontSize: 13,
-      cursor: 'pointer'
-    }
-  }, "Entrar"), pinError && /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 12,
-      color: C.danger
-    }
-  }, "PIN incorreto")), tab === 'lancar' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginBottom: 20
-    }
-  }, tiposVisiveis.map(t => {
-    const Icon = t.icon;
-    const active = tipoSelecionado === t.id;
-    return /*#__PURE__*/React.createElement("button", {
-      key: t.id,
-      onClick: () => setTipoSelecionado(t.id),
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 7,
-        padding: '9px 13px',
-        borderRadius: 10,
-        border: `1px solid ${active ? C.accent : C.border}`,
-        cursor: 'pointer',
-        fontSize: 13.5,
-        background: active ? C.accentSoft : C.surface,
-        color: active ? C.accent : C.text,
-        fontWeight: 600
-      }
-    }, /*#__PURE__*/React.createElement(Icon, {
-      size: 15
-    }), " ", t.label);
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: C.surface,
-      border: `1px solid ${C.border}`,
-      borderRadius: 16,
-      padding: 20
-    }
-  }, matrizes.length === 0 && tipoSelecionado !== 'cadastro' && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8,
-      alignItems: 'flex-start',
-      background: C.accentSoft,
-      border: `1px solid ${C.accent}`,
-      borderRadius: 10,
-      padding: 12,
-      marginBottom: 16,
-      fontSize: 13.5,
-      color: C.text
-    }
-  }, /*#__PURE__*/React.createElement(AlertCircle, {
-    size: 16,
-    color: C.accent,
-    style: {
-      flexShrink: 0,
-      marginTop: 1
-    }
-  }), ownerMode ? 'Cadastre pelo menos uma matriz primeiro em "Nova Matriz" para poder vinculá-la aos outros eventos.' : 'Ainda não há matrizes cadastradas no sistema. Fale com o proprietário.'), tipoSelecionado === 'nascimento' && (ultimosNascimentos.Macho || ultimosNascimentos.Fêmea) && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 10,
-      marginBottom: 16,
-      flexWrap: 'wrap'
-    }
-  }, ['Fêmea', 'Macho'].map(sexo => {
-    const ev = ultimosNascimentos[sexo];
-    if (!ev) return null;
-    return /*#__PURE__*/React.createElement("div", {
-      key: sexo,
-      style: {
-        flex: '1 1 140px',
-        background: C.surfaceAlt,
-        border: `1px solid ${C.border}`,
-        borderRadius: 10,
-        padding: '10px 14px'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 11,
-        color: C.textMuted,
-        textTransform: 'uppercase',
-        letterSpacing: 0.4
-      }
-    }, "\xDAltimo ", sexo === 'Macho' ? 'macho' : 'fêmea', " lan\xE7ado"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 18,
-        fontWeight: 700,
-        fontFamily: 'Georgia, serif'
-      }
-    }, ev.brincoBezerro), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 11.5,
-        color: C.textMuted
-      }
-    }, formatarDataBR(ev.data), ev.pelagem ? ` · ${ev.pelagem}` : ''));
-  })), CAMPOS[tipoSelecionado].filter(campo => !campo.showIf || campo.showIf(form)).map(campo => /*#__PURE__*/React.createElement(Field, {
-    key: campo.key,
-    campo: campo,
-    value: form[campo.key],
-    onChange: updateField,
-    matrizes: matrizes,
-    touros: touros
-  })), /*#__PURE__*/React.createElement("button", {
-    onClick: handleSalvar,
-    disabled: saveStatus === 'saving',
-    style: {
-      width: '100%',
-      padding: '13px',
-      borderRadius: 10,
-      border: 'none',
-      cursor: 'pointer',
-      background: saveStatus === 'saved' ? C.cheia : C.accent,
-      color: '#1B140A',
-      fontWeight: 700,
-      fontSize: 15,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      marginTop: 6
-    }
-  }, saveStatus === 'saving' && /*#__PURE__*/React.createElement(Loader2, {
-    size: 17,
-    className: "animate-spin"
-  }), saveStatus === 'saved' && /*#__PURE__*/React.createElement(Check, {
-    size: 17
-  }), saveStatus !== 'saving' && saveStatus !== 'saved' && /*#__PURE__*/React.createElement(Save, {
-    size: 17
-  }), saveStatus === 'saved' ? 'Salvo!' : saveStatus === 'saving' ? 'Salvando...' : 'Salvar registro'), saveStatus === 'error' && /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: C.danger,
-      fontSize: 13,
-      marginTop: 8
-    }
-  }, "Preencha os campos obrigat\xF3rios (*) antes de salvar."))), tab === 'dashboard' && ownerMode && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'flex-end',
-      gap: 8,
-      marginBottom: 14,
-      flexWrap: 'wrap'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: exportarExcel,
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      padding: '8px 14px',
-      borderRadius: 8,
-      border: 'none',
-      background: C.accent,
-      color: '#1B140A',
-      fontSize: 12.5,
-      cursor: 'pointer',
-      fontWeight: 700
-    }
-  }, /*#__PURE__*/React.createElement(Save, {
-    size: 13
-  }), " Baixar relat\xF3rio Excel"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setConfirmAction('resync'),
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      padding: '7px 12px',
-      borderRadius: 8,
-      border: `1px solid ${C.border}`,
-      background: C.surface,
-      color: C.textMuted,
-      fontSize: 12.5,
-      cursor: 'pointer'
-    }
-  }, /*#__PURE__*/React.createElement(RefreshCw, {
-    size: 13
-  }), " Sincronizar planilha agora"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setConfirmAction('import'),
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      padding: '7px 12px',
-      borderRadius: 8,
-      border: `1px solid ${C.accent}`,
-      background: C.accentSoft,
-      color: C.accent,
-      fontSize: 12.5,
-      cursor: 'pointer',
-      fontWeight: 700
-    }
-  }, /*#__PURE__*/React.createElement(ClipboardList, {
-    size: 13
-  }), " Importar dados reais (REBANHO 2026)"), /*#__PURE__*/React.createElement("button", {
-    onClick: seedDemo,
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      padding: '7px 12px',
-      borderRadius: 8,
-      border: `1px solid ${C.border}`,
-      background: C.surface,
-      color: C.textMuted,
-      fontSize: 12.5,
-      cursor: 'pointer'
-    }
-  }, /*#__PURE__*/React.createElement(RefreshCw, {
-    size: 13
-  }), " Carregar dados de exemplo"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setConfirmAction('clear'),
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      padding: '7px 12px',
-      borderRadius: 8,
-      border: `1px solid ${C.border}`,
-      background: C.surface,
-      color: C.textMuted,
-      fontSize: 12.5,
-      cursor: 'pointer'
-    }
-  }, /*#__PURE__*/React.createElement(X, {
-    size: 13
-  }), " Limpar dados")), confirmAction && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: 10,
-      background: C.accentSoft,
-      border: `1px solid ${C.accent}`,
-      borderRadius: 10,
-      padding: 14,
-      marginBottom: 16
-    }
-  }, /*#__PURE__*/React.createElement(AlertCircle, {
-    size: 17,
-    color: C.accent,
-    style: {
-      flexShrink: 0,
-      marginTop: 1
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13.5,
-      marginBottom: 10
-    }
-  }, confirmAction === 'import' ? 'Isso vai SUBSTITUIR os dados atuais pelos dados reais importados da planilha REBANHO - 2026.xlsx (180 matrizes + 193 eventos) — CUIDADO: lançamentos feitos depois da importação original serão perdidos. Confirma?' : confirmAction === 'resync' ? 'Isso vai regravar a planilha inteira com os dados que estão na tela agora (nada é perdido, só atualiza formatação e fórmulas em todas as linhas). Pode demorar um pouco mais que o normal. Confirma?' : 'Isso vai apagar todos os dados lançados (inclusive reais, se houver). Confirma?'), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: async () => {
-      if (confirmAction === 'import') await importarDadosReais();else if (confirmAction === 'resync') await syncToSheets(matrizes, touros, eventos);else await clearAll();
-      setConfirmAction(null);
-    },
-    style: {
-      padding: '7px 14px',
-      borderRadius: 8,
-      border: 'none',
-      background: C.accent,
-      color: '#1B140A',
-      fontWeight: 700,
-      fontSize: 13,
-      cursor: 'pointer'
-    }
-  }, "Confirmar"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setConfirmAction(null),
-    style: {
-      padding: '7px 14px',
-      borderRadius: 8,
-      border: `1px solid ${C.border}`,
-      background: 'transparent',
-      color: C.textMuted,
-      fontWeight: 600,
-      fontSize: 13,
-      cursor: 'pointer'
-    }
-  }, "Cancelar")))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: 12,
-      marginBottom: 20
-    }
-  }, /*#__PURE__*/React.createElement(StatCard, {
-    label: "Matrizes",
-    value: kpis.total,
-    sub: `${kpis.cheias} cheias · ${kpis.vazias} vazias`
-  }), /*#__PURE__*/React.createElement(StatCard, {
-    label: "Taxa de prenhez",
-    value: `${kpis.taxaPrenhez.toFixed(0)}%`,
-    color: C.cheia
-  }), /*#__PURE__*/React.createElement(StatCard, {
-    label: "Nascimentos",
-    value: kpis.nascimentos,
-    sub: `${kpis.machos} machos · ${kpis.femeas} fêmeas`
-  }), /*#__PURE__*/React.createElement(StatCard, {
-    label: "Taxa de perda ao nascer",
-    value: `${kpis.taxaPerda.toFixed(0)}%`,
-    sub: `${kpis.natimortos} natimorto(s)`,
-    color: kpis.taxaPerda > 5 ? C.descarte : C.text
-  }), /*#__PURE__*/React.createElement(StatCard, {
-    label: "Taxa de desmama",
-    value: `${kpis.taxaDesmama.toFixed(0)}%`,
-    sub: `peso médio ${kpis.pesoMedioDesmama.toFixed(0)} kg`
-  }), /*#__PURE__*/React.createElement(StatCard, {
-    label: "Novilhas em recria",
-    value: kpis.emRecria
-  }), /*#__PURE__*/React.createElement(StatCard, {
-    label: "Custo por bezerro",
-    value: fmtBRL(kpis.custoPorBezerro),
-    color: C.vazia
-  }), /*#__PURE__*/React.createElement(StatCard, {
-    label: "Margem (vendas - custos)",
-    value: fmtBRL(kpis.margem),
-    color: kpis.margem >= 0 ? C.cheia : C.descarte
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 16,
-      flexWrap: 'wrap',
-      marginBottom: 20
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: '1 1 260px',
-      background: C.surface,
-      border: `1px solid ${C.border}`,
-      borderRadius: 16,
-      padding: 18
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: C.textMuted,
-      marginBottom: 10,
-      fontWeight: 600
-    }
-  }, "Status do plantel"), statusData.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: C.textMuted,
-      fontSize: 13,
-      padding: '30px 0',
-      textAlign: 'center'
-    }
-  }, "Sem matrizes cadastradas ainda") : /*#__PURE__*/React.createElement(ResponsiveContainer, {
-    width: "100%",
-    height: 200
-  }, /*#__PURE__*/React.createElement(PieChart, null, /*#__PURE__*/React.createElement(Pie, {
-    data: statusData,
-    dataKey: "value",
-    nameKey: "name",
-    innerRadius: 50,
-    outerRadius: 80,
-    paddingAngle: 3
-  }, statusData.map((d, i) => /*#__PURE__*/React.createElement(Cell, {
-    key: i,
-    fill: d.color
-  }))), /*#__PURE__*/React.createElement(Tooltip, {
-    contentStyle: {
-      background: C.surfaceAlt,
-      border: `1px solid ${C.border}`,
-      borderRadius: 8,
-      color: C.text
-    }
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 14,
-      justifyContent: 'center',
-      marginTop: 6,
-      flexWrap: 'wrap'
-    }
-  }, statusData.map(d => /*#__PURE__*/React.createElement("div", {
-    key: d.name,
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      fontSize: 12.5,
-      color: C.textMuted
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      width: 9,
-      height: 9,
-      borderRadius: 9,
-      background: d.color,
-      display: 'inline-block'
-    }
-  }), " ", d.name, " (", d.value, ")")))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: '1 1 260px',
-      background: C.surface,
-      border: `1px solid ${C.border}`,
-      borderRadius: 16,
-      padding: 18
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: C.textMuted,
-      marginBottom: 10,
-      fontWeight: 600
-    }
-  }, "Nascimentos por m\xEAs"), nascimentosPorMes.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: C.textMuted,
-      fontSize: 13,
-      padding: '30px 0',
-      textAlign: 'center'
-    }
-  }, "Sem nascimentos lan\xE7ados ainda") : /*#__PURE__*/React.createElement(ResponsiveContainer, {
-    width: "100%",
-    height: 200
-  }, /*#__PURE__*/React.createElement(BarChart, {
-    data: nascimentosPorMes
-  }, /*#__PURE__*/React.createElement(CartesianGrid, {
-    stroke: C.border,
-    strokeDasharray: "3 3",
-    vertical: false
-  }), /*#__PURE__*/React.createElement(XAxis, {
-    dataKey: "mes",
-    tick: {
-      fill: C.textMuted,
-      fontSize: 11
-    },
-    axisLine: {
-      stroke: C.border
-    },
-    tickLine: false
-  }), /*#__PURE__*/React.createElement(YAxis, {
-    allowDecimals: false,
-    tick: {
-      fill: C.textMuted,
-      fontSize: 11
-    },
-    axisLine: {
-      stroke: C.border
-    },
-    tickLine: false
-  }), /*#__PURE__*/React.createElement(Tooltip, {
-    contentStyle: {
-      background: C.surfaceAlt,
-      border: `1px solid ${C.border}`,
-      borderRadius: 8,
-      color: C.text
-    }
-  }), /*#__PURE__*/React.createElement(Bar, {
-    dataKey: "qtd",
-    fill: C.accent,
-    radius: [5, 5, 0, 0]
-  }))))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: C.surface,
-      border: `1px solid ${C.border}`,
-      borderRadius: 16,
-      padding: 18
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: C.textMuted,
-      marginBottom: 10,
-      fontWeight: 600,
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement(ClipboardList, {
-    size: 15
-  }), " Atividade recente"), atividadeRecente.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: C.textMuted,
-      fontSize: 13,
-      padding: '10px 0'
-    }
-  }, "Nenhum registro lan\xE7ado ainda.") : /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 0
-    }
-  }, atividadeRecente.map(e => /*#__PURE__*/React.createElement("div", {
-    key: e.id,
-    style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      padding: '9px 0',
-      borderBottom: `1px solid ${C.border}`,
-      fontSize: 13.5
-    }
-  }, /*#__PURE__*/React.createElement("span", null, eventoLabel(e.tipo), e.matrizId ? ` — ${brincoMap[e.matrizId] || '?'}` : '', (e.tipo === 'iatf' || e.tipo === 'nascimento') && nomeTouroEvento(e) ? ` (${nomeTouroEvento(e)})` : ''), /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: C.textMuted
-    }
-  }, formatarDataBR(e.data))))))), tab === 'previsao' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8,
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setFiltroPrevisao('Cheia'),
-    style: {
-      flex: 1,
-      padding: '11px',
-      borderRadius: 12,
-      fontSize: 14.5,
-      fontWeight: 700,
-      cursor: 'pointer',
-      border: `1px solid ${filtroPrevisao === 'Cheia' ? C.accent : C.border}`,
-      background: filtroPrevisao === 'Cheia' ? C.accentSoft : C.surface,
-      color: filtroPrevisao === 'Cheia' ? C.accent : C.textMuted
-    }
-  }, "Cheias"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setFiltroPrevisao('Vazia'),
-    style: {
-      flex: 1,
-      padding: '11px',
-      borderRadius: 12,
-      fontSize: 14.5,
-      fontWeight: 700,
-      cursor: 'pointer',
-      border: `1px solid ${filtroPrevisao === 'Vazia' ? C.accent : C.border}`,
-      background: filtroPrevisao === 'Vazia' ? C.accentSoft : C.surface,
-      color: filtroPrevisao === 'Vazia' ? C.accent : C.textMuted
-    }
-  }, "Vazias")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'relative',
-      marginBottom: 16
-    }
-  }, /*#__PURE__*/React.createElement(Search, {
-    size: 17,
-    style: {
-      position: 'absolute',
-      left: 14,
-      top: 15,
-      color: C.textMuted
-    }
-  }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "Buscar por brinco...",
-    value: buscaPrevisao,
-    onChange: e => setBuscaPrevisao(e.target.value),
-    style: {
-      width: '100%',
-      padding: '13px 14px 13px 40px',
-      borderRadius: 12,
-      border: `1px solid ${C.border}`,
-      background: C.surfaceAlt,
-      color: C.text,
-      fontSize: 16
-    }
-  })), (() => {
-    const hoje = todayISO();
-    const lista = matrizes.filter(m => m.status === filtroPrevisao).filter(m => !buscaPrevisao || m.brinco.toLowerCase().includes(buscaPrevisao.toLowerCase())).map(m => {
-      const info = m.status === 'Cheia' ? previsaoPartoInfo(m.id, eventos) : null;
-      return {
-        matriz: m,
-        info,
-        previsao: info ? info.data : '',
-        ultimoParto: ultimoPartoDe(m.id, eventos),
-        numeroCria: numeroCriaUltimoParto(m.id, eventos)
-      };
-    }).sort((a, b) => {
-      if (filtroPrevisao === 'Cheia') {
-        if (!a.previsao) return 1;
-        if (!b.previsao) return -1;
-        return a.previsao.localeCompare(b.previsao);
-      }
-      // Vazias: mais recém-paridas primeiro (sem previsão de parto aplicável aqui)
-      if (!a.ultimoParto) return 1;
-      if (!b.ultimoParto) return -1;
-      return b.ultimoParto.localeCompare(a.ultimoParto);
-    });
-    if (lista.length === 0) {
-      return /*#__PURE__*/React.createElement("div", {
-        style: {
-          color: C.textMuted,
-          fontSize: 14,
-          padding: '30px 0',
-          textAlign: 'center'
-        }
-      }, buscaPrevisao ? `Nenhuma matriz ${filtroPrevisao === 'Cheia' ? 'cheia' : 'vazia'} encontrada com esse brinco.` : `Nenhuma matriz com status ${filtroPrevisao === 'Cheia' ? 'Cheia' : 'Vazia'} no momento.`);
-    }
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10
-      }
-    }, lista.map(({
-      matriz: m,
-      info,
-      previsao,
-      ultimoParto,
-      numeroCria
-    }) => {
-      const diasRestantes = previsao ? diasEntre(hoje, previsao) : null;
-      let corPrazo = C.textMuted;
-      let textoPrazo = filtroPrevisao === 'Cheia' ? 'sem previsão calculada' : '';
-      if (diasRestantes !== null) {
-        if (diasRestantes < 0) {
-          corPrazo = C.descarte;
-          textoPrazo = `atrasado ${Math.abs(diasRestantes)} dia(s) · confirmar se já pariu`;
-        } else if (diasRestantes === 0) {
-          corPrazo = C.descarte;
-          textoPrazo = 'hoje!';
-        } else if (diasRestantes <= 15) {
-          corPrazo = C.vazia;
-          textoPrazo = `em ${diasRestantes} dia(s)`;
-        } else {
-          corPrazo = C.cheia;
-          textoPrazo = `em ${diasRestantes} dia(s)`;
-        }
-      }
-      return /*#__PURE__*/React.createElement("div", {
-        key: m.id,
-        style: {
-          background: C.surface,
-          border: `1px solid ${C.border}`,
-          borderRadius: 14,
-          padding: '14px 16px'
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          gap: 10,
-          flexWrap: 'wrap'
-        }
-      }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontWeight: 700,
-          fontSize: 17
-        }
-      }, m.brinco), /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 12.5,
-          color: C.textMuted
-        }
-      }, m.categoria, m.raca ? ` · ${m.raca}` : '', m.lote ? ` · ${m.lote}` : '')), /*#__PURE__*/React.createElement("div", {
-        style: {
-          textAlign: 'right'
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 19,
-          fontWeight: 700,
-          fontFamily: 'Georgia, serif',
-          color: C.accent
-        }
-      }, previsao ? formatarDataBR(previsao) : '—'), /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 12,
-          fontWeight: 700,
-          color: corPrazo
-        }
-      }, textoPrazo))), /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: 'flex',
-          gap: 14,
-          marginTop: 8,
-          flexWrap: 'wrap',
-          fontSize: 12.5,
-          color: C.textMuted
-        }
-      }, /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontWeight: 700,
-          color: m.status === 'Cheia' ? C.cheia : C.vazia,
-          background: `${m.status === 'Cheia' ? C.cheia : C.vazia}22`,
-          padding: '3px 9px',
-          borderRadius: 20
-        }
-      }, m.status), ultimoParto && /*#__PURE__*/React.createElement("span", null, "\xDAltimo parto: ", formatarDataBR(ultimoParto), numeroCria ? ` (cria ${numeroCria})` : '')), info && /*#__PURE__*/React.createElement("div", {
-        style: {
-          marginTop: 6,
-          fontSize: 12.5,
-          color: C.textMuted
-        }
-      }, info.origem === 'toque' && `Cálculo: toque de ${formatarDataBR(info.base)} com ${info.dg} dias de gestação, mais ${PERIODO_GESTACAO_DIAS} dias de gestação no total`, info.origem === 'iatf' && `Cálculo: IATF de ${formatarDataBR(info.base)} mais ${PERIODO_GESTACAO_DIAS} dias`, info.origem === 'toque-sem-dg' && `Toque de ${formatarDataBR(info.base)} sem os dias de gestação (DG) anotados, não dá para calcular`));
-    }));
-  })()), tab === 'matrizes' && ownerMode && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8,
-      marginBottom: 14,
-      flexWrap: 'wrap'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'relative',
-      flex: '0 1 150px',
-      minWidth: 110
-    }
-  }, /*#__PURE__*/React.createElement(Search, {
-    size: 15,
-    style: {
-      position: 'absolute',
-      left: 11,
-      top: 11,
-      color: C.textMuted
-    }
-  }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "Brinco...",
-    value: busca,
-    onChange: e => setBusca(e.target.value),
-    style: {
-      width: '100%',
-      padding: '9px 12px 9px 32px',
-      borderRadius: 10,
-      border: `1px solid ${C.border}`,
-      background: C.surfaceAlt,
-      color: C.text,
-      fontSize: 14
-    }
-  })), ['todos', 'Cheia', 'Vazia', 'Descarte'].map(s => /*#__PURE__*/React.createElement("button", {
-    key: s,
-    onClick: () => setFiltroStatus(s),
-    style: {
-      padding: '9px 13px',
-      borderRadius: 10,
-      fontSize: 13,
-      fontWeight: 600,
-      cursor: 'pointer',
-      border: `1px solid ${filtroStatus === s ? C.accent : C.border}`,
-      background: filtroStatus === s ? C.accentSoft : C.surface,
-      color: filtroStatus === s ? C.accent : C.textMuted
-    }
-  }, s === 'todos' ? 'Todos' : s))), matrizesFiltradas.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: C.textMuted,
-      fontSize: 14,
-      padding: '30px 0',
-      textAlign: 'center'
-    }
-  }, "Nenhuma matriz encontrada.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: C.surface,
-      border: `1px solid ${C.border}`,
-      borderRadius: 16,
-      overflow: 'hidden'
-    }
-  }, matrizesFiltradas.map((m, i) => {
-    const cor = m.status === 'Cheia' ? C.cheia : m.status === 'Vazia' ? C.vazia : C.descarte;
-    const partosFazenda = eventos.filter(e => e.tipo === 'nascimento' && e.matrizId === m.id).length;
-    const partosAnt = parseInt(m.partosAnteriores) || 0;
-    const partosLabel = partosAnt > 0 ? `${partosFazenda} parto(s) aqui · ${partosAnt} antes` : `${partosFazenda} parto(s) na fazenda`;
-    const ultimoParto = formatarDataBR(ultimoPartoDe(m.id, eventos));
-    const numeroCria = numeroCriaUltimoParto(m.id, eventos);
-    return /*#__PURE__*/React.createElement("div", {
-      key: m.id,
-      onClick: ownerMode ? () => abrirEdicaoMatriz(m) : undefined,
-      style: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '13px 16px',
-        borderBottom: i < matrizesFiltradas.length - 1 ? `1px solid ${C.border}` : 'none',
-        cursor: ownerMode ? 'pointer' : 'default'
-      }
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontWeight: 700,
-        fontSize: 15,
-        color: ownerMode ? C.accent : C.text
-      }
-    }, m.brinco), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12.5,
-        color: C.textMuted
-      }
-    }, m.categoria, m.dataNascimento ? ` · nasc. ${formatarDataBR(m.dataNascimento)}` : ''), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12.5,
-        color: C.textMuted
-      }
-    }, partosLabel, ultimoParto ? ` · último parto: ${ultimoParto}${numeroCria ? ` (cria ${numeroCria})` : ''}` : '')), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 12.5,
-        fontWeight: 700,
-        color: cor,
-        background: `${cor}22`,
-        padding: '5px 10px',
-        borderRadius: 20
-      }
-    }, m.status));
-  })), ownerMode && editandoMatriz && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(0,0,0,0.55)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 50,
-      padding: 16
-    },
-    onClick: fecharEdicaoMatriz
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: C.surface,
-      border: `1px solid ${C.border}`,
-      borderRadius: 16,
-      padding: 20,
-      maxWidth: 420,
-      width: '100%',
-      maxHeight: '85vh',
-      overflowY: 'auto'
-    },
-    onClick: e => e.stopPropagation()
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 14
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 700,
-      fontFamily: 'Georgia, serif'
-    }
-  }, "Editar matriz ", editandoMatriz.brinco), /*#__PURE__*/React.createElement("button", {
-    onClick: fecharEdicaoMatriz,
-    style: {
-      background: 'transparent',
-      border: 'none',
-      color: C.textMuted,
-      cursor: 'pointer'
-    }
-  }, /*#__PURE__*/React.createElement(X, {
-    size: 18
-  }))), CAMPOS_EDICAO_MATRIZ.map(campo => /*#__PURE__*/React.createElement(Field, {
-    key: campo.key,
-    campo: campo,
-    value: formEdicaoMatriz[campo.key],
-    onChange: (k, v) => setFormEdicaoMatriz(f => ({
-      ...f,
-      [k]: v
-    })),
-    matrizes: matrizes,
-    touros: touros
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8,
-      marginTop: 6
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: salvarEdicaoMatriz,
-    style: {
-      flex: 1,
-      padding: '12px',
-      borderRadius: 10,
-      border: 'none',
-      background: C.accent,
-      color: '#1B140A',
-      fontWeight: 700,
-      fontSize: 14.5,
-      cursor: 'pointer'
-    }
-  }, "Salvar altera\xE7\xF5es"), /*#__PURE__*/React.createElement("button", {
-    onClick: fecharEdicaoMatriz,
-    style: {
-      padding: '12px 18px',
-      borderRadius: 10,
-      border: `1px solid ${C.border}`,
-      background: 'transparent',
-      color: C.textMuted,
-      fontWeight: 600,
-      fontSize: 14.5,
-      cursor: 'pointer'
-    }
-  }, "Cancelar")))))), tab === 'touros' && ownerMode && /*#__PURE__*/React.createElement("div", null, touros.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: C.textMuted,
-      fontSize: 14,
-      padding: '30px 0',
-      textAlign: 'center'
-    }
-  }, "Nenhum touro/s\xEAmen cadastrado ainda.") : /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 10
-    }
-  }, touros.map(t => {
-    const usadas = eventos.filter(e => e.tipo === 'iatf' && e.touroId === t.id).length;
-    const adquiridas = parseInt(t.doses) || 0;
-    const restantes = adquiridas - usadas;
-    return /*#__PURE__*/React.createElement("div", {
-      key: t.id,
-      style: {
-        background: C.surface,
-        border: `1px solid ${C.border}`,
-        borderRadius: 14,
-        padding: '14px 16px'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start'
-      }
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontWeight: 700,
-        fontSize: 15
-      }
-    }, t.nome), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12.5,
-        color: C.textMuted
-      }
-    }, t.raca, t.fornecedor ? ` · ${t.fornecedor}` : '', t.anoAquisicao ? ` · ${t.anoAquisicao}` : ''), t.observacoes && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        color: C.textMuted,
-        marginTop: 4
-      }
-    }, t.observacoes)), adquiridas > 0 && /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 12.5,
-        fontWeight: 700,
-        padding: '5px 10px',
-        borderRadius: 20,
-        color: restantes <= 0 ? C.descarte : restantes <= 5 ? C.vazia : C.cheia,
-        background: `${restantes <= 0 ? C.descarte : restantes <= 5 ? C.vazia : C.cheia}22`
-      }
-    }, restantes, " dose(s) restante(s)")), adquiridas > 0 && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        color: C.textMuted,
-        marginTop: 8
-      }
-    }, usadas, " usada(s) de ", adquiridas, " adquiridas", t.custoDose ? ` · ${fmtBRL(t.custoDose)}/dose` : ''));
-  }))), tab === 'planilha' && ownerMode && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginBottom: 16
-    }
-  }, PLANILHA_TIPOS.map(t => {
-    const Icon = t.icon;
-    const active = planilhaTipo === t.id;
-    return /*#__PURE__*/React.createElement("button", {
-      key: t.id,
-      onClick: () => setPlanilhaTipo(t.id),
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 7,
-        padding: '9px 13px',
-        borderRadius: 10,
-        border: `1px solid ${active ? C.accent : C.border}`,
-        cursor: 'pointer',
-        fontSize: 13.5,
-        background: active ? C.accentSoft : C.surface,
-        color: active ? C.accent : C.text,
-        fontWeight: 600
-      }
-    }, /*#__PURE__*/React.createElement(Icon, {
-      size: 15
-    }), " ", t.label);
-  })), /*#__PURE__*/React.createElement(SheetTable, {
-    rows: getSheetRows(planilhaTipo)
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 28,
-      textAlign: 'center',
-      fontSize: 11,
-      color: C.textMuted,
-      opacity: 0.7
-    }
-  }, "Fazenda Ibira\xE7u \xB7 app ", VERSAO_APP, " \xB7 planilha ", versaoScript ? `v${versaoScript}` : 'versão antiga')));
+  return /* @__PURE__ */ React8.createElement("div", { className: "app" }, /* @__PURE__ */ React8.createElement("style", null, CSS), /* @__PURE__ */ React8.createElement("aside", { className: "side" }, /* @__PURE__ */ React8.createElement(Marca, null), /* @__PURE__ */ React8.createElement("nav", { "aria-label": "Telas" }, itensNav.map(({ id, label, Icon }) => /* @__PURE__ */ React8.createElement("button", { key: id, "aria-current": tab === id ? "page" : void 0, onClick: () => mudarTab(id) }, /* @__PURE__ */ React8.createElement(Icon, null), " ", label))), /* @__PURE__ */ React8.createElement("div", { className: "foot" }, botaoDono)), /* @__PURE__ */ React8.createElement("div", { className: "main" }, MODO_TESTE && /* @__PURE__ */ React8.createElement("div", { className: "banner-teste", role: "status" }, /* @__PURE__ */ React8.createElement("b", null, "MODO TESTE"), /* @__PURE__ */ React8.createElement("span", null, "L\xEA os dados reais da planilha, mas N\xC3O grava nada nela. O que voc\xEA lan\xE7ar aqui some ao recarregar."), /* @__PURE__ */ React8.createElement("button", { onClick: carregar }, "Recarregar dados")), /* @__PURE__ */ React8.createElement("header", { className: "topbar" }, /* @__PURE__ */ React8.createElement("div", { className: "in" }, /* @__PURE__ */ React8.createElement(Marca, null), pendentes > 0 && /* @__PURE__ */ React8.createElement("span", { className: "chip", role: "status" }, /* @__PURE__ */ React8.createElement(Loader23, { size: 14, className: "spin" }), " gravando"), botaoDono)), pendentes > 0 && /* @__PURE__ */ React8.createElement("span", { className: "sr", role: "status" }, "Gravando na planilha"), aviso && /* @__PURE__ */ React8.createElement("div", { className: "wrap" }, /* @__PURE__ */ React8.createElement(Aviso, { tipo: aviso.tipo === "erro" ? void 0 : aviso.tipo, onClose: () => setAviso(null) }, aviso.texto)), tab === "lancar" && /* @__PURE__ */ React8.createElement(Lancar, { dados, hoje, ownerMode, preset, onSalvar: salvarLancamento, onGravarLote: gravarLote, modoTeste: MODO_TESTE }), tab === "parto" && /* @__PURE__ */ React8.createElement(Parto, { dados, hoje, onLancar: lancarDaVaca }), tab === "rebanho" && /* @__PURE__ */ React8.createElement(Rebanho, { dados, ownerMode, onSalvarMatriz: salvarMatriz }), tab === "painel" && ownerMode && /* @__PURE__ */ React8.createElement(
+    Painel,
+    {
+      anoSel,
+      dados,
+      ano,
+      hoje,
+      go: mudarTab,
+      modoTeste: MODO_TESTE,
+      sincronizando,
+      onExcel: () => exportarExcel(dadosRef.current, ano, hoje),
+      onSync: sincronizarTudo,
+      onRecarregar: carregar
+    }
+  ), tab === "relatorios" && ownerMode && /* @__PURE__ */ React8.createElement(
+    Relatorios,
+    {
+      anoSel,
+      dados,
+      ano,
+      hoje,
+      onExcel: () => exportarExcel(dadosRef.current, ano, hoje),
+      onExcelRelatorio: (rel) => exportarRelatorioExcel(rel, ano, hoje)
+    }
+  ), /* @__PURE__ */ React8.createElement("div", { className: "foot-note" }, "Fazenda Ibira\xE7u \xB7 app ", VERSAO_APP, " \xB7 planilha ", versaoScript ? `v${versaoScript}` : "vers\xE3o antiga", MODO_TESTE ? " \xB7 TESTE" : "")), /* @__PURE__ */ React8.createElement("nav", { className: "bnav", "aria-label": "Telas (celular)" }, itensNav.map(({ id, label, Icon }) => /* @__PURE__ */ React8.createElement("button", { key: id, "aria-current": tab === id ? "page" : void 0, onClick: () => mudarTab(id) }, /* @__PURE__ */ React8.createElement(Icon, null), " ", label))), pinAberto && !ownerMode && /* @__PURE__ */ React8.createElement(Modal, { titulo: "\xC1rea do propriet\xE1rio", onClose: () => setPinAberto(false) }, /* @__PURE__ */ React8.createElement("form", { onSubmit: (e) => {
+    e.preventDefault();
+    tentarEntrar();
+  } }, /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "pin" }, "Senha (PIN)"), /* @__PURE__ */ React8.createElement("input", { id: "pin", type: "password", inputMode: "numeric", autoComplete: "off", autoFocus: true, value: pin, onChange: (e) => {
+    setPin(e.target.value);
+    setPinErro(false);
+  } }), pinErro && /* @__PURE__ */ React8.createElement("div", { className: "hint late", role: "alert" }, "Senha incorreta.")), /* @__PURE__ */ React8.createElement("button", { type: "submit", className: "btn wide" }, "Entrar"))));
 }
-
-// ---------- montagem na página ----------
-const root = createRoot(document.getElementById('root'));
-root.render(/*#__PURE__*/React.createElement(GestaoPecuaria));
+createRoot(document.getElementById("root")).render(/* @__PURE__ */ React8.createElement(GestaoPecuaria, null));
