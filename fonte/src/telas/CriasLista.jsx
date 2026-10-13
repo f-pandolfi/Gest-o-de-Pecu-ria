@@ -2,21 +2,25 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Search, Scale, ShoppingCart } from 'lucide-react';
 import {
-  rotuloSituacao, formatarDataBR, numPeso, avisoDePeso, jaExiste, definirDestinoNovilha, DESTINOS_NOVILHA,
+  rotuloSituacao, formatarDataBR, numPeso, avisoDePeso, jaExiste, definirDestinoNovilha, DESTINOS_NOVILHA, listarMortes,
 } from '../logica.js';
 import { Modal, Lead, Aviso } from '../ui.jsx';
 import { fmtKg, fmtIdade, fmtGmd } from '../util.js';
+import { FormMorte, ModalMorte } from './Morte.jsx';
+import { ModalNascimento } from './Nascimentos.jsx';
 
 const NO_REBANHO = ['mamando', 'desmamado', 'novilha'];
 const FILTROS_SIT = [
   ['rebanho', 'No rebanho'], ['mamando', 'Mamando'], ['desmamado', 'Desmamadas(os)'], ['novilha', 'Novilhas'],
-  ['matriz', 'Viraram matriz'], ['vendido', 'Vendidas(os)'], ['todas', 'Todas'],
+  ['matriz', 'Viraram matriz'], ['vendido', 'Vendidas(os)'], ['morto', 'Mortas(os)'], ['orfa', 'Órfãs (mãe morreu)'], ['todas', 'Todas'],
 ];
 const ORDENS = [['nova', 'Mais novas primeiro'], ['velha', 'Mais velhas primeiro'], ['peso', 'Mais pesadas'], ['ganho', 'Maior ganho por dia'], ['brinco', 'Número do brinco']];
 
-const corSituacao = (s) => (s === 'vendido' ? 'fora' : s === 'mamando' ? 'falta' : 'pronto');
+const corSituacao = (s) => (s === 'vendido' || s === 'morto' ? 'fora' : s === 'mamando' ? 'falta' : 'pronto');
 
-function CriaFicha({ c, dados, hoje, ownerMode, onLancar, onVender, onSalvarMatriz, onFechar }) {
+function CriaFicha({
+  c, dados, hoje, ownerMode, modoTeste, onLancar, onVender, onSalvarMatriz, onFechar, onRegistrarMorte, onEditarNascimento, onEditarMorte, onAnularMorte,
+}) {
   const [peso, setPeso] = useState('');
   const [data, setData] = useState(hoje);
   const [confirma, setConfirma] = useState('');
@@ -25,6 +29,9 @@ function CriaFicha({ c, dados, hoje, ownerMode, onLancar, onVender, onSalvarMatr
   const [travado, setTravado] = useState(false);
   const [desmData, setDesmData] = useState(hoje);
   const [desmPeso, setDesmPeso] = useState('');
+  const [registrandoMorte, setRegistrandoMorte] = useState(false);
+  const [editNasc, setEditNasc] = useState(false);
+  const [editMorte, setEditMorte] = useState(false);
   const timer = useRef(null);
   useEffect(() => () => clearTimeout(timer.current), []);
 
@@ -66,13 +73,22 @@ function CriaFicha({ c, dados, hoje, ownerMode, onLancar, onVender, onSalvarMatr
 
   const podeDesmamar = ownerMode && c.situacao === 'mamando' && c.brinco;
   const hist = [...c.pontos].reverse();
+  const morte = c.situacao === 'morto' ? listarMortes(dados).find((x) => x.ativa && x.e.criaId === c.id) || null : null;
 
   return (
     <Modal titulo={`Cria ${c.brinco || 'sem número'}`} onClose={onFechar} rotulo={`Cria ${c.brinco || 'sem número'}`}>
-      <div style={{ marginBottom: 6 }}><span className={`pill ${corSituacao(c.situacao)}`}>{rotuloSituacao(c)}</span></div>
+      <div style={{ marginBottom: 6 }}>
+        <span className={`pill ${corSituacao(c.situacao)}`}>{rotuloSituacao(c)}</span>
+        {c.orfa && <span className="pill alerta" style={{ marginLeft: 6 }}>Órfã</span>}
+      </div>
+      {c.orfa && (
+        <Aviso tipo="info">
+          Cria órfã: a mãe {c.maeBrinco || '?'} morreu{c.maeMortaData ? ` em ${formatarDataBR(c.maeMortaData)}` : ''}. A cria continua normal; os funcionários cuidam dela até se virar sozinha.
+        </Aviso>
+      )}
       <Lead rotulo="Sexo" valor={c.sexo || '—'} />
       <Lead rotulo="Nascimento" valor={`${formatarDataBR(c.nascData)} · ${fmtIdade(c.idadeDias)}`} />
-      <Lead rotulo="Mãe" valor={c.maeBrinco || 'não informada'} />
+      <Lead rotulo="Mãe" valor={c.maeBrinco ? `${c.maeBrinco}${c.maeMorta ? ' (morreu)' : ''}` : 'não informada'} />
       <Lead rotulo="Origem / pai" valor={c.origem.rotulo} />
       {c.origem.iatfData && <Lead rotulo="IATF da mãe" valor={formatarDataBR(c.origem.iatfData)} />}
       {c.pelagem && <Lead rotulo="Pelagem" valor={c.pelagem} />}
@@ -80,6 +96,8 @@ function CriaFicha({ c, dados, hoje, ownerMode, onLancar, onVender, onSalvarMatr
       <Lead rotulo="Ganho recente" valor={fmtGmd(c.gmd)} />
       {c.desmamaData && <Lead rotulo="Desmama" valor={formatarDataBR(c.desmamaData)} />}
       {c.situacao === 'vendido' && <Lead rotulo="Baixa (venda)" valor={c.vendaData ? formatarDataBR(c.vendaData) : 'vendida'} />}
+      {c.situacao === 'morto' && <Lead rotulo="Morte" valor={`${c.mortoData ? formatarDataBR(c.mortoData) : 'sem data'} · ${c.causaMorte || 'causa não informada'}`} cor="var(--late)" />}
+      {morte && morte.e.observacoes && <Lead rotulo="Observação" valor={morte.e.observacoes} />}
 
       <h3 className="h2" style={{ fontSize: 18 }}>Pesagens<small>{c.pontos.length} registro(s)</small></h3>
       {hist.length === 0 ? <p className="sub">Nenhuma pesagem ainda.</p> : (
@@ -88,7 +106,7 @@ function CriaFicha({ c, dados, hoje, ownerMode, onLancar, onVender, onSalvarMatr
         </ul>
       )}
 
-      {c.situacao !== 'vendido' && (
+      {c.ativa && (
         <div className="rapido" style={{ marginTop: 14 }}>
           <div className="grid2">
             <div className="fld">
@@ -127,7 +145,7 @@ function CriaFicha({ c, dados, hoje, ownerMode, onLancar, onVender, onSalvarMatr
         <p className="sub">Para desmamar esta cria, primeiro ela precisa de um número (brinco) no lançamento do nascimento.</p>
       )}
 
-      {ownerMode && c.novilha && c.situacao !== 'vendido' && (
+      {ownerMode && c.novilha && c.ativa && (
         <div className="rapido">
           <div className="lbl" style={{ font: '600 11.5px var(--mono)', letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--mut)', marginBottom: 8 }}>Destino da novilha</div>
           <div className="seg" role="group" aria-label="Destino da novilha">
@@ -138,23 +156,48 @@ function CriaFicha({ c, dados, hoje, ownerMode, onLancar, onVender, onSalvarMatr
         </div>
       )}
 
-      {ownerMode && c.situacao !== 'vendido' && c.situacao !== 'matriz' && (
+      {c.ativa && c.brinco && (
+        <div style={{ marginTop: 8 }}>
+          {!registrandoMorte ? (
+            <button className="btn quiet wide" onClick={() => setRegistrandoMorte(true)}>Registrar morte desta cria</button>
+          ) : (
+            <div className="rapido">
+              <div className="lbl" style={{ font: '600 11.5px var(--mono)', letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--mut)', marginBottom: 8 }}>Morte da cria {c.brinco}</div>
+              <FormMorte dados={dados} hoje={hoje} brincoFixo={c.brinco} onRegistrar={onRegistrarMorte} modoTeste={modoTeste} aoTerminar={(r) => { setRegistrandoMorte(false); setMsg(r.msg); }} />
+              <button className="btn quiet sm" style={{ marginTop: 8 }} onClick={() => setRegistrandoMorte(false)}>Cancelar</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {ownerMode && c.ativa && c.situacao !== 'matriz' && (
         <button className="btn ghost wide" style={{ marginTop: 8 }} onClick={() => { onFechar(); onVender([c.brinco]); }} disabled={!c.brinco}>
           <ShoppingCart size={18} /> Vender {c.sexo === 'Fêmea' ? 'esta cria' : 'este animal'}
         </button>
       )}
+
+      {ownerMode && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          <button className="btn quiet" style={{ flex: 1 }} onClick={() => setEditNasc(true)}>Corrigir nascimento</button>
+          {morte && <button className="btn quiet" style={{ flex: 1 }} onClick={() => setEditMorte(true)}>Corrigir ou anular a morte</button>}
+        </div>
+      )}
+      {editNasc && <ModalNascimento nasc={c.nasc} dados={dados} onEditar={onEditarNascimento} onFechar={() => setEditNasc(false)} onFeito={setMsg} />}
+      {editMorte && morte && <ModalMorte item={morte} onEditar={onEditarMorte} onAnular={onAnularMorte} onFechar={() => setEditMorte(false)} onFeito={setMsg} />}
     </Modal>
   );
 }
 
-export default function ListaCrias({ crias, dados, hoje, ownerMode, onLancar, onVender, onSalvarMatriz }) {
+export default function ListaCrias({
+  crias, dados, hoje, ownerMode, modoTeste, onLancar, onVender, onSalvarMatriz, onRegistrarMorte, onEditarNascimento, onEditarMorte, onAnularMorte,
+}) {
   const [sexo, setSexo] = useState('todos');
   const [sit, setSit] = useState('rebanho');
   const [busca, setBusca] = useState('');
   const [ordem, setOrdem] = useState('nova');
   const [aberta, setAberta] = useState(null);
 
-  const porSituacao = useMemo(() => crias.filter((c) => (sit === 'todas' ? true : sit === 'rebanho' ? NO_REBANHO.includes(c.situacao) : c.situacao === sit)), [crias, sit]);
+  const porSituacao = useMemo(() => crias.filter((c) => (sit === 'todas' ? true : sit === 'rebanho' ? NO_REBANHO.includes(c.situacao) : sit === 'orfa' ? c.orfa : c.situacao === sit)), [crias, sit]);
   const lista = useMemo(() => {
     const q = busca.trim().toLowerCase();
     const l = porSituacao
@@ -209,19 +252,22 @@ export default function ListaCrias({ crias, dados, hoje, ownerMode, onLancar, on
         <button key={c.id} className="led-r cols-cria" onClick={() => setAberta(c.id)} aria-label={`Abrir cria ${c.brinco || 'sem número'}`}>
           <span className="b">{c.brinco || '—'}</span>
           <span className="two">
-            <b>{c.sexo || 'Sexo ?'} · {fmtIdade(c.idadeDias)}</b>
-            <span>mãe {c.maeBrinco || '?'} · {c.origem.rotulo}</span>
+            <b>{c.sexo || 'Sexo ?'} · {fmtIdade(c.idadeDias)}{c.orfa ? ' · órfã' : ''}</b>
+            <span>mãe {c.maeBrinco || '?'}{c.maeMorta ? ' (morreu)' : ''} · {c.origem.rotulo}</span>
           </span>
           <span className="r">
             {c.pesoAtual === null ? <span className="mut">—</span> : fmtKg(c.pesoAtual)}
             {c.gmd !== null && <div style={{ font: '500 11.5px var(--body)', color: 'var(--mut)' }}>{fmtGmd(c.gmd)}</div>}
           </span>
-          <span className="hide-s"><span className={`pill ${corSituacao(c.situacao)}`}>{rotuloSituacao(c)}</span></span>
+          <span className="hide-s"><span className={`pill ${corSituacao(c.situacao)}`}>{rotuloSituacao(c)}</span>{c.orfa && <span className="pill alerta" style={{ marginLeft: 4 }}>Órfã</span>}</span>
           <span className="hide-s m mut">{c.pesoData ? formatarDataBR(c.pesoData) : '—'}</span>
         </button>
       ))}
       {ficha && (
-        <CriaFicha key={ficha.id} c={ficha} dados={dados} hoje={hoje} ownerMode={ownerMode} onLancar={onLancar} onVender={onVender} onSalvarMatriz={onSalvarMatriz} onFechar={() => setAberta(null)} />
+        <CriaFicha
+          key={ficha.id} c={ficha} dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={modoTeste} onLancar={onLancar} onVender={onVender} onSalvarMatriz={onSalvarMatriz}
+          onRegistrarMorte={onRegistrarMorte} onEditarNascimento={onEditarNascimento} onEditarMorte={onEditarMorte} onAnularMorte={onAnularMorte} onFechar={() => setAberta(null)}
+        />
       )}
     </section>
   );

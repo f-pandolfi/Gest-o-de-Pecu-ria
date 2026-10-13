@@ -16,7 +16,7 @@ export default function Painel({ anoSel, dados, ano, hoje, go, onExcel, onSync, 
   const semPrev = cheias.filter((l) => l.dias === null).length;
   const sinal = cheias.filter((l) => l.dias !== null && l.dias >= 0 && l.dias <= 30).length;
 
-  const nascSemMae = evsAno.filter((e) => e.tipo === 'nascimento' && !e.matrizId).length;
+  const nascIncompletos = evsAno.filter((e) => e.tipo === 'nascimento' && (!e.matrizId || !e.sexo || !String(e.brincoBezerro ?? '').trim())).length;
   const plantel = dados.matrizes.filter(noPlantel);
   const semRacaLote = plantel.filter((m) => m.status !== 'Descarte' && (!m.raca || !m.lote)).length;
   const brincos = {};
@@ -24,6 +24,7 @@ export default function Painel({ anoSel, dados, ano, hoje, go, onExcel, onSync, 
   const crias = useMemo(() => listarCrias(dados, hoje), [dados, hoje]);
   const criasAtivas = crias.filter((c) => c.ativa);
   const criasSemPeso = criasAtivas.filter((c) => c.pesoAtual === null).length;
+  const orfas = criasAtivas.filter((c) => c.orfa).length;
   const machos = useMemo(() => analiseMachos(crias, dados.config), [crias, dados.config]);
   const novilhas = useMemo(() => listarNovilhas(dados, dados.config, hoje), [dados, hoje]);
   const novilhasAptas = novilhas.filter((n) => n.apta).length;
@@ -47,7 +48,8 @@ export default function Painel({ anoSel, dados, ano, hoje, go, onExcel, onSync, 
   const pendencias = [
     atrasadas > 0 && { rotulo: 'Previsões de parto já vencidas (conferir se pariram)', valor: atrasadas, onClick: () => go('parto'), cor: 'var(--late)' },
     semPrev > 0 && { rotulo: 'Cheias sem previsão calculada', valor: semPrev, onClick: () => go('parto') },
-    nascSemMae > 0 && { rotulo: `Nascimentos de ${rot} sem a mãe informada`, valor: nascSemMae },
+    nascIncompletos > 0 && { rotulo: `Nascimentos de ${rot} com mãe, sexo ou brinco faltando (corrigir em Lançar)`, valor: nascIncompletos, onClick: () => go('lancar') },
+    orfas > 0 && { rotulo: 'Crias órfãs (a mãe morreu) ainda mamando', valor: orfas, onClick: () => go('crias'), cor: 'var(--amber)' },
     criasSemPeso > 0 && { rotulo: 'Crias no rebanho ainda sem nenhuma pesagem', valor: criasSemPeso, onClick: () => go('crias') },
     semRacaLote > 0 && { rotulo: 'Matrizes sem raça ou lote no cadastro', valor: semRacaLote, onClick: () => go('rebanho') },
     duplicados > 0 && { rotulo: 'Brincos repetidos no cadastro', valor: duplicados, cor: 'var(--late)' },
@@ -99,6 +101,7 @@ export default function Painel({ anoSel, dados, ano, hoje, go, onExcel, onSync, 
         { rotulo: 'IATF / coberturas', valor: k.iatfs },
         { rotulo: 'Toques', valor: k.diagnosticos, sub: k.diagnosticos ? `${k.taxaPrenhez.toFixed(0)}% prenhes` : 'nenhum no período' },
         { rotulo: 'Desmamas', valor: k.desmamas, sub: k.desmamas ? `peso médio ${k.pesoMedioDesmama.toFixed(0)} kg` : 'nenhuma no período' },
+        { rotulo: 'Mortes', valor: k.mortes, cor: k.mortes ? 'var(--late)' : undefined, sub: k.mortes ? `${k.mortesCrias} crias · ${k.mortes - k.mortesCrias} outros` : 'nenhuma no período' },
       ]} />
       <div className="cols2" style={{ marginTop: 16 }}>
         <div className="panel">

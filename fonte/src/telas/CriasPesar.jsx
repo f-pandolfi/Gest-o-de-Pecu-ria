@@ -33,6 +33,7 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
     if (isNaN(p) || p <= 0) return { erro: `Digite o peso de ${brincoTxt}.` };
     const info = infoAnimalVenda(dados, brincoTxt, hoje, crias);
     if (!info.achado) return { erro: `Não achei o brinco ${brincoTxt}. Confira o número (cria ou novilha).` };
+    if (info.jaMorto) return { erro: `O animal ${brincoTxt} morreu${info.mortoEm ? ` em ${formatarDataBR(info.mortoEm)}` : ''}.` };
     if (info.jaVendido) return { erro: `O animal ${brincoTxt} já foi vendido${info.vendidoEm ? ` em ${formatarDataBR(info.vendidoEm)}` : ''}.` };
     if (jaNaLista.some((l) => mesmo(l.brinco, brincoTxt))) return { erro: `O brinco ${brincoTxt} já está na lista.` };
     return { linha: { k: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, brinco: info.brinco, peso: p, info } };
@@ -128,9 +129,10 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
         </div>
         <button className="btn" onClick={adicionar} aria-label="Adicionar à lista"><Plus size={20} /></button>
       </div>
-      <div className="hint" style={{ minHeight: 22, margin: '6px 2px 10px', fontSize: 13, color: infoDigitado && (!infoDigitado.achado || infoDigitado.jaVendido) && brinco.trim().length >= 3 ? 'var(--late)' : 'var(--mut)' }} data-testid="info-brinco">
-        {infoDigitado && infoDigitado.achado && !infoDigitado.jaVendido && `${infoDigitado.descricao}${infoDigitado.pesoUltimo ? ` · último peso ${fmtKg(infoDigitado.pesoUltimo)} em ${formatarDataBR(infoDigitado.pesoData)}` : ' · ainda sem pesagem'}`}
-        {infoDigitado && infoDigitado.achado && infoDigitado.jaVendido && 'Este animal já foi vendido.'}
+      <div className="hint" style={{ minHeight: 22, margin: '6px 2px 10px', fontSize: 13, color: infoDigitado && (!infoDigitado.achado || infoDigitado.jaVendido || infoDigitado.jaMorto) && brinco.trim().length >= 3 ? 'var(--late)' : 'var(--mut)' }} data-testid="info-brinco">
+        {infoDigitado && infoDigitado.achado && infoDigitado.jaMorto && `Este animal morreu${infoDigitado.mortoEm ? ` em ${formatarDataBR(infoDigitado.mortoEm)}` : ''}. Não dá para pesar.`}
+        {infoDigitado && infoDigitado.achado && !infoDigitado.jaMorto && !infoDigitado.jaVendido && `${infoDigitado.descricao}${infoDigitado.pesoUltimo ? ` · último peso ${fmtKg(infoDigitado.pesoUltimo)} em ${formatarDataBR(infoDigitado.pesoData)}` : ' · ainda sem pesagem'}`}
+        {infoDigitado && infoDigitado.achado && !infoDigitado.jaMorto && infoDigitado.jaVendido && 'Este animal já foi vendido.'}
         {infoDigitado && !infoDigitado.achado && brinco.trim().length >= 3 && 'Brinco não encontrado (cria ou novilha).'}
       </div>
 

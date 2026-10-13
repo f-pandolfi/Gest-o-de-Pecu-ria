@@ -36,6 +36,7 @@ function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar }) {
           <Lead rotulo="Categoria" valor={m.categoria || '—'} />
           {m.destino && <Lead rotulo="Destino da novilha" valor={m.destino === 'Matriz' ? 'virar matriz' : m.destino === 'Venda' ? 'venda' : 'a definir'} />}
           {m.status === 'Vendida' && <Lead rotulo="Baixa" valor={`Vendida${m.dataBaixa ? ` em ${formatarDataBR(m.dataBaixa)}` : ''}`} cor="var(--mut)" />}
+          {m.status === 'Morta' && <Lead rotulo="Baixa" valor={`${m.motivoBaixa || 'Morta'}${m.dataBaixa ? ` em ${formatarDataBR(m.dataBaixa)}` : ''}`} cor="var(--late)" />}
           <Lead rotulo="Raça" valor={m.raca || '—'} />
           <Lead rotulo="Lote / piquete" valor={m.lote || '—'} />
           <Lead rotulo="Nascimento" valor={m.dataNascimento ? formatarDataBR(m.dataNascimento) : '—'} />
@@ -52,8 +53,8 @@ function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar }) {
             </ul>
           )}
 
-          {m.status === 'Vendida' ? (
-            <p className="sub" style={{ marginTop: 16 }}>Animal vendido: o cadastro fica guardado só para consulta.</p>
+          {m.status === 'Vendida' || m.status === 'Morta' ? (
+            <p className="sub" style={{ marginTop: 16 }}>{m.status === 'Morta' ? 'Animal morto: o cadastro fica guardado só para consulta. Para corrigir a morte, use Lançar > Morte (com a senha).' : 'Animal vendido: o cadastro fica guardado só para consulta.'}</p>
           ) : ownerMode ? (
             <button className="btn wide" style={{ marginTop: 16 }} onClick={() => setEdit(true)}>Alterar cadastro</button>
           ) : (
@@ -86,14 +87,14 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz }) {
   const lista = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return dados.matrizes
-      .filter((m) => (filtro === 'todos' ? m.status !== 'Vendida' : m.status === filtro) && (!q || String(m.brinco).toLowerCase().includes(q)))
+      .filter((m) => (filtro === 'todos' ? m.status !== 'Vendida' && m.status !== 'Morta' : m.status === filtro) && (!q || String(m.brinco).toLowerCase().includes(q)))
       .slice()
       .sort((a, b) => String(a.brinco).localeCompare(String(b.brinco), 'pt-BR', { numeric: true }));
   }, [dados.matrizes, filtro, busca]);
 
   const aberto = aberta ? dados.matrizes.find((m) => m.id === aberta) : null;
   const contar = (s) => dados.matrizes.filter((m) => m.status === s).length;
-  const totalNoRebanho = dados.matrizes.filter((m) => m.status !== 'Vendida').length;
+  const totalNoRebanho = dados.matrizes.filter((m) => m.status !== 'Vendida' && m.status !== 'Morta').length;
 
   return (
     <div className="wrap">
@@ -116,7 +117,7 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz }) {
           </label>
           <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--line)' }}>
             <div className="seg" style={{ flexWrap: 'wrap' }} role="group" aria-label="Filtrar por situação">
-              {[['todos', 'Todas'], ['Cheia', `Cheias ${contar('Cheia')}`], ['Vazia', `Vazias ${contar('Vazia')}`], ['Descarte', `Descarte ${contar('Descarte')}`], ...(contar('Vendida') ? [['Vendida', `Vendidas ${contar('Vendida')}`]] : [])].map(([id, rot]) => (
+              {[['todos', 'Todas'], ['Cheia', `Cheias ${contar('Cheia')}`], ['Vazia', `Vazias ${contar('Vazia')}`], ['Descarte', `Descarte ${contar('Descarte')}`], ...(contar('Vendida') ? [['Vendida', `Vendidas ${contar('Vendida')}`]] : []), ...(contar('Morta') ? [['Morta', `Mortas ${contar('Morta')}`]] : [])].map(([id, rot]) => (
                 <button key={id} aria-pressed={filtro === id} onClick={() => setFiltro(id)} style={{ minHeight: 40, fontSize: 13, flex: '1 0 auto' }}>{rot}</button>
               ))}
             </div>
@@ -131,7 +132,7 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz }) {
             return (
               <button key={m.id} className="led-r cols-reb" onClick={() => setAberta(m.id)} aria-label={`Abrir matriz ${m.brinco}`}>
                 <span className="b">{m.brinco}</span>
-                <span className="two"><b>{m.categoria}</b><span>{m.destino && m.status !== 'Vendida' ? `recria · ${m.destino === 'Matriz' ? 'virar matriz' : m.destino.toLowerCase()}` : (m.raca || '—')}</span></span>
+                <span className="two"><b>{m.categoria}</b><span>{m.destino && m.status !== 'Vendida' && m.status !== 'Morta' ? `recria · ${m.destino === 'Matriz' ? 'virar matriz' : m.destino.toLowerCase()}` : (m.raca || '—')}</span></span>
                 <span><Tag status={m.status} /></span>
                 <span className="hide-s m mut">{m.lote || '—'}</span>
                 <span className="hide-s m mut">{ult ? formatarDataBR(ult) : '—'}</span>

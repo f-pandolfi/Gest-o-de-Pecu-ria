@@ -6,7 +6,7 @@ import {
 } from '../logica.js';
 import { IndexTabs, Kpis, SecaoRelatorio, TabelaLinhas } from '../ui.jsx';
 
-const NOMES_CURTOS = { previsao: 'Parto', nascimentos: 'Nascimentos', melhores: 'Melhores vacas', iatf: 'IATF', situacao: 'Situação', crias: 'Crias', vendas: 'Vendas' };
+const NOMES_CURTOS = { previsao: 'Parto', nascimentos: 'Nascimentos', melhores: 'Melhores vacas', iatf: 'IATF', situacao: 'Situação', crias: 'Crias', vendas: 'Vendas', mortes: 'Mortes' };
 
 export default function Relatorios({ anoSel, dados, ano, hoje, onExcel, onExcelRelatorio }) {
   const [aba, setAba] = useState('previsao');

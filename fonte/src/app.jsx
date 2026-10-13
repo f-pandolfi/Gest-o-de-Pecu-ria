@@ -1,4 +1,4 @@
-// Gestão da Pecuária · Fazenda Ibiraçu (app v9)
+// Gestão da Pecuária · Fazenda Ibiraçu (app v9.4)
 // Casca do app: menu, ano de gestão, senha do proprietário, leitura e gravação na planilha.
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import {
   VERSAO_APP, VERSAO_MINIMA_SCRIPT, todayISO, anoDe, anosDisponiveis, filtrarPorAno, normalizarDados,
-  aplicarLancamento, aplicarVenda, calcularKPIs, buildResumoRows,
+  aplicarLancamento, aplicarVenda, calcularKPIs, buildResumoRows, validarMorte, listarCrias,
+  editarNascimento, editarMorte, anularMorte, postsDeMudancas, aplicarMudancasNoEstado,
 } from './logica.js';
 import { CSS } from './estilos.js';
 import { MODO_TESTE, lerTudo, postar } from './api.js';
@@ -89,7 +90,7 @@ function GestaoPecuaria() {
       setVersaoScript(v);
       if (v < VERSAO_MINIMA_SCRIPT) {
         if (MODO_TESTE) {
-          setAviso({ tipo: 'info', texto: `Modo teste: a planilha ainda está na versão ${v || 'antiga'} do script. As telas novas já funcionam, mas as pesagens e vendas só serão gravadas depois que o script v${VERSAO_MINIMA_SCRIPT} for publicado.` });
+          setAviso({ tipo: 'info', texto: `Modo teste: a planilha ainda está na versão ${v || 'antiga'} do script. As telas novas já funcionam, mas o registro de mortes só será gravado depois que o script v${VERSAO_MINIMA_SCRIPT} for publicado.` });
         } else {
           setAviso({ tipo: 'erro', texto: `ATENÇÃO: o script da planilha está desatualizado (versão ${v || 'antiga'}). O que você lançar aparece na tela, mas NÃO está sendo gravado na planilha. Avise o responsável pelo sistema.` });
         }
@@ -179,6 +180,9 @@ function GestaoPecuaria() {
     if (!MODO_TESTE && (versaoScript || 0) < 9) {
       return { ok: false, msg: 'O script da planilha está desatualizado e não aceita lote. Avise o responsável pelo sistema.' };
     }
+    if (!MODO_TESTE && (versaoScript || 0) < 10 && res.eventosParaGravar.some((x) => x.tipo === 'morte')) {
+      return { ok: false, msg: 'O script da planilha está desatualizado e não aceita mortes. Avise o responsável pelo sistema.' };
+    }
     try {
       const itens = res.eventosParaGravar;
       for (let i = 0; i < itens.length; i += 40) await postar({ action: 'appendEventos', itens: itens.slice(i, i + 40) });
@@ -190,6 +194,78 @@ function GestaoPecuaria() {
     }
     commit(res.estado);
     return { ok: true, msg: `Gravados ${res.eventosParaGravar.length} lançamento(s) e ${res.matrizesParaGravar.length} matriz(es) atualizada(s).` };
+  }
+
+  // ---------------------------------------------------------------- morte e correções
+  // Aqui a gravação vem primeiro: só depois de a planilha aceitar é que a tela muda (nada fica "salvo só na tela").
+  const MSG_SCRIPT_MORTE = 'O script da planilha está desatualizado e não aceita mortes. Avise o responsável pelo sistema.';
+  const MSG_RECARREGAR = 'Use "Recarregar dados" nas ferramentas avançadas do Painel para ver o que chegou na planilha antes de tentar de novo, para não duplicar.';
+
+  async function registrarMorte(form) {
+    if (!MODO_TESTE && (versaoScript || 0) < 10) return { ok: false, msg: MSG_SCRIPT_MORTE };
+    const v = validarMorte(dadosRef.current, form, hoje);
+    if (v.erros.length) return { ok: false, msg: v.erros.join(' ') };
+    const r = aplicarLancamento(dadosRef.current, 'morte', form);
+    const ev = r.eventosNovos[0];
+    try {
+      await postar({ action: 'appendEvento', tipo: 'morte', evento: ev });
+      if (r.matrizesAlteradas.length) await postar({ action: 'upsertMatrizes', matrizes: r.matrizesAlteradas });
+    } catch (e) {
+      console.error('Erro ao gravar a morte', e);
+      return { ok: false, msg: `Não consegui gravar a morte: ${e.message}. ${MSG_RECARREGAR}` };
+    }
+    const r2 = aplicarLancamento(dadosRef.current, 'morte', form, { id: ev.id, now: ev.createdAt }); // refaz sobre o que há de mais novo na tela
+    commit(r2.estado);
+    const morta = r2.matrizesAlteradas[0];
+    const orfas = morta ? listarCrias(r2.estado, hoje).filter((c) => c.orfa && c.matrizId === morta.id) : [];
+    const partes = [`Morte registrada: ${descreverEvento(ev, r2.estado)}.`];
+    if (morta) partes.push(`A matriz ${morta.brinco} saiu da lista de vacas.`);
+    if (orfas.length) partes.push(`Atenção: ${orfas.length === 1 ? 'a cria' : 'as crias'} ${orfas.map((c) => c.brinco || 'sem número').join(', ')} ficou(aram) órfã(s). Os funcionários continuam criando.`);
+    if (v.avisos.length) partes.push(v.avisos.join(' '));
+    return { ok: true, msg: partes.join(' ') };
+  }
+
+  async function gravarCorrecao(r) {
+    try {
+      for (const p of postsDeMudancas(r.mudancas)) await postar(p);
+    } catch (e) {
+      console.error('Erro ao gravar a correção', e);
+      return { ok: false, msg: `Não consegui gravar a correção: ${e.message}. A tela não foi alterada, mas parte da correção pode ter chegado na planilha. ${MSG_RECARREGAR}` };
+    }
+    commit(aplicarMudancasNoEstado(dadosRef.current, r.mudancas));
+    return null;
+  }
+
+  async function corrigirNascimento(id, campos) {
+    const r = editarNascimento(dadosRef.current, id, campos);
+    if (r.erro) return { ok: false, msg: r.erro };
+    if (!MODO_TESTE && (versaoScript || 0) < 10 && r.mudancas.eventos.some((m) => m.tipo === 'morte')) return { ok: false, msg: MSG_SCRIPT_MORTE };
+    const falha = await gravarCorrecao(r);
+    if (falha) return falha;
+    const ligados = r.mudancas.eventos.length - 1 + r.mudancas.matrizes.length;
+    const partes = [`Nascimento corrigido: ${descreverEvento(r.evento, dadosRef.current)}.`];
+    if (ligados > 0) partes.push(`Também acertei ${ligados} registro(s) ligados a essa cria.`);
+    if (r.avisos.length) partes.push(`Atenção: ${r.avisos.join(' ')}`);
+    return { ok: true, msg: partes.join(' ') };
+  }
+
+  async function corrigirMorte(id, campos) {
+    if (!MODO_TESTE && (versaoScript || 0) < 10) return { ok: false, msg: MSG_SCRIPT_MORTE };
+    const r = editarMorte(dadosRef.current, id, campos, hoje);
+    if (r.erro) return { ok: false, msg: r.erro };
+    const falha = await gravarCorrecao(r);
+    if (falha) return falha;
+    return { ok: true, msg: `Morte corrigida: ${descreverEvento(r.evento, dadosRef.current)}.` };
+  }
+
+  async function anularUmaMorte(id) {
+    if (!MODO_TESTE && (versaoScript || 0) < 10) return { ok: false, msg: MSG_SCRIPT_MORTE };
+    const r = anularMorte(dadosRef.current, id);
+    if (r.erro) return { ok: false, msg: r.erro };
+    const falha = await gravarCorrecao(r);
+    if (falha) return falha;
+    const m = r.mudancas.matrizes[0];
+    return { ok: true, msg: `Morte anulada.${m ? ` A matriz ${m.brinco} voltou a ${m.status}.` : ' O animal voltou a contar no rebanho.'}` };
   }
 
   async function sincronizarTudo() {
@@ -280,7 +356,10 @@ function GestaoPecuaria() {
         {aviso && <div className="wrap"><Aviso tipo={aviso.tipo === 'erro' ? undefined : aviso.tipo} onClose={() => setAviso(null)}>{aviso.texto}</Aviso></div>}
 
         {tab === 'lancar' && (
-          <Lancar dados={dados} hoje={hoje} ownerMode={ownerMode} preset={preset} onSalvar={salvarLancamento} onGravarLote={gravarLote} modoTeste={MODO_TESTE} />
+          <Lancar
+            dados={dados} hoje={hoje} ownerMode={ownerMode} preset={preset} onSalvar={salvarLancamento} onGravarLote={gravarLote} modoTeste={MODO_TESTE}
+            onRegistrarMorte={registrarMorte} onEditarNascimento={corrigirNascimento} onEditarMorte={corrigirMorte} onAnularMorte={anularUmaMorte}
+          />
         )}
         {tab === 'parto' && <Parto dados={dados} hoje={hoje} onLancar={lancarDaVaca} />}
         {tab === 'crias' && (
@@ -288,6 +367,7 @@ function GestaoPecuaria() {
             dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE}
             onLancar={salvarLancamento} onGravarLote={gravarLote} onVender={registrarVenda}
             onSalvarMatriz={salvarMatriz} onSalvarConfig={salvarConfig}
+            onRegistrarMorte={registrarMorte} onEditarNascimento={corrigirNascimento} onEditarMorte={corrigirMorte} onAnularMorte={anularUmaMorte}
           />
         )}
         {tab === 'rebanho' && <Rebanho dados={dados} ownerMode={ownerMode} onSalvarMatriz={salvarMatriz} />}

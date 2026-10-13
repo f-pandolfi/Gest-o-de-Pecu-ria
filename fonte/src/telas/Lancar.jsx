@@ -7,6 +7,8 @@ import {
 import { IndexTabs, Campo, Aviso, Lead } from '../ui.jsx';
 import { ROTULO_CURTO, ORDEM_LANCAR, rotuloEvento, descreverEvento } from '../util.js';
 import LoteFoto from './Lote.jsx';
+import { FormMorte, ListaMortes } from './Morte.jsx';
+import { ListaNascimentos } from './Nascimentos.jsx';
 
 function formularioInicial(tipo, hoje) {
   const f = {};
@@ -17,7 +19,9 @@ function formularioInicial(tipo, hoje) {
   return f;
 }
 
-export default function Lancar({ dados, hoje, ownerMode, preset, onSalvar, onGravarLote, modoTeste }) {
+export default function Lancar({
+  dados, hoje, ownerMode, preset, onSalvar, onGravarLote, modoTeste, onRegistrarMorte, onEditarNascimento, onEditarMorte, onAnularMorte,
+}) {
   const tiposVisiveis = ORDEM_LANCAR.filter((id) => ownerMode || TIPOS_FUNCIONARIO.includes(id));
   const abas = [
     ...tiposVisiveis.map((id) => ({ id, label: ROTULO_CURTO[id] })),
@@ -109,6 +113,12 @@ export default function Lancar({ dados, hoje, ownerMode, preset, onSalvar, onGra
       <div className="sheet pad">
         {tipo === 'lote' ? (
           <LoteFoto dados={dados} hoje={hoje} onGravarLote={onGravarLote} modoTeste={modoTeste} />
+        ) : tipo === 'morte' ? (
+          <>
+            <h2 className="h2" style={{ marginTop: 0 }}>{rotuloEvento(tipo)}</h2>
+            <p className="sub" style={{ marginTop: 0 }}>Vale para qualquer animal: cria, novilha, vaca, touro ou animal sem cadastro. A vaca que morre sai da lista de vacas.</p>
+            <FormMorte dados={dados} hoje={hoje} onRegistrar={onRegistrarMorte} modoTeste={modoTeste} />
+          </>
         ) : (
           <>
             <h2 className="h2" style={{ marginTop: 0 }}>{rotuloEvento(tipo)}</h2>
@@ -151,7 +161,10 @@ export default function Lancar({ dados, hoje, ownerMode, preset, onSalvar, onGra
         )}
       </div>
 
-      {tipo !== 'lote' && (
+      {tipo === 'morte' && <ListaMortes dados={dados} ownerMode={ownerMode} onEditar={onEditarMorte} onAnular={onAnularMorte} />}
+      {tipo === 'nascimento' && ownerMode && <ListaNascimentos dados={dados} onEditar={onEditarNascimento} />}
+
+      {tipo !== 'lote' && tipo !== 'morte' && !(tipo === 'nascimento' && ownerMode) && (
         <>
           <h2 className="h2">Últimos lançamentos</h2>
           <div className="sheet">

@@ -2,12 +2,16 @@
 // É usado por dois lados: o app (app.jsx) e a integração por foto (lançamentos em lote feitos pelo Claude).
 // Mexeu aqui = mudou nos dois, de propósito: uma única fonte da verdade para status, previsão e relatórios.
 
-export const VERSAO_APP = '9.3 (12/10/26)';
-export const VERSAO_MINIMA_SCRIPT = 9; // v9 = pesagens, venda por peso e baixa no rebanho
+export const VERSAO_APP = '9.4 (12/10/26)';
+export const VERSAO_MINIMA_SCRIPT = 10; // v10 = aba Mortes (v9 = pesagens, venda por peso e baixa no rebanho)
 export const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
 
 // Tipos de lançamento visíveis no modo Funcionário (restrito)
-export const TIPOS_FUNCIONARIO = ['nascimento', 'desmama', 'iatf', 'insumo', 'descarte', 'pesagem'];
+export const TIPOS_FUNCIONARIO = ['nascimento', 'desmama', 'iatf', 'insumo', 'descarte', 'pesagem', 'morte'];
+
+// Morte de animal (qualquer um: cria, novilha, matriz, touro ou animal sem cadastro)
+export const CAUSAS_MORTE = ['Doença', 'Acidente', 'Picada de cobra', 'Raio', 'Parto difícil', 'Não sabe', 'Outra'];
+export const TIPOS_ANIMAL_MORTE = ['Cria', 'Novilha', 'Matriz', 'Touro', 'Boi', 'Outro'];
 
 export const TIPOS_EVENTO = [
   { id: 'cadastro', label: 'Nova Matriz' },
@@ -22,6 +26,7 @@ export const TIPOS_EVENTO = [
   { id: 'vendaitem', label: 'Animal vendido' },
   { id: 'insumo', label: 'Sal / Medicamento' },
   { id: 'descarte', label: 'Descarte' },
+  { id: 'morte', label: 'Morte' },
 ];
 
 // Campos editáveis ao clicar numa matriz (modo proprietário)
@@ -77,11 +82,11 @@ export const CAMPOS = {
     { key: 'custo', label: 'Custo (R$)', type: 'number' },
   ],
   nascimento: [
-    { key: 'matrizId', label: 'Matriz (mãe)', type: 'matriz' },
+    { key: 'matrizId', label: 'Matriz (mãe)', type: 'matriz', required: true },
     { key: 'data', label: 'Data do nascimento', type: 'date', required: true },
     { key: 'resultadoParto', label: 'Resultado', type: 'select', options: ['Vivo', 'Natimorto'], required: true, default: 'Vivo' },
-    { key: 'sexo', label: 'Sexo', type: 'select', options: ['Fêmea', 'Macho'] },
-    { key: 'brincoBezerro', label: 'Brinco do bezerro (sugerido automaticamente)', type: 'text' },
+    { key: 'sexo', label: 'Sexo', type: 'select', options: ['Fêmea', 'Macho'], required: true },
+    { key: 'brincoBezerro', label: 'Brinco do bezerro (sugerido automaticamente)', type: 'text', required: true },
     { key: 'pelagem', label: 'Pelagem', type: 'text' },
     // Sem campo "Pai": a origem da cria (IATF ou monta) e o pai são deduzidos depois, cruzando o parto
     // com o IATF da mãe (ver origemDaCria). Sem IATF compatível, a cria é de monta natural.
@@ -130,6 +135,14 @@ export const CAMPOS = {
     { key: 'matrizId', label: 'Matriz', type: 'matriz', required: true },
     { key: 'data', label: 'Data', type: 'date', required: true },
     { key: 'motivo', label: 'Motivo', type: 'text' },
+  ],
+  // Morte de qualquer animal. O animal é achado pelo brinco (cria, novilha ou matriz); sem cadastro, escolhe-se o tipo (ver validarMorte).
+  morte: [
+    { key: 'brinco', label: 'Brinco do animal', type: 'text' },
+    { key: 'data', label: 'Data da morte', type: 'date', required: true },
+    { key: 'causa', label: 'Causa', type: 'select', options: CAUSAS_MORTE, required: true },
+    { key: 'tipoAnimal', label: 'Que animal é', type: 'select', options: TIPOS_ANIMAL_MORTE },
+    { key: 'observacoes', label: 'Observação', type: 'text' },
   ],
 };
 
@@ -241,7 +254,23 @@ export function normalizarDados(data) {
     dataInicioProtocolo: normalizarDataISO(e.dataInicioProtocolo),
     brincoBezerro: e.brincoBezerro === undefined || e.brincoBezerro === null ? '' : String(e.brincoBezerro),
   }));
-  return { matrizes, touros: data.touros || [], eventos, config: data.config && typeof data.config === 'object' ? data.config : {} };
+  return { matrizes: reconciliarMortes(matrizes, eventos), touros: data.touros || [], eventos, config: data.config && typeof data.config === 'object' ? data.config : {} };
+}
+
+// Se uma gravação parou no meio (a morte chegou na planilha mas a matriz não), o evento manda: matriz com morte ativa fica
+// "Morta"; matriz "Morta" cujas mortes foram todas anuladas volta ao status de antes.
+function reconciliarMortes(matrizes, eventos) {
+  const porMatriz = new Map();
+  eventos.forEach((e) => { if (e.tipo === 'morte' && e.matrizId) { if (!porMatriz.has(e.matrizId)) porMatriz.set(e.matrizId, []); porMatriz.get(e.matrizId).push(e); } });
+  if (!porMatriz.size) return matrizes;
+  return matrizes.map((m) => {
+    const mortes = porMatriz.get(m.id);
+    if (!mortes) return m;
+    const ativa = mortes.find(morteAtiva);
+    if (ativa && m.status !== 'Morta') return { ...m, status: 'Morta', dataBaixa: m.dataBaixa || ativa.data || '', motivoBaixa: m.motivoBaixa || `Morte: ${ativa.causa || ''}` };
+    if (!ativa && m.status === 'Morta') return { ...m, status: mortes[mortes.length - 1].statusAnterior || 'Vazia', dataBaixa: '', motivoBaixa: '' };
+    return m;
+  });
 }
 
 // ---------------------------------------------------------------- reprodução
@@ -341,6 +370,8 @@ export function linhasPrevisao(matrizes, eventos, status, hoje, busca) {
 export function calcularKPIs(todasMatrizes, eventos) {
   const matrizes = todasMatrizes.filter(noPlantel); // fora: vendidas (baixa) e novilhas ainda na recria
   const vendidas = todasMatrizes.filter((m) => m.status === 'Vendida').length;
+  const mortas = todasMatrizes.filter((m) => m.status === 'Morta').length;
+  const mortesAtivas = eventos.filter(morteAtiva);
   const cheias = matrizes.filter((m) => m.status === 'Cheia').length;
   const vazias = matrizes.filter((m) => m.status === 'Vazia').length;
   const descartes = matrizes.filter((m) => m.status === 'Descarte').length;
@@ -353,7 +384,7 @@ export function calcularKPIs(todasMatrizes, eventos) {
   const taxaPerda = nascimentosTodos.length ? (natimortos / nascimentosTodos.length) * 100 : 0;
   const desmamas = eventos.filter((e) => e.tipo === 'desmama');
   const taxaDesmama = nascimentos.length ? (desmamas.length / nascimentos.length) * 100 : 0;
-  const emRecria = todasMatrizes.filter((m) => m.status !== 'Vendida' && m.categoria === 'Novilha' && m.status !== 'Descarte').length;
+  const emRecria = todasMatrizes.filter((m) => m.status !== 'Vendida' && m.status !== 'Morta' && m.categoria === 'Novilha' && m.status !== 'Descarte').length;
   const vendas = eventos.filter((e) => e.tipo === 'venda');
   const receitaTotal = vendas.reduce((s, v) => s + (parseFloat(v.valorTotal) || 0), 0);
   const custoFrete = vendas.reduce((s, v) => s + (parseFloat(v.frete) || 0), 0);
@@ -372,7 +403,8 @@ export function calcularKPIs(todasMatrizes, eventos) {
     total: matrizes.length, cheias, vazias, descartes, taxaPrenhez, nascimentos: nascimentos.length,
     natimortos, taxaPerda, desmamas: desmamas.length, taxaDesmama, emRecria, receitaTotal, custoTotal,
     custoPorBezerro, margem, machos, femeas, pesoMedioDesmama,
-    iatfs: iatfs.length, diagnosticos: diagnosticos.length, vendidas,
+    iatfs: iatfs.length, diagnosticos: diagnosticos.length, vendidas, mortas,
+    mortes: mortesAtivas.length, mortesCrias: mortesAtivas.filter((e) => e.tipoAnimal === 'Cria').length,
   };
 }
 
@@ -385,12 +417,15 @@ export function buildResumoRows(kpis, ano) {
     ['Vazias (hoje)', kpis.vazias],
     ['Descarte (hoje)', kpis.descartes],
     ['Matrizes vendidas (baixa)', kpis.vendidas || 0],
+    ['Matrizes mortas (baixa)', kpis.mortas || 0],
     ['Novilhas em recria (hoje)', kpis.emRecria],
     ['Taxa de prenhez do ano (%)', kpis.taxaPrenhez.toFixed(1)],
     ['', ''],
     ['Nascimentos', kpis.nascimentos],
     ['Natimortos', kpis.natimortos],
     ['Taxa de perda ao nascer (%)', kpis.taxaPerda.toFixed(1)],
+    ['Mortes de animais (ano)', kpis.mortes || 0],
+    ['Mortes de crias (ano)', kpis.mortesCrias || 0],
     ['Nascimentos: machos', kpis.machos],
     ['Nascimentos: fêmeas', kpis.femeas],
     ['Desmamas', kpis.desmamas],
@@ -456,12 +491,9 @@ export function novoId() {
 
 // ---------------------------------------------------------------- lançar (única fonte da verdade das mudanças de status)
 export function camposFaltando(tipo, form) {
-  const falta = (CAMPOS[tipo] || []).filter((c) => c.required && (!c.showIf || c.showIf(form)) && !form[c.key]);
-  // Nascimento em branco (só com a data de hoje) não pode ser gravado: precisa dizer ao menos de quem é, o sexo ou o brinco.
-  if (tipo === 'nascimento' && !form.matrizId && !form.sexo && !String(form.brincoBezerro ?? '').trim()) {
-    falta.push({ key: '__identificacao', label: 'Mãe, sexo ou brinco da cria (pelo menos um)' });
-  }
-  return falta;
+  // Nascimento: mãe, sexo e brinco da cria são obrigatórios (CAMPOS.nascimento). Brinco só com espaços conta como vazio.
+  const vazio = (c) => !form[c.key] || (typeof form[c.key] === 'string' && !form[c.key].trim());
+  return (CAMPOS[tipo] || []).filter((c) => c.required && (!c.showIf || c.showIf(form)) && vazio(c));
 }
 
 // estado = { matrizes, touros, eventos }. Devolve { estado (novo), eventosNovos, matrizesAlteradas, tourosNovos }
@@ -549,6 +581,21 @@ export function aplicarLancamento(estado, tipo, form, opcoes) {
         out.matrizesAlteradas.push(nova);
       }
     }
+  } else if (tipo === 'morte') {
+    // Morte de qualquer animal. Cria e novilha ficam ligadas pelo criaId/matrizId; a matriz que morreu vira "Morta" e sai do plantel.
+    const info = infoAnimalMorte(estado, form.brinco);
+    const novoEvento = {
+      id, tipo: 'morte', data: form.data, tipoAnimal: info.achado ? info.tipoAnimal : (form.tipoAnimal || 'Outro'),
+      criaId: info.criaId || '', matrizId: info.matrizId || '', brinco: info.achado ? info.brinco : String(form.brinco ?? '').trim(),
+      causa: form.causa, observacoes: form.observacoes || '', statusAnterior: info.matriz ? info.matriz.status : '', anulada: '', createdAt: now,
+    };
+    ev = [...eventos, novoEvento];
+    out.eventosNovos.push(novoEvento);
+    if (info.matriz) {
+      const morta = { ...info.matriz, status: 'Morta', dataBaixa: form.data, motivoBaixa: `Morte: ${form.causa}` };
+      m = matrizes.map((x) => (x.id === morta.id ? morta : x));
+      out.matrizesAlteradas.push(morta);
+    }
   } else if (tipo === 'pesagem') {
     // Pesagem de cria ou novilha. O animal vem pelo brinco (ou já com criaId / matrizId, quando escolhido numa lista).
     const a = acharAnimal(estado, form.brinco);
@@ -607,6 +654,7 @@ function acharTouro(touros, nome) {
 //   pesagem: brincoCria (cria ou novilha; aceita também matriz antiga pelo brinco), data, peso, obs
 //   insumo: data, produto, quantidade, unidade, custo, categoriaAnimal
 //   venda: data, categoria, animais, pesoTotal, valorArroba, valorTotal, frete, comprador
+//   morte: brincoCria (ou brinco), data, causa (Doença, Acidente, Picada de cobra, Raio, Parto difícil, Não sabe, Outra), tipoAnimal (só se o número não estiver cadastrado), obs
 //   cadastro: brinco, categoria, raca, lote, dataNascimento, partosAnteriores, status
 export function itemParaFormulario(item, estado, hoje) {
   const tipo = item.tipo;
@@ -658,6 +706,8 @@ export function itemParaFormulario(item, estado, hoje) {
   } else if (tipo === 'desmama') {
     if (!item.brincoCria) return { erro: 'brinco da cria em branco' };
     f.brincoBezerro = String(item.brincoCria).trim();
+    const imd = infoAnimalMorte(estado, f.brincoBezerro);
+    if (imd.jaMorto) return { erro: `cria ${f.brincoBezerro} morreu${imd.mortoEm ? ` em ${formatarDataBR(imd.mortoEm)}` : ''}; não dá para desmamar` };
     if (item.peso) f.pesoDesmama = item.peso;
     if (item.idadeDias) f.idadeDias = item.idadeDias;
   } else if (tipo === 'descarte') {
@@ -670,9 +720,18 @@ export function itemParaFormulario(item, estado, hoje) {
     const b = String(item.brincoCria ?? item.brinco ?? '').trim();
     if (!b) return { erro: 'brinco do animal em branco' };
     if (!acharAnimal(estado, b)) return { erro: `animal ${b} não encontrado (nem cria, nem matriz)` };
+    const im = infoAnimalMorte(estado, b);
+    if (im.jaMorto) return { erro: `animal ${b} morreu${im.mortoEm ? ` em ${formatarDataBR(im.mortoEm)}` : ''}; não dá para lançar peso` };
     const p = numPeso(item.peso);
     if (isNaN(p) || p <= 0) return { erro: `peso inválido (${item.peso ?? ''})` };
     f.brinco = b; f.peso = p;
+    if (item.obs) f.observacoes = item.obs;
+  } else if (tipo === 'morte') {
+    const b = String(item.brincoCria ?? item.brinco ?? '').trim();
+    if (b) f.brinco = b;
+    f.causa = normCausaMorte(item.causa);
+    if (!f.causa) return { erro: `causa da morte não entendida (${item.causa ?? ''})` };
+    if (item.tipoAnimal) { f.tipoAnimal = normTipoAnimalMorte(item.tipoAnimal); if (!f.tipoAnimal) return { erro: `tipo de animal não entendido (${item.tipoAnimal})` }; }
     if (item.obs) f.observacoes = item.obs;
   } else if (tipo === 'insumo') {
     ['produto', 'quantidade', 'unidade', 'custo', 'categoriaAnimal'].forEach((k) => { if (item[k] !== undefined && item[k] !== '') f[k] = item[k]; });
@@ -709,6 +768,10 @@ export function jaExiste(tipo, form, estado) {
     return eventos.some((e) => e.tipo === 'nascimento' && e.data === form.data
       && ((form.matrizId && e.matrizId === form.matrizId) || (form.brincoBezerro && e.brincoBezerro === form.brincoBezerro)));
   }
+  if (tipo === 'morte') {
+    const info = infoAnimalMorte(estado, form.brinco);
+    return info.achado && info.jaMorto; // o mesmo animal só morre uma vez (vale qualquer data)
+  }
   if (tipo === 'diagnostico') return eventos.some((e) => e.tipo === 'diagnostico' && e.matrizId === form.matrizId && e.data === form.data);
   if (['iatf', 'descarte', 'recria'].includes(tipo)) return eventos.some((e) => e.tipo === tipo && e.matrizId === form.matrizId && e.data === form.data);
   return false;
@@ -734,7 +797,11 @@ export function aplicarLote(estado, itens, opcoes) {
     }
     const faltando = camposFaltando(item.tipo, form);
     if (faltando.length) { rejeitados.push({ indice, item, motivo: `faltou: ${faltando.map((c) => c.label).join(', ')}` }); return; }
-    if (!item.forcar && jaExiste(item.tipo, form, atual)) { rejeitados.push({ indice, item, motivo: 'esse lançamento já existe (mesma matriz/cria e data)' }); return; }
+    if (item.tipo === 'morte') {
+      const v = validarMorte(atual, form, hoje);
+      if (v.erros.length) { rejeitados.push({ indice, item, motivo: v.erros.join(' ') }); return; }
+      v.avisos.forEach((aviso) => avisos.push({ indice, aviso }));
+    } else if (!item.forcar && jaExiste(item.tipo, form, atual)) { rejeitados.push({ indice, item, motivo: 'esse lançamento já existe (mesma matriz/cria e data)' }); return; }
     if (item.tipo === 'nascimento' && form.matrizId) {
       const m0 = atual.matrizes.find((x) => x.id === form.matrizId);
       if (m0 && m0.status !== 'Cheia') avisos.push({ indice, aviso: `matriz ${m0.brinco} estava ${m0.status}, não Cheia; confira se o toque dela foi lançado` });
@@ -762,7 +829,7 @@ export const KG_POR_ARROBA = 15;
 export const DESTINOS_NOVILHA = ['A definir', 'Matriz', 'Venda'];
 // Plantel de matrizes: fora as vendidas e fora as novilhas que ainda estão na recria (destino "A definir" ou "Venda").
 // Novilha antiga (sem destino) e novilha com destino "Matriz" fazem parte do plantel.
-export const noPlantel = (m) => m.status !== 'Vendida' && !(m.categoria === 'Novilha' && (m.destino === 'A definir' || m.destino === 'Venda'));
+export const noPlantel = (m) => m.status !== 'Vendida' && m.status !== 'Morta' && !(m.categoria === 'Novilha' && (m.destino === 'A definir' || m.destino === 'Venda'));
 export const TIPOS_ANIMAL_VENDA = ['Bezerro', 'Bezerra', 'Garrote', 'Novilha', 'Vaca de descarte', 'Vaca velha', 'Vaca', 'Boi', 'Touro', 'Outro'];
 
 export const idNovilha = (nascId) => `cria-${nascId}`;
@@ -837,6 +904,8 @@ function indicesDeEventos(eventos) {
     desmamas: mapaListas(eventos.filter((e) => e.tipo === 'desmama'), (e) => String(e.brincoBezerro ?? '').trim()),
     vendaPorCria: mapaListas(eventos.filter((e) => e.tipo === 'vendaitem'), (e) => e.criaId),
     vendaPorMatriz: mapaListas(eventos.filter((e) => e.tipo === 'vendaitem'), (e) => e.matrizId),
+    mortePorCria: mapaListas(eventos.filter(morteAtiva), (e) => e.criaId),
+    mortePorMatriz: mapaListas(eventos.filter(morteAtiva), (e) => e.matrizId),
   };
 }
 
@@ -861,11 +930,12 @@ function pontosDePeso(idx, { nasc, matriz }) {
 
 export function rotuloSituacao(c) {
   const f = c.sexo === 'Fêmea';
-  return { mamando: 'Mamando', desmamado: f ? 'Desmamada' : 'Desmamado', novilha: 'Novilha', matriz: 'Virou matriz', vendido: f ? 'Vendida' : 'Vendido' }[c.situacao] || c.situacao;
+  return { mamando: 'Mamando', desmamado: f ? 'Desmamada' : 'Desmamado', novilha: 'Novilha', matriz: 'Virou matriz', vendido: f ? 'Vendida' : 'Vendido', morto: f ? 'Morta' : 'Morto' }[c.situacao] || c.situacao;
 }
 
 // Todas as crias vivas (uma por nascimento). Cada uma traz idade, mãe, origem/pai, pesos, ganho diário e situação.
-// situacao: mamando | desmamado | novilha | matriz | vendido
+// situacao: mamando | desmamado | novilha | matriz | vendido | morto
+// orfa = a mãe morreu e a cria ainda está mamando (os funcionários continuam criando)
 export function listarCrias(estado, hoje) {
   hoje = hoje || todayISO();
   const { matrizes, eventos, touros } = estado;
@@ -881,11 +951,16 @@ export function listarCrias(estado, hoje) {
       const brinco = String(n.brincoBezerro ?? '').trim();
       const desm = (idx.desmamas.get(brinco) || []).filter((x) => x.data >= n.data && diasEntre(n.data, x.data) < 1100).sort((a, b) => a.data.localeCompare(b.data))[0] || null;
       const itensVenda = [...(idx.vendaPorCria.get(n.id) || []), ...(novilha ? idx.vendaPorMatriz.get(novilha.id) || [] : [])];
+      const mortes = [...(idx.mortePorCria.get(n.id) || []), ...(novilha ? idx.mortePorMatriz.get(novilha.id) || [] : [])];
+      const morte = mortes[0] || null;
       let situacao = 'mamando';
-      if (itensVenda.length || (novilha && novilha.status === 'Vendida')) situacao = 'vendido';
+      if (morte || (novilha && novilha.status === 'Morta')) situacao = 'morto';
+      else if (itensVenda.length || (novilha && novilha.status === 'Vendida')) situacao = 'vendido';
       else if (novilha) situacao = novilha.destino === 'Matriz' ? 'matriz' : 'novilha';
       else if (desm) situacao = 'desmamado';
       const baixa = itensVenda[0] || null;
+      const mae = n.matrizId ? matrizPorId.get(n.matrizId) || null : null;
+      const maeMorta = !!(mae && mae.status === 'Morta');
       return {
         id: n.id, nasc: n, brinco, sexo: n.sexo || '', nascData: n.data, idadeDias: n.data ? diasEntre(n.data, hoje) : null,
         matrizId: n.matrizId || '', maeBrinco: n.matrizId ? brincos[n.matrizId] || '?' : '',
@@ -893,7 +968,9 @@ export function listarCrias(estado, hoje) {
         pontos, pesoAtual: ultimo ? ultimo.peso : null, pesoData: ultimo ? ultimo.data : '',
         diasDesdePeso: ultimo ? diasEntre(ultimo.data, hoje) : null, gmd: ganhoDiario(pontos),
         situacao, desmamaData: desm ? desm.data : '', novilha, vendaData: baixa ? baixa.data : (novilha && novilha.dataBaixa) || '',
-        ativa: situacao !== 'vendido',
+        ativa: situacao !== 'vendido' && situacao !== 'morto',
+        mortoData: morte ? morte.data : (novilha && novilha.status === 'Morta' && novilha.dataBaixa) || '', causaMorte: morte ? morte.causa : '',
+        maeMorta, maeMortaData: maeMorta ? mae.dataBaixa || '' : '', orfa: maeMorta && situacao === 'mamando',
       };
     })
     .sort((a, b) => (b.nascData || '').localeCompare(a.nascData || '') || String(b.brinco).localeCompare(String(a.brinco), 'pt-BR', { numeric: true }));
@@ -908,7 +985,7 @@ export function listarNovilhas(estado, cfg, hoje) {
   const idx = indicesDeEventos(eventos);
   const nascPorId = new Map(eventos.filter((e) => e.tipo === 'nascimento').map((e) => [idNovilha(e.id), e]));
   return matrizes
-    .filter((m) => m.categoria === 'Novilha' && DESTINOS_NOVILHA.includes(m.destino) && m.status !== 'Vendida' && m.status !== 'Descarte')
+    .filter((m) => m.categoria === 'Novilha' && DESTINOS_NOVILHA.includes(m.destino) && m.status !== 'Vendida' && m.status !== 'Morta' && m.status !== 'Descarte')
     .map((m) => {
       const nasc = nascPorId.get(m.id) || null;
       const pontos = pontosDePeso(idx, { nasc, matriz: m });
@@ -1001,7 +1078,7 @@ export function infoAnimalVenda(estado, brinco, hoje, crias) {
     return {
       brinco: b, achado: true, origem: 'cria', criaId: cria.id, matrizId: '', sexo: cria.sexo,
       tipoSugerido: cria.sexo === 'Fêmea' ? 'Bezerra' : 'Bezerro', pesoUltimo: cria.pesoAtual, pesoData: cria.pesoData,
-      jaVendido: cria.situacao === 'vendido', vendidoEm: cria.vendaData, descricao: `${cria.sexo || 'Cria'} · ${cria.idadeDias ?? '?'} dias`,
+      jaVendido: cria.situacao === 'vendido', vendidoEm: cria.vendaData, jaMorto: cria.situacao === 'morto', mortoEm: cria.mortoData, descricao: `${cria.sexo || 'Cria'} · ${cria.idadeDias ?? '?'} dias`,
       pontos: cria.pontos,
     };
   }
@@ -1015,6 +1092,7 @@ export function infoAnimalVenda(estado, brinco, hoje, crias) {
     tipoSugerido: m.status === 'Descarte' ? 'Vaca de descarte' : nov ? 'Novilha' : 'Vaca',
     pesoUltimo: ult ? ult.peso : null, pesoData: ult ? ult.data : '',
     jaVendido: m.status === 'Vendida' || !!itemVendido, vendidoEm: m.dataBaixa || (itemVendido && itemVendido.data) || '',
+    jaMorto: m.status === 'Morta', mortoEm: m.status === 'Morta' ? m.dataBaixa || '' : '',
     descricao: `${m.categoria || 'Matriz'}${m.raca ? ' · ' + m.raca : ''} · ${m.status}`, pontos: pts,
   };
 }
@@ -1059,6 +1137,7 @@ export function validarVenda(estado, form, hoje) {
       if (vistos.has(info.brinco)) erros.push(`${pos}: o animal ${info.brinco} aparece duas vezes.`);
       vistos.add(info.brinco);
       if (!info.achado) avisos.push(`${pos}: o número ${info.brinco} não está no sistema. A venda é registrada, mas sem dar baixa em ninguém.`);
+      else if (info.jaMorto) erros.push(`${pos}: o animal ${info.brinco} morreu${info.mortoEm ? ` em ${formatarDataBR(info.mortoEm)}` : ''}.`);
       else if (info.jaVendido) erros.push(`${pos}: o animal ${info.brinco} já foi vendido${info.vendidoEm ? ` em ${formatarDataBR(info.vendidoEm)}` : ''}.`);
     } else if (peso > 0) {
       avisos.push(`${pos}: sem número do animal. A venda é registrada, mas sem dar baixa em ninguém.`);
@@ -1117,6 +1196,262 @@ export function definirDestinoNovilha(matriz, destino) {
   if (!DESTINOS_NOVILHA.includes(destino)) throw new Error(`destino inválido: ${destino}`);
   return { ...matriz, destino };
 }
+
+// ---------------------------------------------------------------- morte de animais
+// Evento "morte": um por animal (cria, novilha, matriz, touro ou animal sem cadastro). Cria e novilha ficam ligadas à morte pelo
+// criaId / matrizId; a matriz que morre ganha status "Morta" (com dataBaixa e motivoBaixa) e sai do plantel. O evento guarda o
+// statusAnterior da matriz para poder desfazer. Lançamento errado não se apaga: o proprietário "anula" (anulada = "Sim").
+// A cria de uma mãe que morreu continua normalmente (os funcionários criam), só aparece marcada como "órfã" (listarCrias).
+export const morteAtiva = (e) => e.tipo === 'morte' && String(e.anulada ?? '').trim().toLowerCase() !== 'sim';
+
+export function normCausaMorte(v) {
+  const s = chave(v);
+  if (!s) return '';
+  const exata = CAUSAS_MORTE.find((c) => chave(c) === s);
+  if (exata) return exata;
+  if (/cobra/.test(s)) return 'Picada de cobra';
+  if (/raio|trovao/.test(s)) return 'Raio';
+  if (/parto/.test(s)) return 'Parto difícil';
+  if (/^(nao sabe|nao se sabe|desconhecida|ignorada)/.test(s)) return 'Não sabe';
+  if (/^doenc|^doente/.test(s)) return 'Doença';
+  if (/^acident/.test(s)) return 'Acidente';
+  if (/^outr/.test(s)) return 'Outra';
+  return '';
+}
+export function normTipoAnimalMorte(v) {
+  const s = chave(v);
+  if (!s) return '';
+  const exata = TIPOS_ANIMAL_MORTE.find((t) => chave(t) === s);
+  if (exata) return exata;
+  if (/^(bezerr|cria)/.test(s)) return 'Cria';
+  if (/^(vaca|matriz)/.test(s)) return 'Matriz';
+  if (/^(garrote|boi)/.test(s)) return 'Boi';
+  if (/^novilh/.test(s)) return 'Novilha';
+  if (/^(touro|reprodutor)/.test(s)) return 'Touro';
+  if (/^outr/.test(s)) return 'Outro';
+  return '';
+}
+
+// Quem é o animal daquele brinco e se ele ainda pode morrer (não pode já estar morto nem vendido).
+export function infoAnimalMorte(estado, brinco) {
+  const b = String(brinco ?? '').trim();
+  if (!b) return { brinco: '', achado: false };
+  const a = acharAnimal(estado, b);
+  if (!a) return { brinco: b, achado: false };
+  const { nasc, matriz } = a;
+  const doAnimal = (e) => (nasc && e.criaId === nasc.id) || (matriz && e.matrizId === matriz.id);
+  const mortes = estado.eventos.filter((e) => morteAtiva(e) && doAnimal(e));
+  const vendas = estado.eventos.filter((e) => e.tipo === 'vendaitem' && doAnimal(e));
+  const maeBrinco = nasc && nasc.matrizId ? mapaBrincos(estado.matrizes)[nasc.matrizId] || '' : '';
+  const tipoAnimal = matriz ? (matriz.categoria === 'Novilha' ? 'Novilha' : 'Matriz') : 'Cria';
+  const descricao = matriz && !nasc
+    ? `${matriz.categoria || 'Matriz'} ${b} · ${matriz.status}`
+    : `${tipoAnimal} ${b} · ${(nasc && nasc.sexo) || 'sexo ?'}${maeBrinco ? ` · mãe ${maeBrinco}` : ''}`;
+  return {
+    brinco: b, achado: true, tipoAnimal, descricao, nasc: nasc || null, matriz: matriz || null,
+    criaId: nasc ? nasc.id : '', matrizId: matriz ? matriz.id : '',
+    nascData: (nasc && nasc.data) || (matriz && matriz.dataNascimento) || '',
+    jaMorto: mortes.length > 0 || (!!matriz && matriz.status === 'Morta'),
+    mortoEm: (mortes[0] && mortes[0].data) || (matriz && matriz.status === 'Morta' && matriz.dataBaixa) || '',
+    jaVendido: vendas.length > 0 || (!!matriz && matriz.status === 'Vendida'),
+    vendidoEm: (vendas[0] && vendas[0].data) || (matriz && matriz.status === 'Vendida' && matriz.dataBaixa) || '',
+  };
+}
+
+// Confere uma morte antes de gravar. Devolve { erros, avisos, info }. Com erros, não deve gravar.
+export function validarMorte(estado, form, hoje) {
+  const erros = []; const avisos = [];
+  hoje = hoje || todayISO();
+  const brinco = String(form.brinco ?? '').trim();
+  const info = infoAnimalMorte(estado, brinco);
+  if (!form.data) erros.push('Falta a data da morte.');
+  else if (form.data > hoje) erros.push('A data da morte não pode ser no futuro.');
+  if (!form.causa) erros.push('Falta a causa da morte.');
+  else if (!CAUSAS_MORTE.includes(form.causa)) erros.push(`Causa não reconhecida (${form.causa}).`);
+  if (info.achado) {
+    if (info.jaMorto) erros.push(`O animal ${brinco} já está registrado como morto${info.mortoEm ? ` em ${formatarDataBR(info.mortoEm)}` : ''}.`);
+    else if (info.jaVendido) erros.push(`O animal ${brinco} já foi vendido${info.vendidoEm ? ` em ${formatarDataBR(info.vendidoEm)}` : ''}.`);
+    if (form.data && info.nascData && form.data < info.nascData) erros.push(`A data da morte (${formatarDataBR(form.data)}) é antes do nascimento do animal (${formatarDataBR(info.nascData)}).`);
+  } else {
+    if (!form.tipoAnimal) erros.push(brinco ? `O número ${brinco} não está no sistema. Escolha que animal é para registrar assim mesmo.` : 'Sem número: escolha que animal é.');
+    else if (!TIPOS_ANIMAL_MORTE.includes(form.tipoAnimal)) erros.push(`Tipo de animal não reconhecido (${form.tipoAnimal}).`);
+    else if (brinco) avisos.push(`O número ${brinco} não está no sistema: a morte é registrada, mas sem dar baixa em ninguém.`);
+  }
+  return { erros, avisos, info };
+}
+
+// Lote do animal que morreu: o da matriz/novilha; para cria, o lote da mãe; sem cadastro, "Sem cadastro".
+export function loteDaMorte(estado, e) {
+  const matriz = e.matrizId ? estado.matrizes.find((m) => m.id === e.matrizId) : null;
+  if (matriz) return matriz.lote || 'Sem lote';
+  if (e.criaId) {
+    const nasc = estado.eventos.find((x) => x.id === e.criaId);
+    const mae = nasc && nasc.matrizId ? estado.matrizes.find((m) => m.id === nasc.matrizId) : null;
+    return mae ? mae.lote || 'Sem lote' : 'Sem lote';
+  }
+  return 'Sem cadastro';
+}
+const rotuloAnimalMorte = (e) => `${e.tipoAnimal || 'Animal'}${e.brinco ? ` ${e.brinco}` : ' (sem número)'}`;
+
+// Todas as mortes lançadas (inclusive as anuladas, marcadas), da mais recente para a mais antiga
+export function listarMortes(estado) {
+  const brincos = mapaBrincos(estado.matrizes);
+  return estado.eventos.filter((e) => e.tipo === 'morte')
+    .map((e) => {
+      const nasc = e.criaId ? estado.eventos.find((x) => x.id === e.criaId) : null;
+      return {
+        e, ativa: morteAtiva(e), animal: rotuloAnimalMorte(e), lote: loteDaMorte(estado, e),
+        mae: nasc && nasc.matrizId ? brincos[nasc.matrizId] || '' : '',
+      };
+    })
+    .sort((a, b) => (b.e.data || '').localeCompare(a.e.data || '') || (b.e.createdAt || '').localeCompare(a.e.createdAt || ''));
+}
+
+// ---- correções feitas pelo proprietário (com a senha). Cada função devolve { erro } ou
+// { estado, evento, mudancas: { eventos: [{ tipo, id, campos }], matrizes: [matriz] }, avisos }.
+// As mudanças são o que precisa ir para a planilha (ver postsDeMudancas).
+export function postsDeMudancas(mudancas) {
+  const posts = [];
+  const porTipo = new Map();
+  (mudancas.eventos || []).forEach((m) => { if (!porTipo.has(m.tipo)) porTipo.set(m.tipo, []); porTipo.get(m.tipo).push({ id: m.id, campos: m.campos }); });
+  porTipo.forEach((itens, tipo) => posts.push({ action: 'atualizarCampos', tipo, itens }));
+  if ((mudancas.matrizes || []).length) posts.push({ action: 'upsertMatrizes', matrizes: mudancas.matrizes });
+  return posts;
+}
+
+export function aplicarMudancasNoEstado(estado, mudancas) {
+  const camposPorId = new Map(mudancas.eventos.map((m) => [m.id, m.campos]));
+  const matPorId = new Map(mudancas.matrizes.map((m) => [m.id, m]));
+  return {
+    ...estado,
+    eventos: estado.eventos.map((e) => (camposPorId.has(e.id) ? { ...e, ...camposPorId.get(e.id) } : e)),
+    matrizes: estado.matrizes.map((m) => matPorId.get(m.id) || m),
+  };
+}
+
+export const CAMPOS_EDITAVEIS_NASCIMENTO = ['data', 'matrizId', 'resultadoParto', 'sexo', 'brincoBezerro', 'pelagem', 'tipoParto', 'observacoes'];
+
+// Corrige um nascimento já lançado. Mãe, sexo e brinco não podem ser apagados (só trocados); o que já estava em branco
+// pode continuar em branco (volta como aviso). Mudar o brinco leva junto desmama, pesagens, venda, morte e a novilha dessa cria.
+export function editarNascimento(estado, id, campos) {
+  const nasc = estado.eventos.find((e) => e.id === id && e.tipo === 'nascimento');
+  if (!nasc) return { erro: 'Não achei esse nascimento.' };
+  const novo = { ...nasc };
+  CAMPOS_EDITAVEIS_NASCIMENTO.forEach((k) => { if (campos[k] !== undefined) novo[k] = typeof campos[k] === 'string' ? campos[k].trim() : campos[k]; });
+  const mudou = CAMPOS_EDITAVEIS_NASCIMENTO.filter((k) => String(novo[k] ?? '') !== String(nasc[k] ?? ''));
+  if (!mudou.length) return { erro: 'Nada foi alterado.' };
+
+  const erros = []; const avisos = [];
+  if (!novo.data) erros.push('Falta a data do nascimento.');
+  if (!['Vivo', 'Natimorto'].includes(novo.resultadoParto)) erros.push('Falta o resultado do parto (vivo ou natimorto).');
+  if (novo.sexo && !['Macho', 'Fêmea'].includes(novo.sexo)) erros.push('Sexo inválido.');
+  [['matrizId', 'a mãe'], ['sexo', 'o sexo'], ['brincoBezerro', 'o brinco da cria']].forEach(([k, rot]) => {
+    if (String(nasc[k] ?? '').trim() && !String(novo[k] ?? '').trim()) erros.push(`Não dá para apagar ${rot}; troque por outro valor.`);
+  });
+  if (novo.matrizId && !estado.matrizes.some((m) => m.id === novo.matrizId)) erros.push('A mãe escolhida não está no cadastro.');
+
+  const antigo = String(nasc.brincoBezerro ?? '').trim();
+  const novoB = String(novo.brincoBezerro ?? '').trim();
+  if (mudou.includes('brincoBezerro') && novoB) {
+    const outro = estado.eventos.find((e) => e.tipo === 'nascimento' && e.id !== id && mesmoBrinco(e.brincoBezerro, novoB)
+      && e.data && novo.data && Math.abs(diasEntre(e.data, novo.data)) < 1100);
+    if (outro) erros.push(`O brinco ${novoB} já é de outra cria (nascida em ${formatarDataBR(outro.data)}).`);
+  }
+
+  // o que já está ligado a esta cria (pesagens, desmama, venda, morte e a novilha)
+  const ligadoA = (e) => e.criaId === id;
+  const idNov = idNovilha(id);
+  const pesagens = estado.eventos.filter((e) => e.tipo === 'pesagem' && ligadoA(e));
+  const vendas = estado.eventos.filter((e) => e.tipo === 'vendaitem' && ligadoA(e));
+  const mortes = estado.eventos.filter((e) => e.tipo === 'morte' && ligadoA(e));
+  const desmama = antigo
+    ? estado.eventos.filter((e) => e.tipo === 'desmama' && mesmoBrinco(e.brincoBezerro, antigo) && e.data && nasc.data && e.data >= nasc.data && diasEntre(nasc.data, e.data) < 1100)
+      .sort((a, b) => a.data.localeCompare(b.data))[0] || null
+    : null;
+  const novilha = estado.matrizes.find((m) => m.id === idNov) || null;
+
+  if (mudou.includes('resultadoParto') && novo.resultadoParto === 'Natimorto' && (pesagens.length || vendas.length || mortes.length || desmama || novilha)) {
+    erros.push('Esta cria já tem pesagem, desmama, venda ou morte lançada; não dá para virar natimorto.');
+  }
+  if (mudou.includes('sexo') && (desmama || novilha)) {
+    erros.push('Esta cria já foi desmamada; trocar o sexo agora deixaria o rebanho inconsistente (a novilha é criada na desmama).');
+  }
+  if (erros.length) return { erro: erros.join(' '), erros };
+
+  const eventosMud = [{ tipo: 'nascimento', id, campos: Object.fromEntries(mudou.map((k) => [k, novo[k] ?? ''])) }];
+  const matrizesMud = [];
+  if (mudou.includes('brincoBezerro') && antigo && novoB) {
+    pesagens.forEach((e) => eventosMud.push({ tipo: 'pesagem', id: e.id, campos: { brinco: novoB } }));
+    vendas.forEach((e) => eventosMud.push({ tipo: 'vendaitem', id: e.id, campos: { brinco: novoB } }));
+    mortes.forEach((e) => eventosMud.push({ tipo: 'morte', id: e.id, campos: { brinco: novoB } }));
+    if (desmama) eventosMud.push({ tipo: 'desmama', id: desmama.id, campos: { brincoBezerro: novoB } });
+    if (novilha) matrizesMud.push({ ...novilha, brinco: novoB });
+  }
+  if (mudou.includes('matrizId')) avisos.push('A mãe foi trocada, mas a categoria e o status das vacas não foram recalculados. Confira em Rebanho se precisar.');
+  if (mudou.includes('sexo') && String(nasc.sexo ?? '').trim() && !mudou.includes('brincoBezerro')) avisos.push('O brinco da cria não foi mudado junto com o sexo. Confira se a numeração continua certa.');
+  if (!String(novo.matrizId ?? '').trim()) avisos.push('Ainda falta informar a mãe.');
+  if (!String(novo.sexo ?? '').trim()) avisos.push('Ainda falta informar o sexo.');
+  if (!novoB) avisos.push('Ainda falta informar o brinco da cria.');
+
+  const mudancas = { eventos: eventosMud, matrizes: matrizesMud };
+  const novoEstado = aplicarMudancasNoEstado(estado, mudancas);
+  return { estado: novoEstado, evento: novoEstado.eventos.find((e) => e.id === id), mudancas, avisos };
+}
+
+// Corrige uma morte já lançada: data, causa e observação sempre; tipo e número só quando o animal não tem cadastro.
+export function editarMorte(estado, id, campos, hoje) {
+  const ev = estado.eventos.find((e) => e.id === id && e.tipo === 'morte');
+  if (!ev) return { erro: 'Não achei essa morte.' };
+  if (!morteAtiva(ev)) return { erro: 'Esta morte já foi anulada.' };
+  const semCadastro = !ev.criaId && !ev.matrizId;
+  const permitidos = ['data', 'causa', 'observacoes', ...(semCadastro ? ['tipoAnimal', 'brinco'] : [])];
+  const novo = { ...ev };
+  permitidos.forEach((k) => { if (campos[k] !== undefined) novo[k] = typeof campos[k] === 'string' ? campos[k].trim() : campos[k]; });
+  const mudou = permitidos.filter((k) => String(novo[k] ?? '') !== String(ev[k] ?? ''));
+  if (!mudou.length) return { erro: 'Nada foi alterado.' };
+  const erros = [];
+  hoje = hoje || todayISO();
+  if (!novo.data) erros.push('Falta a data da morte.');
+  else if (novo.data > hoje) erros.push('A data da morte não pode ser no futuro.');
+  if (!CAUSAS_MORTE.includes(novo.causa)) erros.push('Falta a causa da morte.');
+  if (semCadastro) {
+    if (novo.tipoAnimal && !TIPOS_ANIMAL_MORTE.includes(novo.tipoAnimal)) erros.push('Tipo de animal inválido.');
+    if (!novo.tipoAnimal) erros.push('Escolha que animal é.');
+    if (mudou.includes('brinco') && String(novo.brinco ?? '').trim() && acharAnimal(estado, novo.brinco)) {
+      erros.push(`O número ${novo.brinco} está cadastrado. Anule esta morte e lance de novo para o animal certo.`);
+    }
+  } else {
+    const nasc = ev.criaId ? estado.eventos.find((x) => x.id === ev.criaId) : null;
+    const nascData = (nasc && nasc.data) || '';
+    if (novo.data && nascData && novo.data < nascData) erros.push(`A data da morte é antes do nascimento do animal (${formatarDataBR(nascData)}).`);
+  }
+  if (erros.length) return { erro: erros.join(' '), erros };
+  const eventosMud = [{ tipo: 'morte', id, campos: Object.fromEntries(mudou.map((k) => [k, novo[k] ?? ''])) }];
+  const matrizesMud = [];
+  const matriz = ev.matrizId ? estado.matrizes.find((m) => m.id === ev.matrizId) : null;
+  if (matriz && matriz.status === 'Morta' && (mudou.includes('data') || mudou.includes('causa'))) {
+    matrizesMud.push({ ...matriz, dataBaixa: novo.data, motivoBaixa: `Morte: ${novo.causa}` });
+  }
+  const mudancas = { eventos: eventosMud, matrizes: matrizesMud };
+  const novoEstado = aplicarMudancasNoEstado(estado, mudancas);
+  return { estado: novoEstado, evento: novoEstado.eventos.find((e) => e.id === id), mudancas, avisos: [] };
+}
+
+// Desfaz uma morte lançada por engano: marca como anulada e devolve a matriz ao status de antes.
+export function anularMorte(estado, id) {
+  const ev = estado.eventos.find((e) => e.id === id && e.tipo === 'morte');
+  if (!ev) return { erro: 'Não achei essa morte.' };
+  if (!morteAtiva(ev)) return { erro: 'Esta morte já foi anulada.' };
+  const matriz = ev.matrizId ? estado.matrizes.find((m) => m.id === ev.matrizId) : null;
+  const matrizesMud = [];
+  if (matriz && matriz.status === 'Morta') matrizesMud.push({ ...matriz, status: ev.statusAnterior || 'Vazia', dataBaixa: '', motivoBaixa: '' });
+  const mudancas = { eventos: [{ tipo: 'morte', id, campos: { anulada: 'Sim' } }], matrizes: matrizesMud };
+  const novoEstado = aplicarMudancasNoEstado(estado, mudancas);
+  return { estado: novoEstado, evento: novoEstado.eventos.find((e) => e.id === id), mudancas, avisos: [] };
+}
+
+// Crias que ficaram órfãs (a mãe morreu e elas ainda estão mamando)
+export const listarOrfas = (crias) => crias.filter((c) => c.orfa);
 
 // ---------------------------------------------------------------- relatórios
 // Cada relatório devolve { titulo, resumo: [{ rotulo, valor }], secoes: [{ titulo, nota?, colunas: [{ k, label, align?, mono? }], linhas: [obj] }] }
@@ -1446,8 +1781,7 @@ const gmdTxt = (g) => (g === null || g === undefined ? '—' : `${arred(g, 2)}`)
 export function relatorioCrias(estado, cfg, ano, hoje) {
   hoje = hoje || todayISO();
   const crias = listarCrias(estado, hoje).filter((c) => ano === 'todos' || anoDe(c.nascData) === ano);
-  const sit = ['mamando', 'desmamado', 'novilha', 'matriz', 'vendido'];
-  const nomeSit = { mamando: 'Mamando', desmamado: 'Desmamadas(os)', novilha: 'Novilhas', matriz: 'Viraram matriz', vendido: 'Vendidas(os)' };
+  const sit = ['mamando', 'desmamado', 'novilha', 'matriz', 'vendido', 'morto'];
   const linhasSit = ['Macho', 'Fêmea', ''].map((sx) => {
     const l = crias.filter((c) => (c.sexo || '') === sx);
     const o = { sexo: sx || 'Sem sexo', total: l.length };
@@ -1478,7 +1812,7 @@ export function relatorioCrias(estado, cfg, ano, hoje) {
       {
         titulo: 'Situação das crias',
         colunas: [{ k: 'sexo', label: 'Sexo' }, { k: 'mamando', label: 'Mamando', align: 'right', mono: true }, { k: 'desmamado', label: 'Desmam.', align: 'right', mono: true },
-          { k: 'novilha', label: 'Novilhas', align: 'right', mono: true }, { k: 'matriz', label: 'Matriz', align: 'right', mono: true }, { k: 'vendido', label: 'Vendidas', align: 'right', mono: true }, { k: 'total', label: 'Total', align: 'right', mono: true }],
+          { k: 'novilha', label: 'Novilhas', align: 'right', mono: true }, { k: 'matriz', label: 'Matriz', align: 'right', mono: true }, { k: 'vendido', label: 'Vendidas', align: 'right', mono: true }, { k: 'morto', label: 'Mortas', align: 'right', mono: true }, { k: 'total', label: 'Total', align: 'right', mono: true }],
         linhas: linhasSit,
       },
       {
@@ -1551,6 +1885,86 @@ export function relatorioVendas(estado, ano) {
   };
 }
 
+export function relatorioMortes(estado, ano) {
+  const { eventos } = estado;
+  const noAno = (d) => ano === 'todos' || anoDe(d) === ano;
+  const mortes = listarMortes(estado).filter((x) => x.ativa && noAno(x.e.data));
+  const grupo = (e) => (['Cria', 'Novilha', 'Matriz'].includes(e.tipoAnimal) ? e.tipoAnimal : 'Outros');
+  const nascs = eventos.filter((e) => e.tipo === 'nascimento' && noAno(e.data));
+  const vivos = nascs.filter((e) => e.resultadoParto !== 'Natimorto').length;
+  const criasMortas = mortes.filter((x) => grupo(x.e) === 'Cria').length;
+  const contar = (lista) => ({
+    total: lista.length,
+    crias: lista.filter((x) => grupo(x.e) === 'Cria').length,
+    novilhas: lista.filter((x) => grupo(x.e) === 'Novilha').length,
+    matrizes: lista.filter((x) => grupo(x.e) === 'Matriz').length,
+    outros: lista.filter((x) => grupo(x.e) === 'Outros').length,
+  });
+  const colGrupo = [
+    { k: 'total', label: 'Total', align: 'right', mono: true }, { k: 'crias', label: 'Crias', align: 'right', mono: true },
+    { k: 'novilhas', label: 'Novilhas', align: 'right', mono: true }, { k: 'matrizes', label: 'Matrizes', align: 'right', mono: true },
+    { k: 'outros', label: 'Outros', align: 'right', mono: true },
+  ];
+  const agrupar = (chaveFn) => {
+    const mapa = new Map();
+    mortes.forEach((x) => { const k = chaveFn(x) || 'Não informado'; if (!mapa.has(k)) mapa.set(k, []); mapa.get(k).push(x); });
+    return mapa;
+  };
+  const comTotal = (mapa, ordenar) => {
+    const linhas = [...mapa.entries()].map(([k, l]) => ({ chave: k, ...contar(l) }));
+    linhas.sort(ordenar || ((a, b) => b.total - a.total || String(a.chave).localeCompare(String(b.chave), 'pt-BR')));
+    if (linhas.length) linhas.push({ chave: 'Total', ...contar(mortes) });
+    return linhas;
+  };
+  const porCausa = agrupar((x) => x.e.causa);
+  const topCausa = [...porCausa.entries()].sort((a, b) => b[1].length - a[1].length)[0];
+  const pct = criasMortas && vivos ? `${Math.round((criasMortas / vivos) * 100)}% (${criasMortas} de ${vivos})` : vivos ? `0% (0 de ${vivos})` : '—';
+  return {
+    titulo: `Mortalidade · ${rotuloAno(ano)}`,
+    resumo: [
+      { rotulo: 'Mortes lançadas', valor: mortes.length },
+      { rotulo: 'Crias', valor: criasMortas },
+      { rotulo: 'Novilhas e matrizes', valor: mortes.filter((x) => ['Novilha', 'Matriz'].includes(grupo(x.e))).length },
+      { rotulo: 'Outros animais', valor: mortes.filter((x) => grupo(x.e) === 'Outros').length },
+      { rotulo: 'Crias mortas / nascidas vivas', valor: pct },
+      { rotulo: 'Natimortos (lançados no nascimento)', valor: nascs.length - vivos },
+      { rotulo: 'Causa mais frequente', valor: topCausa ? `${topCausa[0]} (${topCausa[1].length})` : '—' },
+    ],
+    secoes: [
+      {
+        titulo: 'Por causa',
+        nota: 'Conta só as mortes lançadas na aba Morte (anuladas não entram). Natimortos ficam no lançamento de nascimento.',
+        colunas: [{ k: 'chave', label: 'Causa' }, ...colGrupo], linhas: comTotal(porCausa),
+      },
+      { titulo: 'Por tipo de animal', colunas: [{ k: 'chave', label: 'Animal' }, { k: 'total', label: 'Mortes', align: 'right', mono: true }],
+        linhas: [...agrupar((x) => x.e.tipoAnimal).entries()].map(([k, l]) => ({ chave: k, total: l.length })).sort((a, b) => b.total - a.total) },
+      {
+        titulo: 'Por mês',
+        colunas: [{ k: 'chave', label: 'Mês' }, ...colGrupo],
+        linhas: (() => {
+          const mapa = agrupar((x) => (x.e.data || '').slice(0, 7) || 'sem-data');
+          const linhas = [...mapa.keys()].sort().map((k) => ({ chave: k === 'sem-data' ? 'Sem data' : mesCurto(k), ...contar(mapa.get(k)) }));
+          if (linhas.length) linhas.push({ chave: 'Total', ...contar(mortes) });
+          return linhas;
+        })(),
+      },
+      {
+        titulo: 'Por lote',
+        nota: 'Para cria, vale o lote da mãe. Animal sem cadastro aparece como "Sem cadastro".',
+        colunas: [{ k: 'chave', label: 'Lote' }, ...colGrupo], linhas: comTotal(agrupar((x) => x.lote)),
+      },
+      {
+        titulo: 'Lançamentos',
+        colunas: [{ k: 'data', label: 'Data', mono: true }, { k: 'animal', label: 'Animal' }, { k: 'causa', label: 'Causa' }, { k: 'lote', label: 'Lote' },
+          { k: 'mae', label: 'Mãe', mono: true }, { k: 'obs', label: 'Observação' }],
+        linhas: mortes.map((x) => ({
+          data: formatarDataBR(x.e.data), animal: x.animal, causa: x.e.causa || '—', lote: x.lote, mae: x.mae || '—', obs: x.e.observacoes || '',
+        })),
+      },
+    ],
+  };
+}
+
 export const RELATORIOS = [
   { id: 'previsao', titulo: 'Previsão de parto', porAno: false },
   { id: 'nascimentos', titulo: 'Nascimentos por sexo', porAno: true },
@@ -1559,11 +1973,13 @@ export const RELATORIOS = [
   { id: 'situacao', titulo: 'Situação das vacas', porAno: false },
   { id: 'crias', titulo: 'Crias e pesos', porAno: true },
   { id: 'vendas', titulo: 'Vendas por peso', porAno: true },
+  { id: 'mortes', titulo: 'Mortalidade', porAno: true },
 ];
 
 export function montarRelatorio(id, { matrizes, touros, eventos, config }, ano, hoje) {
   if (id === 'crias') return relatorioCrias({ matrizes, touros, eventos }, config, ano, hoje);
   if (id === 'vendas') return relatorioVendas({ matrizes, touros, eventos }, ano);
+  if (id === 'mortes') return relatorioMortes({ matrizes, touros, eventos }, ano);
   if (id === 'previsao') return relatorioPrevisaoParto(matrizes, eventos, hoje);
   if (id === 'nascimentos') return relatorioNascimentos(matrizes, eventos, touros, ano);
   if (id === 'melhores') return relatorioMelhoresVacas(matrizes, eventos, ano);
@@ -1581,6 +1997,7 @@ export function linhasPlanilha(tipo, { matrizes, touros, eventos, config, todosE
       'Brinco': c.brinco, 'Sexo': c.sexo, 'Nascimento': formatarDataBR(c.nascData), 'Idade (dias)': c.idadeDias ?? '', 'Mãe': c.maeBrinco,
       'Origem / pai': c.origem.rotulo, 'Situação': rotuloSituacao(c), 'Último peso (kg)': c.pesoAtual ?? '', 'Data do peso': formatarDataBR(c.pesoData),
       'Ganho (kg/dia)': c.gmd === null ? '' : arred(c.gmd, 2), 'Desmama': formatarDataBR(c.desmamaData), 'Baixa (venda)': formatarDataBR(c.vendaData),
+      'Morte em': formatarDataBR(c.mortoData), 'Causa da morte': c.causaMorte || '', 'Órfã (mãe morreu)': c.orfa ? 'Sim' : '',
     }));
   }
   if (tipo === 'pesagem') {
@@ -1650,6 +2067,12 @@ export function linhasPlanilha(tipo, { matrizes, touros, eventos, config, todosE
   if (tipo === 'insumo') {
     return evs.map((e) => ({ 'Data': formatarDataBR(e.data), 'Produto': e.produto || '', 'Quantidade': e.quantidade || '', 'Unidade': e.unidade || '', 'Custo (R$)': e.custo || '', 'Categoria Animal': e.categoriaAnimal || '' }));
   }
+  if (tipo === 'morte') {
+    return evs.map((e) => ({
+      'Data': formatarDataBR(e.data), 'Animal': e.tipoAnimal || '', 'Brinco': e.brinco || '', 'Causa': e.causa || '', 'Observação': e.observacoes || '',
+      'Status anterior': e.statusAnterior || '', 'Anulada': e.anulada || '',
+    }));
+  }
   if (tipo === 'descarte') {
     return evs.map((e) => ({
       'Data': formatarDataBR(e.data), 'Matriz': brincoMap[e.matrizId] || '', 'Motivo': e.motivo || '',
@@ -1661,5 +2084,5 @@ export function linhasPlanilha(tipo, { matrizes, touros, eventos, config, todosE
 
 export const ABAS_EXCEL = [
   ['Matrizes', 'matrizes'], ['Crias', 'crias'], ['Nascimentos', 'nascimento'], ['Pesagens', 'pesagem'], ['Desmama', 'desmama'], ['Recria', 'recria'], ['IATF', 'iatf'],
-  ['Diagnósticos', 'diagnostico'], ['Vendas', 'venda'], ['Animais vendidos', 'vendaitem'], ['Insumos', 'insumo'], ['Descartes', 'descarte'], ['Touros', 'touros'],
+  ['Diagnósticos', 'diagnostico'], ['Vendas', 'venda'], ['Animais vendidos', 'vendaitem'], ['Insumos', 'insumo'], ['Descartes', 'descarte'], ['Mortes', 'morte'], ['Touros', 'touros'],
 ];

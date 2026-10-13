@@ -11,6 +11,7 @@ import Novilhas from './CriasNovilhas.jsx';
 
 export default function Crias({
   dados, hoje, ownerMode, modoTeste, onLancar, onGravarLote, onVender, onSalvarMatriz, onSalvarConfig,
+  onRegistrarMorte, onEditarNascimento, onEditarMorte, onAnularMorte,
 }) {
   const [aba, setAba] = useState('lista');
   const [vendaPreset, setVendaPreset] = useState(null); // { brincos: [...], n } vindo de "Para vender" / "Novilhas" / ficha da cria
@@ -48,7 +49,10 @@ export default function Crias({
       <IndexTabs tabs={abas} value={aba} onChange={mudarAba} rotulo="Crias" />
 
       {aba === 'lista' && (
-        <ListaCrias crias={crias} dados={dados} hoje={hoje} ownerMode={ownerMode} onLancar={onLancar} onVender={irParaVenda} onSalvarMatriz={onSalvarMatriz} />
+        <ListaCrias
+          crias={crias} dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={modoTeste} onLancar={onLancar} onVender={irParaVenda} onSalvarMatriz={onSalvarMatriz}
+          onRegistrarMorte={onRegistrarMorte} onEditarNascimento={onEditarNascimento} onEditarMorte={onEditarMorte} onAnularMorte={onAnularMorte}
+        />
       )}
       {aba === 'pesar' && (
         <Pesar dados={dados} hoje={hoje} crias={crias} ownerMode={ownerMode} modoTeste={modoTeste} onGravarLote={onGravarLote} />
