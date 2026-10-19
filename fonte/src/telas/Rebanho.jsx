@@ -163,8 +163,8 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz, onSalvarTour
                 <span className="two">
                   <b>{m.categoria}</b>
                   <span>
-                    {recria ? `recria · ${m.destino === 'Matriz' ? 'virar matriz' : m.destino.toLowerCase()}` : (m.raca || '—')}
-                    <span className="so-cel" style={{ color: COR_SITUACAO[m.status] || 'var(--mut)' }}> · {String(m.status || '').toLowerCase()}</span>
+                    {recria ? `recria · ${m.destino === 'Matriz' ? 'virar matriz' : m.destino.toLowerCase()}` : (m.raca || <span className="so-pc">—</span>)}
+                    <span className="so-cel" style={{ color: COR_SITUACAO[m.status] || 'var(--mut)' }}>{recria || m.raca ? ' · ' : ''}{String(m.status || '').toLowerCase()}</span>
                   </span>
                 </span>
                 <span className="hide-s"><Tag status={m.status} /></span>
