@@ -102,6 +102,8 @@ function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar }) {
   );
 }
 
+const COR_SITUACAO = { Cheia: 'var(--green)', Vazia: 'var(--amber)', Descarte: 'var(--late)', Morta: 'var(--late)' };
+
 export default function Rebanho({ dados, ownerMode, onSalvarMatriz, onSalvarTouro }) {
   const [aba, setAba] = useState('matrizes');
   const [filtro, setFiltro] = useState('todos');
@@ -147,19 +149,27 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz, onSalvarTour
             </div>
           </div>
           <div className="led-h cols-reb">
-            <span>Brinco</span><span>Categoria</span><span>Situação</span>
-            <span className="hide-s">Lote</span><span className="hide-s">Últ. parto</span>
+            <span>Brinco</span><span>Categoria</span><span className="hide-s">Situação</span>
+            <span>Últ. parto</span><span className="r">Cria</span>
           </div>
           {lista.length === 0 && <div className="empty">Nenhuma matriz encontrada.</div>}
           {lista.map((m) => {
             const ult = ultimoPartoDe(m.id, dados.eventos);
+            const cria = ult ? numeroCriaUltimoParto(m.id, dados.eventos) : '';
+            const recria = m.destino && m.status !== 'Vendida' && m.status !== 'Morta';
             return (
-              <button key={m.id} className="led-r cols-reb" onClick={() => setAberta(m.id)} aria-label={`Abrir matriz ${m.brinco}`}>
+              <button key={m.id} className="led-r cols-reb" onClick={() => setAberta(m.id)} aria-label={`Abrir matriz ${m.brinco}`} data-testid={`reb-${m.brinco}`}>
                 <span className="b">{m.brinco}</span>
-                <span className="two"><b>{m.categoria}</b><span>{m.destino && m.status !== 'Vendida' && m.status !== 'Morta' ? `recria · ${m.destino === 'Matriz' ? 'virar matriz' : m.destino.toLowerCase()}` : (m.raca || '—')}</span></span>
-                <span><Tag status={m.status} /></span>
-                <span className="hide-s m mut">{m.lote || '—'}</span>
-                <span className="hide-s m mut">{ult ? formatarDataBR(ult) : '—'}</span>
+                <span className="two">
+                  <b>{m.categoria}</b>
+                  <span>
+                    {recria ? `recria · ${m.destino === 'Matriz' ? 'virar matriz' : m.destino.toLowerCase()}` : (m.raca || '—')}
+                    <span className="so-cel" style={{ color: COR_SITUACAO[m.status] || 'var(--mut)' }}> · {String(m.status || '').toLowerCase()}</span>
+                  </span>
+                </span>
+                <span className="hide-s"><Tag status={m.status} /></span>
+                <span className="m">{ult ? formatarDataBR(ult) : '—'}</span>
+                <span className={`r ${cria ? '' : 'mut'}`}>{ult ? (cria || 's/ nº') : '—'}</span>
               </button>
             );
           })}
