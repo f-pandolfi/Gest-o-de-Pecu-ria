@@ -2,12 +2,12 @@
 // É usado por dois lados: o app (app.jsx) e a integração por foto (lançamentos em lote feitos pelo Claude).
 // Mexeu aqui = mudou nos dois, de propósito: uma única fonte da verdade para status, previsão e relatórios.
 
-export const VERSAO_APP = '9.4 (12/10/26)';
-export const VERSAO_MINIMA_SCRIPT = 10; // v10 = aba Mortes (v9 = pesagens, venda por peso e baixa no rebanho)
+export const VERSAO_APP = '10.0 (19/10/26)';
+export const VERSAO_MINIMA_SCRIPT = 12; // v12 = protocolos, manejos, touros completos (v11 = não duplica reenvio; v10 = aba Mortes)
 export const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
 
 // Tipos de lançamento visíveis no modo Funcionário (restrito)
-export const TIPOS_FUNCIONARIO = ['nascimento', 'desmama', 'iatf', 'insumo', 'descarte', 'pesagem', 'morte'];
+export const TIPOS_FUNCIONARIO = ['nascimento', 'desmama', 'insumo', 'descarte', 'pesagem', 'morte']; // IATF agora é pelo protocolo (tela Manejo)
 
 // Morte de animal (qualquer um: cria, novilha, matriz, touro ou animal sem cadastro)
 export const CAUSAS_MORTE = ['Doença', 'Acidente', 'Picada de cobra', 'Raio', 'Parto difícil', 'Não sabe', 'Outra'];
@@ -27,6 +27,7 @@ export const TIPOS_EVENTO = [
   { id: 'insumo', label: 'Sal / Medicamento' },
   { id: 'descarte', label: 'Descarte' },
   { id: 'morte', label: 'Morte' },
+  { id: 'manejo', label: 'Manejo' },
 ];
 
 // Campos editáveis ao clicar numa matriz (modo proprietário)
@@ -68,7 +69,6 @@ export const CAMPOS = {
     { key: 'touroId', label: 'Sêmen / touro', type: 'touro' },
     { key: 'touroOutro', label: 'Nome (não cadastrado)', type: 'text', showIf: (f) => f.touroId === '__outro__' },
     { key: 'tecnico', label: 'Técnico', type: 'text' },
-    { key: 'custo', label: 'Custo (R$)', type: 'number' },
     { key: 'observacoes', label: 'Observações', type: 'text' },
   ],
   diagnostico: [
@@ -453,7 +453,7 @@ export function nomeTouroEvento(e, touros) {
 // IATF compatível = IATF da mesma mãe de 250 a 320 dias antes do parto (gestação de ~285). O pai é o touro/sêmen desse IATF.
 // Sem IATF compatível, ou com "Repasse (monta natural)", a cria é de monta natural.
 export const JANELA_IATF_DIAS = [250, 320];
-export function origemDaCria(nasc, eventos, touros) {
+export function origemDaCria(nasc, eventos, touros, protocolos) {
   const informado = nomeTouroEvento(nasc, touros); // lançamentos antigos que já traziam o pai
   if (informado) return { origem: 'Informado', pai: informado, iatfData: '', rotulo: informado };
   if (!nasc.matrizId) return { origem: 'Sem mãe', pai: '', iatfData: '', rotulo: 'Mãe não informada' };
@@ -461,7 +461,7 @@ export function origemDaCria(nasc, eventos, touros) {
   const [min, max] = JANELA_IATF_DIAS;
   const dias = (d) => Math.round((new Date(nasc.data) - new Date(d)) / 86400000);
   const candidatos = (eventos || []).filter((e) => e.tipo === 'iatf' && e.matrizId === nasc.matrizId && e.data && dias(e.data) >= min && dias(e.data) <= max);
-  if (!candidatos.length) return { origem: 'Monta', pai: 'Monta natural', iatfData: '', rotulo: 'Monta natural' };
+  if (!candidatos.length) return origemPelaMonta(nasc, touros, protocolos) || { origem: 'Monta', pai: 'Monta natural', iatfData: '', rotulo: 'Monta natural' };
   candidatos.sort((a, b) => Math.abs(dias(a.data) - PERIODO_GESTACAO_DIAS) - Math.abs(dias(b.data) - PERIODO_GESTACAO_DIAS));
   const e = candidatos[0];
   const nome = nomeTouroEvento(e, touros);
@@ -469,6 +469,20 @@ export function origemDaCria(nasc, eventos, touros) {
     return { origem: 'Monta', pai: nome || 'Monta natural', iatfData: e.data, rotulo: nome ? `Monta · ${nome}` : 'Monta natural' };
   }
   return { origem: 'IATF', pai: nome, iatfData: e.data, rotulo: nome ? `IATF · ${nome}` : 'IATF · touro não informado' };
+}
+
+// v10: sem IATF compatível, procura o lote de monta (protocolo de monta) em que a mãe estava na época da concepção.
+// O lote pode ter mais de um touro: o pai fica "touro A ou B".
+function origemPelaMonta(nasc, touros, protocolos) {
+  if (!protocolos || !protocolos.length) return null;
+  const concepcao = addDias(nasc.data, -PERIODO_GESTACAO_DIAS);
+  const montas = protocolos.filter((p) => p.tipo === 'Monta' && p.dataInicio && (p.animais || []).includes(nasc.matrizId)
+    && concepcao >= addDias(p.dataInicio, -20) && concepcao <= addDias(p.dataFim || addDias(p.dataInicio, 90), 20))
+    .sort((a, b) => (b.dataInicio || '').localeCompare(a.dataInicio || ''));
+  if (!montas.length) return null;
+  const nomes = (montas[0].touros || []).map((id) => { const t = (touros || []).find((x) => x.id === id); return t ? t.nome : ''; }).filter(Boolean);
+  const pai = nomes.length ? nomes.join(' ou ') : 'Monta natural';
+  return { origem: 'Monta', pai, iatfData: '', rotulo: nomes.length ? `Monta · ${pai}` : `Monta (${montas[0].nome})` };
 }
 
 const semAcento = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -925,7 +939,12 @@ function pontosDePeso(idx, { nasc, matriz }) {
     if (d) add(d.id, d.data, d.pesoDesmama, 'Desmama');
   }
   if (matriz) (idx.pesPorMatriz.get(matriz.id) || []).forEach((e) => add(e.id, e.data, e.tipo === 'recria' ? e.pesoAtual : e.peso, e.tipo === 'recria' ? 'Recria' : 'Pesagem'));
-  return pts.sort((a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id));
+  pts.sort((a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id));
+  // mesma data pesada mais de uma vez (ex.: dois celulares sem internet, ou repesagem confirmada): marca "2x"
+  const porData = new Map();
+  pts.filter((x) => x.fonte === 'Pesagem').forEach((x) => porData.set(x.data, (porData.get(x.data) || 0) + 1));
+  pts.forEach((x) => { if (x.fonte === 'Pesagem' && porData.get(x.data) > 1) x.vezes = porData.get(x.data); });
+  return pts;
 }
 
 export function rotuloSituacao(c) {
@@ -964,7 +983,7 @@ export function listarCrias(estado, hoje) {
       return {
         id: n.id, nasc: n, brinco, sexo: n.sexo || '', nascData: n.data, idadeDias: n.data ? diasEntre(n.data, hoje) : null,
         matrizId: n.matrizId || '', maeBrinco: n.matrizId ? brincos[n.matrizId] || '?' : '',
-        origem: origemDaCria(n, eventos, touros), pelagem: n.pelagem || '',
+        origem: origemDaCria(n, eventos, touros, estado.protocolos), pelagem: n.pelagem || '',
         pontos, pesoAtual: ultimo ? ultimo.peso : null, pesoData: ultimo ? ultimo.data : '',
         diasDesdePeso: ultimo ? diasEntre(ultimo.data, hoje) : null, gmd: ganhoDiario(pontos),
         situacao, desmamaData: desm ? desm.data : '', novilha, vendaData: baixa ? baixa.data : (novilha && novilha.dataBaixa) || '',
@@ -2086,3 +2105,153 @@ export const ABAS_EXCEL = [
   ['Matrizes', 'matrizes'], ['Crias', 'crias'], ['Nascimentos', 'nascimento'], ['Pesagens', 'pesagem'], ['Desmama', 'desmama'], ['Recria', 'recria'], ['IATF', 'iatf'],
   ['Diagnósticos', 'diagnostico'], ['Vendas', 'venda'], ['Animais vendidos', 'vendaitem'], ['Insumos', 'insumo'], ['Descartes', 'descarte'], ['Mortes', 'morte'], ['Touros', 'touros'],
 ];
+
+// ---------------------------------------------------------------- v9.5: idade em meses e dias, ficha rápida, pesagem do dia, fila sem internet
+// Idade de calendário: "7 meses e 12 dias" (meses cheios contados no calendário, o resto em dias)
+export function idadeMesesDias(nascISO, refISO) {
+  if (!nascISO || !refISO || refISO < nascISO) return null;
+  const [y1, m1, d1] = nascISO.split('-').map(Number);
+  const [y2, m2, d2] = refISO.split('-').map(Number);
+  let meses = (y2 - y1) * 12 + (m2 - m1);
+  if (d2 < d1) meses -= 1;
+  const base = addMeses(nascISO, meses);
+  const dias = diasEntre(base, refISO);
+  return { meses, dias, totalDias: diasEntre(nascISO, refISO), texto: textoMesesDias(meses, dias) };
+}
+export function textoMesesDias(meses, dias) {
+  const m = meses === 1 ? '1 mês' : `${meses} meses`;
+  const d = dias === 1 ? '1 dia' : `${dias} dias`;
+  if (!meses) return d;
+  if (!dias) return m;
+  return `${m} e ${d}`;
+}
+// Soma meses de calendário (31/01 + 1 mês = 28 ou 29/02)
+export function addMeses(iso, meses) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const alvo = new Date(Date.UTC(y, m - 1 + meses, 1));
+  const ultimo = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  alvo.setUTCDate(Math.min(d, ultimo));
+  return alvo.toISOString().slice(0, 10);
+}
+// Meses e dias digitados -> total de dias (com a data de nascimento conta no calendário; sem ela, mês de 30 dias)
+export function diasDeMesesDias(nascISO, meses, dias) {
+  const m = parseInt(meses, 10) || 0; const d = parseInt(dias, 10) || 0;
+  if (nascISO) return diasEntre(nascISO, addDias(addMeses(nascISO, m), d));
+  return m * 30 + d;
+}
+
+// Tudo o que o funcionário precisa ver ao digitar um brinco (Pesar e Desmama): quem é, idade, nascimento, mãe,
+// último peso e as pesagens já gravadas numa data. ref = data da pesagem/desmama (idade calculada nessa data).
+export function fichaAnimal(estado, brinco, ref, crias) {
+  const info = infoAnimalVenda(estado, brinco, ref, crias);
+  if (!info.achado) return { ...info, mesmaData: [] };
+  const a = acharAnimal(estado, brinco);
+  const nasc = a && a.nasc;
+  const m = a && a.matriz;
+  const nascData = (nasc && nasc.data) || (m && m.dataNascimento) || '';
+  const maeId = nasc && nasc.matrizId;
+  const mae = maeId ? estado.matrizes.find((x) => x.id === maeId) : null;
+  const pesagens = (info.pontos || []).filter((p) => p.fonte === 'Pesagem');
+  const anteriores = (info.pontos || []).filter((p) => p.data < ref && p.fonte !== 'Nascimento');
+  const desm = nasc ? estado.eventos.find((e) => e.tipo === 'desmama' && mesmoBrinco(e.brincoBezerro, nasc.brincoBezerro) && e.data >= nasc.data) : null;
+  return {
+    ...info,
+    sexo: info.sexo || (nasc && nasc.sexo) || '',
+    categoria: m ? m.categoria : 'Cria',
+    nascData, idade: nascData ? idadeMesesDias(nascData, ref) : null,
+    maeBrinco: mae ? String(mae.brinco) : (maeId ? '?' : ''),
+    jaPesado: (info.pontos || []).some((p) => p.fonte !== 'Nascimento'),
+    ultimoPeso: (() => { const l = (info.pontos || []).filter((p) => p.fonte !== 'Nascimento'); return l.length ? l[l.length - 1] : null; })(),
+    pesoAnterior: anteriores.length ? anteriores[anteriores.length - 1] : null,
+    mesmaData: pesagens.filter((p) => p.data === ref),
+    desmamaData: desm ? desm.data : '',
+  };
+}
+
+// Relatório da pesagem de um dia (tela Pesar e PDF). Pesagens e desmamas gravadas na data, com idade, mãe, peso anterior e ganho.
+export function relatorioPesagemDia(estado, data, hoje) {
+  const crias = listarCrias(estado, hoje);
+  const evs = estado.eventos.filter((e) => (e.tipo === 'pesagem' || (e.tipo === 'desmama' && numPeso(e.pesoDesmama) > 0)) && e.data === data);
+  const porAnimal = new Map();
+  evs.forEach((e) => {
+    const brinco = String(e.tipo === 'desmama' ? e.brincoBezerro : e.brinco || '').trim();
+    const k = e.criaId || e.matrizId || brinco;
+    if (!porAnimal.has(k)) porAnimal.set(k, { brinco, lista: [] });
+    porAnimal.get(k).lista.push(e);
+  });
+  const linhas = [];
+  porAnimal.forEach(({ brinco, lista }) => {
+    const f = fichaAnimal(estado, brinco, data, crias);
+    const vezes = lista.length;
+    lista.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || '')).forEach((e) => {
+      const peso = numPeso(e.tipo === 'desmama' ? e.pesoDesmama : e.peso);
+      const ant = f.pesoAnterior;
+      const dias = ant ? diasEntre(ant.data, data) : null;
+      linhas.push({
+        brinco: brinco || '—', sexo: f.sexo || '—', idade: f.idade ? f.idade.texto : '—', nasc: f.nascData ? formatarDataBR(f.nascData) : '—',
+        mae: f.maeBrinco || '—', peso, pesoTxt: `${String(peso).replace('.', ',')} kg`,
+        anterior: ant ? `${String(ant.peso).replace('.', ',')} kg em ${formatarDataBR(ant.data)}` : 'primeira pesagem',
+        ganho: ant && dias > 0 ? `${((peso - ant.peso) / dias).toFixed(2).replace('.', ',')} kg/dia` : '—',
+        obs: [e.tipo === 'desmama' ? 'Desmama' : '', vezes > 1 ? `PESADO ${vezes}x NESTA DATA` : ''].filter(Boolean).join(' · '),
+        vezes,
+      });
+    });
+  });
+  linhas.sort((a, b) => String(a.brinco).localeCompare(String(b.brinco), 'pt-BR', { numeric: true }));
+  const pesos = linhas.map((l) => l.peso).filter((p) => p > 0);
+  const media = (arr) => (arr.length ? arr.reduce((s, x) => s + x, 0) / arr.length : null);
+  const fmtMedia = (arr) => { const v = media(arr); return v === null ? '—' : `${v.toFixed(1).replace('.', ',')} kg`; };
+  const dup = [...new Set(linhas.filter((l) => l.vezes > 1).map((l) => l.brinco))];
+  return {
+    titulo: `Pesagem de ${formatarDataBR(data)}`,
+    resumo: [
+      { rotulo: 'Pesagens', valor: linhas.length },
+      { rotulo: 'Animais', valor: porAnimal.size },
+      { rotulo: 'Peso total', valor: `${pesos.reduce((s, x) => s + x, 0).toLocaleString('pt-BR')} kg` },
+      { rotulo: 'Peso médio', valor: fmtMedia(pesos) },
+      { rotulo: 'Média dos machos', valor: fmtMedia(linhas.filter((l) => l.sexo === 'Macho').map((l) => l.peso)) },
+      { rotulo: 'Média das fêmeas', valor: fmtMedia(linhas.filter((l) => l.sexo === 'Fêmea').map((l) => l.peso)) },
+      { rotulo: 'Pesados 2x nesta data', valor: dup.length ? dup.join(', ') : 'nenhum' },
+    ],
+    secoes: [{
+      titulo: 'Animais pesados',
+      nota: dup.length ? `Atenção: ${dup.join(', ')} aparece(m) mais de uma vez nesta data. Verifique a duplicidade.` : '',
+      colunas: [
+        { k: 'brinco', label: 'Brinco', mono: true }, { k: 'sexo', label: 'Sexo' }, { k: 'idade', label: 'Idade' }, { k: 'nasc', label: 'Nascimento', mono: true },
+        { k: 'mae', label: 'Mãe', mono: true }, { k: 'pesoTxt', label: 'Peso', align: 'right', mono: true }, { k: 'anterior', label: 'Peso anterior' },
+        { k: 'ganho', label: 'Ganho', align: 'right', mono: true }, { k: 'obs', label: 'Obs.' },
+      ],
+      linhas,
+    }],
+  };
+}
+
+// Aplica sobre os dados lidos da planilha o que ainda está na fila do celular (não chegou na planilha).
+// Assim o que foi lançado sem internet continua aparecendo depois de recarregar.
+export function aplicarPendentes(dados, itensFila) {
+  let { matrizes, touros, eventos, config, protocolos } = dados;
+  const idsEv = new Set(eventos.map((e) => e.id));
+  const addEv = (tipo, ev) => { if (!ev || !ev.id || idsEv.has(ev.id)) return; idsEv.add(ev.id); eventos = [...eventos, { ...ev, tipo: ev.tipo || tipo }]; };
+  const upM = (m) => { if (!m || !m.id) return; matrizes = matrizes.some((x) => x.id === m.id) ? matrizes.map((x) => (x.id === m.id ? { ...x, ...m } : x)) : [...matrizes, m]; };
+  (itensFila || []).forEach(({ payload: p }) => {
+    if (!p) return;
+    if (p.action === 'appendEvento') addEv(p.tipo, p.evento);
+    else if (p.action === 'appendEventos') (p.itens || []).forEach((it) => addEv(it.tipo, it.evento));
+    else if (p.action === 'upsertMatriz') upM(p.matriz);
+    else if (p.action === 'upsertMatrizes') (p.matrizes || []).forEach(upM);
+    else if (p.action === 'appendTouro') { if (p.touro && !touros.some((t) => t.id === p.touro.id)) touros = [...touros, p.touro]; }
+    else if (p.action === 'upsertTouros') (p.touros || []).forEach((t) => { touros = touros.some((x) => x.id === t.id) ? touros.map((x) => (x.id === t.id ? { ...x, ...t } : x)) : [...touros, t]; });
+    else if (p.action === 'upsertProtocolos') {
+      (p.protocolos || []).forEach((pr) => {
+        const lista = protocolos || [];
+        protocolos = lista.some((x) => x.id === pr.id) ? lista.map((x) => (x.id === pr.id ? { ...x, ...pr } : x)) : [...lista, pr];
+      });
+    }
+    else if (p.action === 'setConfig') config = { ...(config || {}), ...(p.config || {}) };
+    else if (p.action === 'atualizarCampos') {
+      const mapa = new Map((p.itens || []).map((it) => [it.id, it.campos]));
+      eventos = eventos.map((e) => (mapa.has(e.id) && e.tipo === p.tipo ? { ...e, ...mapa.get(e.id) } : e));
+    }
+  });
+  return { ...dados, matrizes, touros, eventos, config, protocolos };
+}
