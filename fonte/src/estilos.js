@@ -204,11 +204,12 @@ button.led-r:hover{background:var(--s2)}
 .led-r .r{text-align:right;font:600 15px var(--mono)}
 .led-h .r{text-align:right}
 
-.cols-reb{--cols:70px minmax(0,1fr) 76px 52px}
-@media (min-width:700px){.cols-reb{--cols:84px minmax(0,1fr) 110px 120px 90px}}
-.led-r.cols-reb .r{font:600 14.5px var(--mono)}
-.led-r .so-pc{display:none}
-@media (min-width:700px){.led-r .so-cel{display:none}.led-r .so-pc{display:inline}}
+.cols-reb{--cols:70px minmax(0,1fr) 74px 50px}
+@media (min-width:700px){.cols-reb{--cols:90px minmax(0,1fr) 120px 100px}}
+.led-r.cols-reb{padding-top:9px;padding-bottom:9px}
+.reb-lista{display:flex;flex-direction:column;font:500 12px/17px var(--mono);white-space:nowrap}
+.led-r .reb-lista.r{align-items:flex-end;font:600 12px/17px var(--mono)}
+.reb-lista .mut{font-weight:400}
 .late{color:var(--late)} .soon{color:var(--amber)} .good{color:var(--green)} .mut{color:var(--mut)}
 .hide-s{display:none}
 @media (min-width:700px){.hide-s{display:block}}

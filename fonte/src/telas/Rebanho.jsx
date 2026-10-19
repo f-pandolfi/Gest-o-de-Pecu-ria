@@ -118,6 +118,18 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz, onSalvarTour
       .sort((a, b) => String(a.brinco).localeCompare(String(b.brinco), 'pt-BR', { numeric: true }));
   }, [dados.matrizes, filtro, busca]);
 
+  // todos os partos de cada vaca, do mais recente para o mais antigo (a cria de cada parto fica na mesma linha)
+  const partosPorVaca = useMemo(() => {
+    const mapa = new Map();
+    dados.eventos.forEach((e) => {
+      if (e.tipo !== 'nascimento' || !e.matrizId || !e.data) return;
+      if (!mapa.has(e.matrizId)) mapa.set(e.matrizId, []);
+      mapa.get(e.matrizId).push(e);
+    });
+    mapa.forEach((l) => l.sort((a, b) => b.data.localeCompare(a.data) || String(a.brincoBezerro || '').localeCompare(String(b.brincoBezerro || ''), 'pt-BR', { numeric: true })));
+    return mapa;
+  }, [dados.eventos]);
+
   const aberto = aberta ? dados.matrizes.find((m) => m.id === aberta) : null;
   const contar = (s) => dados.matrizes.filter((m) => m.status === s).length;
   const totalNoRebanho = dados.matrizes.filter((m) => m.status !== 'Vendida' && m.status !== 'Morta').length;
@@ -149,13 +161,13 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz, onSalvarTour
             </div>
           </div>
           <div className="led-h cols-reb">
-            <span>Brinco</span><span>Categoria</span><span className="hide-s">Situação</span>
-            <span>Últ. parto</span><span className="r">Cria</span>
+            <span>Brinco</span><span>Categoria</span>
+            <span>Partos</span><span className="r">Crias</span>
           </div>
           {lista.length === 0 && <div className="empty">Nenhuma matriz encontrada.</div>}
           {lista.map((m) => {
-            const ult = ultimoPartoDe(m.id, dados.eventos);
-            const cria = ult ? numeroCriaUltimoParto(m.id, dados.eventos) : '';
+            const ps = partosPorVaca.get(m.id) || [];
+            const antes = parseInt(m.partosAnteriores, 10) || 0;
             const recria = m.destino && m.status !== 'Vendida' && m.status !== 'Morta';
             return (
               <button key={m.id} className="led-r cols-reb" onClick={() => setAberta(m.id)} aria-label={`Abrir matriz ${m.brinco}`} data-testid={`reb-${m.brinco}`}>
@@ -163,13 +175,20 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz, onSalvarTour
                 <span className="two">
                   <b>{m.categoria}</b>
                   <span>
-                    {recria ? `recria · ${m.destino === 'Matriz' ? 'virar matriz' : m.destino.toLowerCase()}` : (m.raca || <span className="so-pc">—</span>)}
-                    <span className="so-cel" style={{ color: COR_SITUACAO[m.status] || 'var(--mut)' }}>{recria || m.raca ? ' · ' : ''}{String(m.status || '').toLowerCase()}</span>
+                    <span style={{ color: COR_SITUACAO[m.status] || 'var(--mut)' }}>{String(m.status || '').toLowerCase()}</span>
+                    {recria ? ` · recria, ${m.destino === 'Matriz' ? 'virar matriz' : m.destino.toLowerCase()}` : m.raca ? ` · ${m.raca}` : ''}
                   </span>
                 </span>
-                <span className="hide-s"><Tag status={m.status} /></span>
-                <span className="m">{ult ? formatarDataBR(ult) : '—'}</span>
-                <span className={`r ${cria ? '' : 'mut'}`}>{ult ? (cria || 's/ nº') : '—'}</span>
+                <span className="reb-lista" data-testid="reb-partos">
+                  {ps.length === 0 && !antes && <span className="mut">—</span>}
+                  {ps.map((e) => <span key={e.id}>{formatarDataBR(e.data)}</span>)}
+                  {antes > 0 && <span className="mut" title="Partos antes de entrar na fazenda">+{antes} antes</span>}
+                </span>
+                <span className="reb-lista r" data-testid="reb-crias">
+                  {ps.length === 0 && !antes && <span className="mut">—</span>}
+                  {ps.map((e) => <span key={e.id} className={e.brincoBezerro ? '' : 'mut'}>{e.brincoBezerro || 's/ nº'}</span>)}
+                  {antes > 0 && <span>&nbsp;</span>}
+                </span>
               </button>
             );
           })}

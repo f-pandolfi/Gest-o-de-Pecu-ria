@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 // src/logica.js
-var VERSAO_APP = "10.1 (19/10/26)";
+var VERSAO_APP = "10.2 (19/10/26)";
 var VERSAO_MINIMA_SCRIPT = 12;
 var PERIODO_GESTACAO_DIAS = 285;
 var TIPOS_FUNCIONARIO = ["nascimento", "desmama", "insumo", "descarte", "pesagem", "morte"];
@@ -4473,11 +4473,12 @@ button.led-r:hover{background:var(--s2)}
 .led-r .r{text-align:right;font:600 15px var(--mono)}
 .led-h .r{text-align:right}
 
-.cols-reb{--cols:70px minmax(0,1fr) 76px 52px}
-@media (min-width:700px){.cols-reb{--cols:84px minmax(0,1fr) 110px 120px 90px}}
-.led-r.cols-reb .r{font:600 14.5px var(--mono)}
-.led-r .so-pc{display:none}
-@media (min-width:700px){.led-r .so-cel{display:none}.led-r .so-pc{display:inline}}
+.cols-reb{--cols:70px minmax(0,1fr) 74px 50px}
+@media (min-width:700px){.cols-reb{--cols:90px minmax(0,1fr) 120px 100px}}
+.led-r.cols-reb{padding-top:9px;padding-bottom:9px}
+.reb-lista{display:flex;flex-direction:column;font:500 12px/17px var(--mono);white-space:nowrap}
+.led-r .reb-lista.r{align-items:flex-end;font:600 12px/17px var(--mono)}
+.reb-lista .mut{font-weight:400}
 .late{color:var(--late)} .soon{color:var(--amber)} .good{color:var(--green)} .mut{color:var(--mut)}
 .hide-s{display:none}
 @media (min-width:700px){.hide-s{display:block}}
@@ -6056,6 +6057,16 @@ function Rebanho({ dados, ownerMode, onSalvarMatriz, onSalvarTouro }) {
     const q = busca.trim().toLowerCase();
     return dados.matrizes.filter((m) => (filtro === "todos" ? m.status !== "Vendida" && m.status !== "Morta" : m.status === filtro) && (!q || String(m.brinco).toLowerCase().includes(q))).slice().sort((a, b) => String(a.brinco).localeCompare(String(b.brinco), "pt-BR", { numeric: true }));
   }, [dados.matrizes, filtro, busca]);
+  const partosPorVaca = useMemo17(() => {
+    const mapa = /* @__PURE__ */ new Map();
+    dados.eventos.forEach((e) => {
+      if (e.tipo !== "nascimento" || !e.matrizId || !e.data) return;
+      if (!mapa.has(e.matrizId)) mapa.set(e.matrizId, []);
+      mapa.get(e.matrizId).push(e);
+    });
+    mapa.forEach((l) => l.sort((a, b) => b.data.localeCompare(a.data) || String(a.brincoBezerro || "").localeCompare(String(b.brincoBezerro || ""), "pt-BR", { numeric: true })));
+    return mapa;
+  }, [dados.eventos]);
   const aberto = aberta ? dados.matrizes.find((m) => m.id === aberta) : null;
   const contar = (s) => dados.matrizes.filter((m) => m.status === s).length;
   const totalNoRebanho = dados.matrizes.filter((m) => m.status !== "Vendida" && m.status !== "Morta").length;
@@ -6067,11 +6078,11 @@ function Rebanho({ dados, ownerMode, onSalvarMatriz, onSalvarTouro }) {
       onChange: setAba,
       tabs: [{ id: "matrizes", label: "Matrizes", count: totalNoRebanho }, { id: "touros", label: "Touros", count: dados.touros.length }]
     }
-  ), aba === "matrizes" && /* @__PURE__ */ React21.createElement("section", { className: "sheet" }, /* @__PURE__ */ React21.createElement("label", { className: "search" }, /* @__PURE__ */ React21.createElement(Search6, null), /* @__PURE__ */ React21.createElement("input", { placeholder: "Buscar pelo brinco", "aria-label": "Buscar pelo brinco", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React21.createElement("div", { style: { padding: "10px 16px", borderBottom: "1px solid var(--line)" } }, /* @__PURE__ */ React21.createElement("div", { className: "seg", style: { flexWrap: "wrap" }, role: "group", "aria-label": "Filtrar por situa\xE7\xE3o" }, [["todos", "Todas"], ["Cheia", `Cheias ${contar("Cheia")}`], ["Vazia", `Vazias ${contar("Vazia")}`], ["Descarte", `Descarte ${contar("Descarte")}`], ...contar("Vendida") ? [["Vendida", `Vendidas ${contar("Vendida")}`]] : [], ...contar("Morta") ? [["Morta", `Mortas ${contar("Morta")}`]] : []].map(([id, rot]) => /* @__PURE__ */ React21.createElement("button", { key: id, "aria-pressed": filtro === id, onClick: () => setFiltro(id), style: { minHeight: 40, fontSize: 13, flex: "1 0 auto" } }, rot)))), /* @__PURE__ */ React21.createElement("div", { className: "led-h cols-reb" }, /* @__PURE__ */ React21.createElement("span", null, "Brinco"), /* @__PURE__ */ React21.createElement("span", null, "Categoria"), /* @__PURE__ */ React21.createElement("span", { className: "hide-s" }, "Situa\xE7\xE3o"), /* @__PURE__ */ React21.createElement("span", null, "\xDAlt. parto"), /* @__PURE__ */ React21.createElement("span", { className: "r" }, "Cria")), lista2.length === 0 && /* @__PURE__ */ React21.createElement("div", { className: "empty" }, "Nenhuma matriz encontrada."), lista2.map((m) => {
-    const ult = ultimoPartoDe(m.id, dados.eventos);
-    const cria = ult ? numeroCriaUltimoParto(m.id, dados.eventos) : "";
+  ), aba === "matrizes" && /* @__PURE__ */ React21.createElement("section", { className: "sheet" }, /* @__PURE__ */ React21.createElement("label", { className: "search" }, /* @__PURE__ */ React21.createElement(Search6, null), /* @__PURE__ */ React21.createElement("input", { placeholder: "Buscar pelo brinco", "aria-label": "Buscar pelo brinco", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React21.createElement("div", { style: { padding: "10px 16px", borderBottom: "1px solid var(--line)" } }, /* @__PURE__ */ React21.createElement("div", { className: "seg", style: { flexWrap: "wrap" }, role: "group", "aria-label": "Filtrar por situa\xE7\xE3o" }, [["todos", "Todas"], ["Cheia", `Cheias ${contar("Cheia")}`], ["Vazia", `Vazias ${contar("Vazia")}`], ["Descarte", `Descarte ${contar("Descarte")}`], ...contar("Vendida") ? [["Vendida", `Vendidas ${contar("Vendida")}`]] : [], ...contar("Morta") ? [["Morta", `Mortas ${contar("Morta")}`]] : []].map(([id, rot]) => /* @__PURE__ */ React21.createElement("button", { key: id, "aria-pressed": filtro === id, onClick: () => setFiltro(id), style: { minHeight: 40, fontSize: 13, flex: "1 0 auto" } }, rot)))), /* @__PURE__ */ React21.createElement("div", { className: "led-h cols-reb" }, /* @__PURE__ */ React21.createElement("span", null, "Brinco"), /* @__PURE__ */ React21.createElement("span", null, "Categoria"), /* @__PURE__ */ React21.createElement("span", null, "Partos"), /* @__PURE__ */ React21.createElement("span", { className: "r" }, "Crias")), lista2.length === 0 && /* @__PURE__ */ React21.createElement("div", { className: "empty" }, "Nenhuma matriz encontrada."), lista2.map((m) => {
+    const ps = partosPorVaca.get(m.id) || [];
+    const antes = parseInt(m.partosAnteriores, 10) || 0;
     const recria = m.destino && m.status !== "Vendida" && m.status !== "Morta";
-    return /* @__PURE__ */ React21.createElement("button", { key: m.id, className: "led-r cols-reb", onClick: () => setAberta(m.id), "aria-label": `Abrir matriz ${m.brinco}`, "data-testid": `reb-${m.brinco}` }, /* @__PURE__ */ React21.createElement("span", { className: "b" }, m.brinco), /* @__PURE__ */ React21.createElement("span", { className: "two" }, /* @__PURE__ */ React21.createElement("b", null, m.categoria), /* @__PURE__ */ React21.createElement("span", null, recria ? `recria \xB7 ${m.destino === "Matriz" ? "virar matriz" : m.destino.toLowerCase()}` : m.raca || /* @__PURE__ */ React21.createElement("span", { className: "so-pc" }, "\u2014"), /* @__PURE__ */ React21.createElement("span", { className: "so-cel", style: { color: COR_SITUACAO[m.status] || "var(--mut)" } }, recria || m.raca ? " \xB7 " : "", String(m.status || "").toLowerCase()))), /* @__PURE__ */ React21.createElement("span", { className: "hide-s" }, /* @__PURE__ */ React21.createElement(Tag, { status: m.status })), /* @__PURE__ */ React21.createElement("span", { className: "m" }, ult ? formatarDataBR(ult) : "\u2014"), /* @__PURE__ */ React21.createElement("span", { className: `r ${cria ? "" : "mut"}` }, ult ? cria || "s/ n\xBA" : "\u2014"));
+    return /* @__PURE__ */ React21.createElement("button", { key: m.id, className: "led-r cols-reb", onClick: () => setAberta(m.id), "aria-label": `Abrir matriz ${m.brinco}`, "data-testid": `reb-${m.brinco}` }, /* @__PURE__ */ React21.createElement("span", { className: "b" }, m.brinco), /* @__PURE__ */ React21.createElement("span", { className: "two" }, /* @__PURE__ */ React21.createElement("b", null, m.categoria), /* @__PURE__ */ React21.createElement("span", null, /* @__PURE__ */ React21.createElement("span", { style: { color: COR_SITUACAO[m.status] || "var(--mut)" } }, String(m.status || "").toLowerCase()), recria ? ` \xB7 recria, ${m.destino === "Matriz" ? "virar matriz" : m.destino.toLowerCase()}` : m.raca ? ` \xB7 ${m.raca}` : "")), /* @__PURE__ */ React21.createElement("span", { className: "reb-lista", "data-testid": "reb-partos" }, ps.length === 0 && !antes && /* @__PURE__ */ React21.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React21.createElement("span", { key: e.id }, formatarDataBR(e.data))), antes > 0 && /* @__PURE__ */ React21.createElement("span", { className: "mut", title: "Partos antes de entrar na fazenda" }, "+", antes, " antes")), /* @__PURE__ */ React21.createElement("span", { className: "reb-lista r", "data-testid": "reb-crias" }, ps.length === 0 && !antes && /* @__PURE__ */ React21.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React21.createElement("span", { key: e.id, className: e.brincoBezerro ? "" : "mut" }, e.brincoBezerro || "s/ n\xBA")), antes > 0 && /* @__PURE__ */ React21.createElement("span", null, "\xA0")));
   })), aba === "touros" && /* @__PURE__ */ React21.createElement(Touros, { dados, ownerMode, onSalvarTouro }), !ownerMode && /* @__PURE__ */ React21.createElement("p", { className: "sub", style: { marginTop: 14, display: "flex", gap: 8, alignItems: "center" } }, /* @__PURE__ */ React21.createElement(Lock, { size: 15, style: { flex: "none" } }), " Modo funcion\xE1rio: aqui voc\xEA consulta. Alterar cadastro \xE9 s\xF3 com a senha do propriet\xE1rio."), aberto && /* @__PURE__ */ React21.createElement(ModalMatriz, { key: aberto.id, m: aberto, dados, ownerMode, onSalvar: onSalvarMatriz, onFechar: () => setAberta(null) }));
 }
 
