@@ -32,6 +32,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .chip select option{background:var(--s1);color:var(--tx)}
 .chip.lock{width:40px;justify-content:center;padding:0}
 .chip.on{border-color:var(--amber);color:var(--amber)}
+.chip.fila-off{border-color:var(--amber);color:var(--amber);background:var(--amber-bg)}
+.chip.fila-erro{border-color:var(--late);color:var(--late);background:var(--late-bg)}
+.lado-fila{display:none}
+@media (min-width:900px){.lado-fila{display:flex;justify-content:flex-end;max-width:1000px;margin:12px auto 0;padding:0 16px}}
+.ficha-rapida{border:1px solid var(--line);border-left:3px solid var(--green);border-radius:6px;background:var(--s2);padding:9px 12px;margin:8px 0 12px;font-size:13.5px;line-height:1.5}
+.ficha-rapida b{font:600 15px var(--mono)}
+.ficha-rapida .lin{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--mut)}
+.ficha-rapida .lin span b{font:600 13.5px var(--body);color:var(--tx)}
+.ficha-rapida.ruim{border-left-color:var(--late)}
+.ficha-rapida.atencao{border-left-color:var(--amber)}
+.tag2x{display:inline-block;font:700 11px var(--mono) !important;padding:1px 6px;border-radius:4px;background:var(--amber);color:#1B140A !important;margin-left:6px;vertical-align:middle;letter-spacing:.03em}
+.idade-md{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
 
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;height:calc(64px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:var(--s1);border-top:1px solid var(--line)}
 .bnav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:none;background:transparent;color:var(--mut);font:600 10.5px var(--mono);letter-spacing:.07em;text-transform:uppercase;border-top:3px solid transparent;margin-top:-1px;min-width:0}

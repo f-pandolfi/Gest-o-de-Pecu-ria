@@ -1,17 +1,21 @@
-// Gestão da Pecuária · Fazenda Ibiraçu (app v9.4)
+// Gestão da Pecuária · Fazenda Ibiraçu (app v9.5)
 // Casca do app: menu, ano de gestão, senha do proprietário, leitura e gravação na planilha.
+// v9.5: tudo o que é lançado entra numa fila guardada no celular (fila.js) e vai para a planilha quando há internet.
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Plus, CalendarClock, List, LayoutDashboard, FileText, Lock, Unlock, Loader2, ChevronDown, Baby,
+  Plus, CalendarClock, List, LayoutDashboard, FileText, Lock, Unlock, Loader2, ChevronDown, Baby, CloudOff, AlertTriangle, RefreshCw, Trash2,
 } from 'lucide-react';
 import {
   VERSAO_APP, VERSAO_MINIMA_SCRIPT, todayISO, anoDe, anosDisponiveis, filtrarPorAno, normalizarDados,
   aplicarLancamento, aplicarVenda, calcularKPIs, buildResumoRows, validarMorte, listarCrias,
-  editarNascimento, editarMorte, anularMorte, postsDeMudancas, aplicarMudancasNoEstado,
+  editarNascimento, editarMorte, anularMorte, postsDeMudancas, aplicarMudancasNoEstado, aplicarPendentes, formatarDataBR,
 } from './logica.js';
 import { CSS } from './estilos.js';
-import { MODO_TESTE, lerTudo, postar } from './api.js';
+import { MODO_TESTE, lerTudo, postar as postarDireto } from './api.js';
+import {
+  enfileirar, enviar as enviarFila, assinarFila, estadoFila, descartar, enviadosDesde, lerLocal, gravarNoCelular, CHAVE_DADOS,
+} from './fila.js';
 import { exportarExcel, exportarRelatorioExcel } from './excel.js';
 import { Aviso, Modal } from './ui.jsx';
 import { descreverEvento, fmtKg, fmtBRL } from './util.js';
@@ -51,6 +55,27 @@ function SeletorAno({ ano, anos, onChange }) {
   );
 }
 
+// "19/10 às 14:05" (data e hora locais)
+function quandoTxt(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)} às ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// Situação da fila no topo: enviando, guardado no celular (sem internet) ou erro da planilha
+function ChipFila({ est, onClick }) {
+  if (!est.pendentes) return null;
+  if (est.semInternet) {
+    return <button className="chip fila-off" onClick={onClick} data-testid="chip-fila"><CloudOff size={14} /> {est.pendentes} no celular</button>;
+  }
+  if (est.erroPlanilha) {
+    return <button className="chip fila-erro" onClick={onClick} data-testid="chip-fila"><AlertTriangle size={14} /> erro ao gravar</button>;
+  }
+  return <button className="chip" onClick={onClick} data-testid="chip-fila"><Loader2 size={14} className="spin" /> gravando {est.pendentes}</button>;
+}
+
 function GestaoPecuaria() {
   const [tab, setTab] = useState('lancar');
   const [dados, setDados] = useState(VAZIO);
@@ -64,12 +89,41 @@ function GestaoPecuaria() {
   const [pinErro, setPinErro] = useState(false);
   const [hoje, setHoje] = useState(todayISO());
   const [ano, setAno] = useState(() => anoDe(todayISO()));
-  const [pendentes, setPendentes] = useState(0);
+  const [filaEst, setFilaEst] = useState(estadoFila());
+  const [filaAberta, setFilaAberta] = useState(false);
+  const [descartarUid, setDescartarUid] = useState(null);
   const [sincronizando, setSincronizando] = useState(false);
   const [preset, setPreset] = useState(null);
-  const fila = useRef(Promise.resolve());
+  const [atualizadoEm, setAtualizadoEm] = useState(null); // quando os dados da tela vieram da planilha
+  const [doCelular, setDoCelular] = useState(false); // tela mostrando a cópia guardada no celular (sem internet)
+  const versaoRef = useRef(null);
+  const timerCopia = useRef(null);
+  const pendentes = filaEst.pendentes;
 
-  function commit(novo) { dadosRef.current = novo; setDados(novo); }
+  useEffect(() => assinarFila(setFilaEst), []);
+  // ao sair do app (trocar de tela no celular, fechar), guarda a cópia na hora
+  useEffect(() => {
+    const agora = () => { if (dadosRef.current !== VAZIO) { clearTimeout(timerCopia.current); guardarCopia(); } };
+    const vis = () => { if (document.visibilityState === 'hidden') agora(); };
+    window.addEventListener('pagehide', agora);
+    document.addEventListener('visibilitychange', vis);
+    return () => { window.removeEventListener('pagehide', agora); document.removeEventListener('visibilitychange', vis); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cada mudança na tela também fica guardada no celular (assim o app abre sem internet com o que foi lançado)
+  function commit(novo) {
+    dadosRef.current = novo; setDados(novo);
+    clearTimeout(timerCopia.current);
+    timerCopia.current = setTimeout(guardarCopia, 400);
+  }
+  function guardarCopia(quando) {
+    const anterior = lerLocal(CHAVE_DADOS, null);
+    gravarNoCelular(CHAVE_DADOS, {
+      dados: dadosRef.current, versao: versaoRef.current,
+      atualizadoEm: quando || (anterior && anterior.atualizadoEm) || null, guardadoEm: new Date().toISOString(),
+    });
+  }
+  function definirVersao(v) { versaoRef.current = v; setVersaoScript(v); }
 
   // Se o app ficou aberto de um dia para o outro, "hoje" acompanha
   useEffect(() => {
@@ -80,14 +134,36 @@ function GestaoPecuaria() {
 
   useEffect(() => { carregar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Abre com a cópia do celular (rápido e funciona sem internet), manda o que estiver na fila e depois relê a planilha.
   async function carregar() {
-    setLoading(true);
     setAviso(null);
+    const copia = lerLocal(CHAVE_DADOS, null);
+    const temCopia = !!(copia && copia.dados && Array.isArray(copia.dados.matrizes));
+    if (temCopia && dadosRef.current === VAZIO) {
+      // a fila também entra (a cópia pode ter sido guardada um instante antes do último lançamento)
+      const comFila = aplicarPendentes(copia.dados, estadoFila().itens);
+      dadosRef.current = comFila; setDados(comFila);
+      definirVersao(copia.versao || null);
+      setAtualizadoEm(copia.atualizadoEm || null);
+      setDoCelular(true);
+      setLoading(false);
+    } else if (!temCopia && dadosRef.current === VAZIO) {
+      setLoading(true);
+    }
+    const inicio = Date.now();
     try {
+      await enviarFila();
       const data = await lerTudo();
-      commit(normalizarDados(data));
+      // o que ainda está na fila (ou chegou na planilha enquanto ela era lida) continua aparecendo
+      const extra = [...enviadosDesde(inicio), ...estadoFila().itens];
+      const novos = aplicarPendentes(normalizarDados(data), extra);
       const v = Number(data.versao) || 0;
-      setVersaoScript(v);
+      definirVersao(v);
+      commit(novos);
+      const agora = new Date().toISOString();
+      setAtualizadoEm(agora); setDoCelular(false);
+      clearTimeout(timerCopia.current);
+      guardarCopia(agora);
       if (v < VERSAO_MINIMA_SCRIPT) {
         if (MODO_TESTE) {
           setAviso({ tipo: 'info', texto: `Modo teste: a planilha ainda está na versão ${v || 'antiga'} do script. As telas novas já funcionam, mas o registro de mortes só será gravado depois que o script v${VERSAO_MINIMA_SCRIPT} for publicado.` });
@@ -97,38 +173,38 @@ function GestaoPecuaria() {
       }
     } catch (e) {
       console.error('Erro ao carregar dados da planilha', e);
-      setAviso({ tipo: 'erro', texto: 'Não consegui falar com a planilha agora. Verifique a internet e tente de novo. Os dados na tela podem estar desatualizados.' });
+      const copiaAgora = lerLocal(CHAVE_DADOS, null);
+      if (copiaAgora && copiaAgora.dados) {
+        setDoCelular(true);
+        setAviso({
+          tipo: 'info',
+          texto: `Sem internet agora. Você está vendo os dados guardados neste celular${copiaAgora.atualizadoEm ? ` (planilha lida em ${quandoTxt(copiaAgora.atualizadoEm)})` : ''}. Pode lançar normalmente: fica guardado aqui e vai para a planilha quando a internet voltar.`,
+        });
+      } else {
+        setAviso({ tipo: 'erro', texto: 'Não consegui falar com a planilha agora e este celular ainda não tem os dados guardados. Abra o app uma vez com internet.' });
+      }
     }
     setLoading(false);
   }
 
-  // ---------------------------------------------------------------- gravação (uma de cada vez, em ordem)
-  async function gravar(payload, rotulo) {
-    try {
-      await postar(payload);
-      return true;
-    } catch (e) {
-      console.error(`Erro ao gravar (${rotulo})`, e);
-      setAviso({ tipo: 'erro', texto: `Não consegui gravar na planilha (${rotulo}): ${e.message}. O registro aparece na tela, mas pode sumir ao recarregar. Tente salvar de novo.` });
-      return false;
-    }
-  }
-
-  function enfileirar(payload, rotulo) {
-    setPendentes((n) => n + 1);
-    fila.current = fila.current.then(() => gravar(payload, rotulo)).then(() => setPendentes((n) => n - 1));
-  }
+  // ---------------------------------------------------------------- gravação: tudo passa pela fila do celular
+  // A tela muda na hora e o que precisa ir para a planilha entra na fila (fila.js), na ordem.
+  const semInternet = () => typeof navigator !== 'undefined' && navigator.onLine === false;
+  const NOTA_FILA = ' Sem internet: ficou guardado neste celular e vai para a planilha quando a internet voltar.';
+  const notaFila = () => (semInternet() ? NOTA_FILA : '');
 
   function salvarLancamento(tipo, form) {
     const antes = dadosRef.current;
     const r = aplicarLancamento(antes, tipo, form);
     commit(r.estado);
-    r.eventosNovos.forEach((e) => enfileirar({ action: 'appendEvento', tipo: e.tipo, evento: e }, 'lançamento'));
-    r.matrizesAlteradas.forEach((m) => enfileirar({ action: 'upsertMatriz', matriz: m }, 'matriz'));
-    r.tourosNovos.forEach((t) => enfileirar({ action: 'appendTouro', touro: t }, 'touro'));
+    enfileirar([
+      ...r.eventosNovos.map((e) => ({ action: 'appendEvento', tipo: e.tipo, evento: e })),
+      ...r.matrizesAlteradas.map((m) => ({ action: 'upsertMatriz', matriz: m })),
+      ...r.tourosNovos.map((t) => ({ action: 'appendTouro', touro: t })),
+    ], tipo === 'cadastro' ? 'nova matriz' : tipo === 'touro' ? 'touro' : `lançamento: ${tipo}`);
 
-    if (tipo === 'cadastro') return `Matriz ${r.matrizesAlteradas[0].brinco} cadastrada.`;
-    if (tipo === 'touro') return `Touro ${r.tourosNovos[0].nome} cadastrado.`;
+    if (tipo === 'cadastro') return `Matriz ${r.matrizesAlteradas[0].brinco} cadastrada.${notaFila()}`;
+    if (tipo === 'touro') return `Touro ${r.tourosNovos[0].nome} cadastrado.${notaFila()}`;
     const mudou = r.matrizesAlteradas.map((m) => {
       const a = antes.matrizes.find((x) => x.id === m.id);
       const partes = [];
@@ -136,146 +212,133 @@ function GestaoPecuaria() {
       if (a && a.categoria !== m.categoria) partes.push(`${a.categoria} → ${m.categoria}`);
       return partes.length ? `${m.brinco}: ${partes.join(', ')}` : '';
     }).filter(Boolean);
-    return `Salvo: ${descreverEvento(r.eventosNovos[0], r.estado)}.${mudou.length ? ` Atualizado: ${mudou.join('; ')}.` : ''}`;
+    return `Salvo: ${descreverEvento(r.eventosNovos[0], r.estado)}.${mudou.length ? ` Atualizado: ${mudou.join('; ')}.` : ''}${notaFila()}`;
   }
 
   function salvarMatriz(m) {
     const d = dadosRef.current;
     commit({ ...d, matrizes: d.matrizes.map((x) => (x.id === m.id ? m : x)) });
-    enfileirar({ action: 'upsertMatriz', matriz: m }, 'matriz');
+    enfileirar([{ action: 'upsertMatriz', matriz: m }], `matriz ${m.brinco}`);
   }
 
   // Metas e peso de corte da novilha (aba Config da planilha)
   function salvarConfig(parcial) {
     const d = dadosRef.current;
     commit({ ...d, config: { ...(d.config || {}), ...parcial } });
-    enfileirar({ action: 'setConfig', config: parcial }, 'metas');
+    enfileirar([{ action: 'setConfig', config: parcial }], 'metas');
   }
 
-  // Venda por peso: um registro da venda, um por animal e a baixa das matrizes vendidas. Grava primeiro os eventos e depois as
-  // matrizes; se parar no meio, o animal que já tem item de venda continua sendo tratado como vendido (não dá para vender duas vezes).
+  const scriptAntes = (v) => !MODO_TESTE && versaoScript !== null && (versaoScript || 0) < v;
+
+  // eventos em pacotes de 40, depois as matrizes e os touros
+  function postsDeLote(eventos, matrizes, touros) {
+    const posts = [];
+    for (let i = 0; i < eventos.length; i += 40) posts.push({ action: 'appendEventos', itens: eventos.slice(i, i + 40) });
+    if (matrizes.length) posts.push({ action: 'upsertMatrizes', matrizes });
+    (touros || []).forEach((t) => posts.push({ action: 'appendTouro', touro: t }));
+    return posts;
+  }
+
+  // Venda por peso: um registro da venda, um por animal e a baixa das matrizes vendidas.
   async function registrarVenda(form) {
-    if (!MODO_TESTE && (versaoScript || 0) < 9) {
-      return { ok: false, msg: 'O script da planilha está desatualizado e não aceita vendas. Avise o responsável pelo sistema.' };
-    }
+    if (scriptAntes(9)) return { ok: false, msg: 'O script da planilha está desatualizado e não aceita vendas. Avise o responsável pelo sistema.' };
     const r = aplicarVenda(dadosRef.current, form, { hoje });
     if (r.erro) return { ok: false, msg: r.erro };
-    try {
-      const itens = r.eventosNovos.map((e) => ({ tipo: e.tipo, evento: e }));
-      for (let i = 0; i < itens.length; i += 40) await postar({ action: 'appendEventos', itens: itens.slice(i, i + 40) });
-      if (r.matrizesAlteradas.length) await postar({ action: 'upsertMatrizes', matrizes: r.matrizesAlteradas });
-    } catch (e) {
-      console.error('Erro ao gravar a venda', e);
-      return { ok: false, msg: `Não consegui gravar a venda: ${e.message}. Use "Recarregar dados" nas ferramentas avançadas do Painel para ver o que chegou na planilha antes de tentar de novo, para não duplicar.` };
-    }
     commit(r.estado);
+    enfileirar(postsDeLote(r.eventosNovos.map((e) => ({ tipo: e.tipo, evento: e })), r.matrizesAlteradas), 'venda');
     const baixas = r.itens.filter((i) => i.criaId || i.matrizId).length;
     return {
       ok: true,
-      msg: `Venda gravada: ${r.totais.qtd} animal(is), ${fmtKg(r.totais.kg)}, ${fmtBRL(r.totais.valor)}.${baixas ? ` ${baixas} saíram do rebanho.` : ''}${r.avisos.length ? ` Atenção: ${r.avisos.join(' ')}` : ''}`,
+      msg: `Venda gravada: ${r.totais.qtd} animal(is), ${fmtKg(r.totais.kg)}, ${fmtBRL(r.totais.valor)}.${baixas ? ` ${baixas} saíram do rebanho.` : ''}${r.avisos.length ? ` Atenção: ${r.avisos.join(' ')}` : ''}${notaFila()}`,
     };
   }
 
-  async function gravarLote(res) {
-    if (!MODO_TESTE && (versaoScript || 0) < 9) {
-      return { ok: false, msg: 'O script da planilha está desatualizado e não aceita lote. Avise o responsável pelo sistema.' };
-    }
-    if (!MODO_TESTE && (versaoScript || 0) < 10 && res.eventosParaGravar.some((x) => x.tipo === 'morte')) {
+  async function gravarLote(res, rotulo) {
+    if (scriptAntes(9)) return { ok: false, msg: 'O script da planilha está desatualizado e não aceita lote. Avise o responsável pelo sistema.' };
+    if (scriptAntes(10) && res.eventosParaGravar.some((x) => x.tipo === 'morte')) {
       return { ok: false, msg: 'O script da planilha está desatualizado e não aceita mortes. Avise o responsável pelo sistema.' };
     }
-    try {
-      const itens = res.eventosParaGravar;
-      for (let i = 0; i < itens.length; i += 40) await postar({ action: 'appendEventos', itens: itens.slice(i, i + 40) });
-      if (res.matrizesParaGravar.length) await postar({ action: 'upsertMatrizes', matrizes: res.matrizesParaGravar });
-      for (const t of res.tourosParaGravar) await postar({ action: 'appendTouro', touro: t });
-    } catch (e) {
-      console.error('Erro ao gravar lote', e);
-      return { ok: false, msg: `Não consegui gravar tudo: ${e.message}. Use "Recarregar dados" nas ferramentas avançadas do Painel para ver o que chegou na planilha antes de tentar de novo, para não duplicar.` };
-    }
     commit(res.estado);
-    return { ok: true, msg: `Gravados ${res.eventosParaGravar.length} lançamento(s) e ${res.matrizesParaGravar.length} matriz(es) atualizada(s).` };
+    enfileirar(postsDeLote(res.eventosParaGravar, res.matrizesParaGravar, res.tourosParaGravar), rotulo || 'lote');
+    return { ok: true, offline: semInternet(), msg: `Gravados ${res.eventosParaGravar.length} lançamento(s) e ${res.matrizesParaGravar.length} matriz(es) atualizada(s).${notaFila()}` };
   }
 
   // ---------------------------------------------------------------- morte e correções
-  // Aqui a gravação vem primeiro: só depois de a planilha aceitar é que a tela muda (nada fica "salvo só na tela").
   const MSG_SCRIPT_MORTE = 'O script da planilha está desatualizado e não aceita mortes. Avise o responsável pelo sistema.';
-  const MSG_RECARREGAR = 'Use "Recarregar dados" nas ferramentas avançadas do Painel para ver o que chegou na planilha antes de tentar de novo, para não duplicar.';
 
   async function registrarMorte(form) {
-    if (!MODO_TESTE && (versaoScript || 0) < 10) return { ok: false, msg: MSG_SCRIPT_MORTE };
+    if (scriptAntes(10)) return { ok: false, msg: MSG_SCRIPT_MORTE };
     const v = validarMorte(dadosRef.current, form, hoje);
     if (v.erros.length) return { ok: false, msg: v.erros.join(' ') };
     const r = aplicarLancamento(dadosRef.current, 'morte', form);
     const ev = r.eventosNovos[0];
-    try {
-      await postar({ action: 'appendEvento', tipo: 'morte', evento: ev });
-      if (r.matrizesAlteradas.length) await postar({ action: 'upsertMatrizes', matrizes: r.matrizesAlteradas });
-    } catch (e) {
-      console.error('Erro ao gravar a morte', e);
-      return { ok: false, msg: `Não consegui gravar a morte: ${e.message}. ${MSG_RECARREGAR}` };
-    }
-    const r2 = aplicarLancamento(dadosRef.current, 'morte', form, { id: ev.id, now: ev.createdAt }); // refaz sobre o que há de mais novo na tela
-    commit(r2.estado);
-    const morta = r2.matrizesAlteradas[0];
-    const orfas = morta ? listarCrias(r2.estado, hoje).filter((c) => c.orfa && c.matrizId === morta.id) : [];
-    const partes = [`Morte registrada: ${descreverEvento(ev, r2.estado)}.`];
+    commit(r.estado);
+    enfileirar([
+      { action: 'appendEvento', tipo: 'morte', evento: ev },
+      ...(r.matrizesAlteradas.length ? [{ action: 'upsertMatrizes', matrizes: r.matrizesAlteradas }] : []),
+    ], `morte ${ev.brinco || ''}`.trim());
+    const morta = r.matrizesAlteradas[0];
+    const orfas = morta ? listarCrias(r.estado, hoje).filter((c) => c.orfa && c.matrizId === morta.id) : [];
+    const partes = [`Morte registrada: ${descreverEvento(ev, r.estado)}.`];
     if (morta) partes.push(`A matriz ${morta.brinco} saiu da lista de vacas.`);
     if (orfas.length) partes.push(`Atenção: ${orfas.length === 1 ? 'a cria' : 'as crias'} ${orfas.map((c) => c.brinco || 'sem número').join(', ')} ficou(aram) órfã(s). Os funcionários continuam criando.`);
     if (v.avisos.length) partes.push(v.avisos.join(' '));
-    return { ok: true, msg: partes.join(' ') };
+    return { ok: true, msg: partes.join(' ') + notaFila() };
   }
 
-  async function gravarCorrecao(r) {
-    try {
-      for (const p of postsDeMudancas(r.mudancas)) await postar(p);
-    } catch (e) {
-      console.error('Erro ao gravar a correção', e);
-      return { ok: false, msg: `Não consegui gravar a correção: ${e.message}. A tela não foi alterada, mas parte da correção pode ter chegado na planilha. ${MSG_RECARREGAR}` };
-    }
+  function gravarCorrecao(r, rotulo) {
     commit(aplicarMudancasNoEstado(dadosRef.current, r.mudancas));
+    enfileirar(postsDeMudancas(r.mudancas), rotulo);
     return null;
   }
 
   async function corrigirNascimento(id, campos) {
     const r = editarNascimento(dadosRef.current, id, campos);
     if (r.erro) return { ok: false, msg: r.erro };
-    if (!MODO_TESTE && (versaoScript || 0) < 10 && r.mudancas.eventos.some((m) => m.tipo === 'morte')) return { ok: false, msg: MSG_SCRIPT_MORTE };
-    const falha = await gravarCorrecao(r);
-    if (falha) return falha;
+    if (scriptAntes(10) && r.mudancas.eventos.some((m) => m.tipo === 'morte')) return { ok: false, msg: MSG_SCRIPT_MORTE };
+    gravarCorrecao(r, 'correção de nascimento');
     const ligados = r.mudancas.eventos.length - 1 + r.mudancas.matrizes.length;
     const partes = [`Nascimento corrigido: ${descreverEvento(r.evento, dadosRef.current)}.`];
     if (ligados > 0) partes.push(`Também acertei ${ligados} registro(s) ligados a essa cria.`);
     if (r.avisos.length) partes.push(`Atenção: ${r.avisos.join(' ')}`);
-    return { ok: true, msg: partes.join(' ') };
+    return { ok: true, msg: partes.join(' ') + notaFila() };
   }
 
   async function corrigirMorte(id, campos) {
-    if (!MODO_TESTE && (versaoScript || 0) < 10) return { ok: false, msg: MSG_SCRIPT_MORTE };
+    if (scriptAntes(10)) return { ok: false, msg: MSG_SCRIPT_MORTE };
     const r = editarMorte(dadosRef.current, id, campos, hoje);
     if (r.erro) return { ok: false, msg: r.erro };
-    const falha = await gravarCorrecao(r);
-    if (falha) return falha;
-    return { ok: true, msg: `Morte corrigida: ${descreverEvento(r.evento, dadosRef.current)}.` };
+    gravarCorrecao(r, 'correção de morte');
+    return { ok: true, msg: `Morte corrigida: ${descreverEvento(r.evento, dadosRef.current)}.${notaFila()}` };
   }
 
   async function anularUmaMorte(id) {
-    if (!MODO_TESTE && (versaoScript || 0) < 10) return { ok: false, msg: MSG_SCRIPT_MORTE };
+    if (scriptAntes(10)) return { ok: false, msg: MSG_SCRIPT_MORTE };
     const r = anularMorte(dadosRef.current, id);
     if (r.erro) return { ok: false, msg: r.erro };
-    const falha = await gravarCorrecao(r);
-    if (falha) return falha;
+    gravarCorrecao(r, 'anulação de morte');
     const m = r.mudancas.matrizes[0];
-    return { ok: true, msg: `Morte anulada.${m ? ` A matriz ${m.brinco} voltou a ${m.status}.` : ' O animal voltou a contar no rebanho.'}` };
+    return { ok: true, msg: `Morte anulada.${m ? ` A matriz ${m.brinco} voltou a ${m.status}.` : ' O animal voltou a contar no rebanho.'}${notaFila()}` };
   }
 
+  // Regrava a planilha inteira com o que está na tela. Só com tudo enviado e com os dados lidos da planilha agora
+  // (senão poderia apagar o que outro celular lançou).
   async function sincronizarTudo() {
+    if (pendentes > 0 || doCelular) {
+      setAviso({ tipo: 'erro', texto: 'Antes de sincronizar, é preciso internet e nenhum lançamento esperando na fila. Toque em "Recarregar dados" com internet e tente de novo.' });
+      return;
+    }
     setSincronizando(true);
     const d = dadosRef.current;
     const a = anoDe(hoje);
     const resumo = buildResumoRows(calcularKPIs(d.matrizes, filtrarPorAno(d.eventos, a)), a);
-    const ok = await gravar({ action: 'syncAll', matrizes: d.matrizes, touros: d.touros, eventos: d.eventos, resumo }, 'sincronização completa');
+    try {
+      await postarDireto({ action: 'syncAll', matrizes: d.matrizes, touros: d.touros, eventos: d.eventos, resumo });
+      setAviso({ tipo: 'ok', texto: `Planilha sincronizada${MODO_TESTE ? ' (modo teste: simulado)' : ''}. A aba Resumo mostra o ano ${a}.` });
+    } catch (e) {
+      setAviso({ tipo: 'erro', texto: `Não consegui sincronizar: ${e.message}.` });
+    }
     setSincronizando(false);
-    if (ok) setAviso({ tipo: 'ok', texto: `Planilha sincronizada${MODO_TESTE ? ' (modo teste: simulado)' : ''}. A aba Resumo mostra o ano ${a}.` });
   }
 
   // ---------------------------------------------------------------- senha do proprietário
@@ -340,18 +403,19 @@ function GestaoPecuaria() {
         {MODO_TESTE && (
           <div className="banner-teste" role="status">
             <b>MODO TESTE</b>
-            <span>Lê os dados reais da planilha, mas NÃO grava nada nela. O que você lançar aqui some ao recarregar.</span>
+            <span>Lê os dados reais da planilha, mas NÃO grava nada nela. O que você lançar aqui some ao recarregar com internet.</span>
             <button onClick={carregar}>Recarregar dados</button>
           </div>
         )}
         <header className="topbar">
           <div className="in">
             <Marca />
-            {pendentes > 0 && <span className="chip" role="status"><Loader2 size={14} className="spin" /> gravando</span>}
+            <ChipFila est={filaEst} onClick={() => setFilaAberta(true)} />
             {botaoDono}
           </div>
         </header>
-        {pendentes > 0 && <span className="sr" role="status">Gravando na planilha</span>}
+        {pendentes > 0 && <span className="sr" role="status">{filaEst.semInternet ? `${pendentes} lançamento(s) guardado(s) no celular esperando internet` : 'Gravando na planilha'}</span>}
+        {pendentes > 0 && <div className="lado-fila"><ChipFila est={filaEst} onClick={() => setFilaAberta(true)} /></div>}
 
         {aviso && <div className="wrap"><Aviso tipo={aviso.tipo === 'erro' ? undefined : aviso.tipo} onClose={() => setAviso(null)}>{aviso.texto}</Aviso></div>}
 
@@ -386,6 +450,7 @@ function GestaoPecuaria() {
 
         <div className="foot-note">
           Fazenda Ibiraçu · app {VERSAO_APP} · planilha {versaoScript ? `v${versaoScript}` : 'versão antiga'}{MODO_TESTE ? ' · TESTE' : ''}
+          {atualizadoEm ? ` · dados de ${quandoTxt(atualizadoEm)}${doCelular ? ' (guardados no celular)' : ''}` : ''}
         </div>
       </div>
 
@@ -394,6 +459,39 @@ function GestaoPecuaria() {
           <button key={id} aria-current={tab === id ? 'page' : undefined} onClick={() => mudarTab(id)}><Icon /> {label}</button>
         ))}
       </nav>
+
+      {filaAberta && (
+        <Modal titulo="Lançamentos guardados no celular" onClose={() => { setFilaAberta(false); setDescartarUid(null); }}>
+          {filaEst.pendentes === 0 ? (
+            <p className="sub" style={{ marginTop: 0 }}>Tudo já chegou na planilha. Nada esperando.</p>
+          ) : (
+            <>
+              <p className="sub" style={{ marginTop: 0 }}>
+                {filaEst.semInternet
+                  ? 'Sem internet. Estes lançamentos estão guardados neste celular e vão sozinhos para a planilha quando a internet voltar. Não feche o app pela metade de um lançamento, mas pode fechar e abrir à vontade: nada se perde.'
+                  : filaEst.erroPlanilha ? `A planilha recusou um lançamento: ${filaEst.erroPlanilha}. Os outros esperam na fila, na ordem.` : 'Enviando para a planilha...'}
+              </p>
+              <div className="sheet" data-testid="lista-fila">
+                {filaEst.itens.map((it) => (
+                  <div className="led-r" key={it.uid} style={{ '--cols': ownerMode ? '1fr auto auto' : '1fr auto', minHeight: 48 }}>
+                    <span style={{ fontSize: 14 }}>{it.rotulo || it.payload.action}{it.erro ? <small style={{ display: 'block', color: it.rede ? 'var(--amber)' : 'var(--late)' }}>{it.rede ? 'esperando internet' : it.erro}</small> : null}</span>
+                    <span className="m mut">{quandoTxt(it.criadoEm)}</span>
+                    {ownerMode && (descartarUid === it.uid ? (
+                      <button className="btn sm" style={{ background: 'var(--late)' }} onClick={() => { descartar(it.uid); setDescartarUid(null); }}>Confirmar</button>
+                    ) : (
+                      <button className="x-peq" aria-label="Descartar este lançamento da fila" title="Descartar (só se a planilha recusa sempre)" onClick={() => setDescartarUid(it.uid)}><Trash2 size={16} /></button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              {ownerMode && descartarUid && <Aviso>Descartar tira esse lançamento da fila e ele NÃO vai para a planilha (continua na tela até recarregar). Use só se a planilha recusa sempre.</Aviso>}
+            </>
+          )}
+          <button className="btn wide" style={{ marginTop: 12 }} onClick={() => enviarFila()} disabled={filaEst.enviando || filaEst.pendentes === 0}>
+            {filaEst.enviando ? <Loader2 size={18} className="spin" /> : <RefreshCw size={18} />} Tentar enviar agora
+          </button>
+        </Modal>
+      )}
 
       {pinAberto && !ownerMode && (
         <Modal titulo="Área do proprietário" onClose={() => setPinAberto(false)}>

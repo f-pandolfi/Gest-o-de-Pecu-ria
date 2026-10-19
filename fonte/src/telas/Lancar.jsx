@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Save, Check, Loader2 } from 'lucide-react';
 import {
-  CAMPOS, TIPOS_FUNCIONARIO, camposFaltando, jaExiste, sugerirBrincoBezerro, formatarDataBR,
+  CAMPOS, TIPOS_FUNCIONARIO, camposFaltando, jaExiste, sugerirBrincoBezerro, formatarDataBR, fichaAnimal, diasDeMesesDias,
 } from '../logica.js';
+import FichaRapida from './FichaRapida.jsx';
 import { IndexTabs, Campo, Aviso, Lead } from '../ui.jsx';
 import { ROTULO_CURTO, ORDEM_LANCAR, rotuloEvento, descreverEvento } from '../util.js';
 import LoteFoto from './Lote.jsx';
@@ -72,13 +73,31 @@ export default function Lancar({
     });
   }
 
+  // Desmama: quem é a cria (mãe, nascimento) e a idade em meses e dias, calculada sozinha e editável
+  const fichaDesmama = useMemo(
+    () => (tipo === 'desmama' && form.brincoBezerro && String(form.brincoBezerro).trim() ? fichaAnimal(dados, form.brincoBezerro, form.data || hoje) : null),
+    [tipo, form.brincoBezerro, form.data, dados, hoje],
+  );
+  const idadeAuto = fichaDesmama && fichaDesmama.achado ? fichaDesmama.idade : null;
+  const idadeMeses = form._idadeManual ? form._meses : (idadeAuto ? String(idadeAuto.meses) : '');
+  const idadeDiasTxt = form._idadeManual ? form._dias : (idadeAuto ? String(idadeAuto.dias) : '');
+  function editarIdade(chave, valor) {
+    setForm((f) => ({ ...f, _idadeManual: true, _meses: chave === 'm' ? valor : (f._idadeManual ? f._meses : idadeMeses), _dias: chave === 'd' ? valor : (f._idadeManual ? f._dias : idadeDiasTxt) }));
+  }
+
   function salvar(forcar) {
     if (travado) return;
     const falt = camposFaltando(tipo, form);
     if (falt.length) { setErro(`Falta preencher: ${falt.map((c) => c.label).join(', ')}.`); setDup(false); return; }
     if (!forcar && jaExiste(tipo, form, dados)) { setDup(true); setErro(''); return; }
     setErro(''); setDup(false);
-    const { _sug, ...limpo } = form;
+    const { _sug, _idadeManual, _meses, _dias, ...limpo } = form;
+    if (tipo === 'desmama') {
+      const nascData = fichaDesmama && fichaDesmama.achado ? fichaDesmama.nascData : '';
+      if (_idadeManual && (String(_meses || '').trim() || String(_dias || '').trim())) limpo.idadeDias = diasDeMesesDias(nascData, _meses, _dias);
+      else if (idadeAuto) limpo.idadeDias = idadeAuto.totalDias;
+      else delete limpo.idadeDias;
+    }
     const msg = onSalvar(tipo, limpo);
     setSalvo(msg);
     setForm(formularioInicial(tipo, hoje));
@@ -100,7 +119,7 @@ export default function Lancar({
     [dados.eventos],
   );
 
-  const campos = (CAMPOS[tipo] || []).filter((c) => !c.showIf || c.showIf(form));
+  const campos = (CAMPOS[tipo] || []).filter((c) => (!c.showIf || c.showIf(form)) && !(tipo === 'desmama' && c.key === 'idadeDias'));
   const semMatrizes = dados.matrizes.length === 0 && tipo !== 'cadastro';
 
   return (
@@ -138,8 +157,29 @@ export default function Lancar({
               {campos.map((c) => (
                 <div key={c.key} style={c.type === 'matriz' || c.key === 'observacoes' || c.key === 'motivo' ? { gridColumn: '1 / -1' } : undefined}>
                   <Campo campo={c} value={form[c.key]} onChange={atualizar} matrizes={dados.matrizes} touros={dados.touros} />
+                  {tipo === 'desmama' && c.key === 'brincoBezerro' && <FichaRapida ficha={fichaDesmama} digitado={form.brincoBezerro} />}
                 </div>
               ))}
+              {tipo === 'desmama' && (
+                <div className="fld" style={{ gridColumn: '1 / -1' }} role="group" aria-label="Idade na desmama">
+                  <span className="lbl" style={{ display: 'block', font: '600 11.5px var(--mono)', letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--mut)', marginBottom: 6 }}>Idade na desmama</span>
+                  <div className="idade-md">
+                    <div className="fld" style={{ margin: 0 }}>
+                      <label htmlFor="idade-meses">Meses</label>
+                      <input id="idade-meses" type="number" inputMode="numeric" min="0" value={idadeMeses} onChange={(e) => editarIdade('m', e.target.value)} />
+                    </div>
+                    <div className="fld" style={{ margin: 0 }}>
+                      <label htmlFor="idade-dias">Dias</label>
+                      <input id="idade-dias" type="number" inputMode="numeric" min="0" value={idadeDiasTxt} onChange={(e) => editarIdade('d', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="hint" style={{ fontSize: 12.5, color: 'var(--mut)', marginTop: 4 }} data-testid="hint-idade">
+                    {form._idadeManual
+                      ? <>Idade digitada à mão.{idadeAuto ? <> Pelo nascimento seria {idadeAuto.texto}. <button type="button" className="btn quiet sm" style={{ minHeight: 30, marginLeft: 6 }} onClick={() => setForm((f) => ({ ...f, _idadeManual: false, _meses: '', _dias: '' }))}>Usar a calculada</button></> : null}</>
+                      : idadeAuto ? `Calculada pelo nascimento (${formatarDataBR(fichaDesmama.nascData)}) até a data da desmama. Pode alterar se precisar.` : 'Digite o brinco da cria para calcular a idade, ou preencha à mão.'}
+                  </div>
+                </div>
+              )}
             </div>
 
             {erro && <Aviso>{erro}</Aviso>}

@@ -30,6 +30,20 @@
 </head>
 <body>
 <div id="root"></div>
-<script type="module" src="app.js?v=9.4"></script>
+<script type="module" src="app.js?v=9.5"></script>
+<script>
+  // v9.5: guarda o app no celular (service worker) para abrir mesmo sem internet
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function (e) { console.warn('service worker', e); });
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        navigator.serviceWorker.ready.then(function (r) {
+          var urls = performance.getEntriesByType('resource').map(function (e) { return e.name; });
+          if (r.active) r.active.postMessage({ tipo: 'guardar', urls: urls });
+        });
+      }, 4000);
+    });
+  }
+</script>
 </body>
 </html>
