@@ -3,14 +3,14 @@ import { TIPOS_EVENTO, formatarDataBR, mapaBrincos, nomeTouroEvento } from './lo
 
 export const ROTULO_CURTO = {
   cadastro: 'Nova matriz', touro: 'Touro / sêmen', iatf: 'IATF', diagnostico: 'Toque', nascimento: 'Nascimento',
-  desmama: 'Desmama', recria: 'Recria', pesagem: 'Peso', venda: 'Venda', vendaitem: 'Animal vendido', insumo: 'Insumo', descarte: 'Descarte', morte: 'Morte',
+  desmama: 'Desmama', recria: 'Recria', pesagem: 'Peso', venda: 'Venda', vendaitem: 'Animal vendido', insumo: 'Insumo', descarte: 'Descarte', morte: 'Morte', manejo: 'Manejo',
 };
 
 export const rotuloEvento = (tipo) => (TIPOS_EVENTO.find((t) => t.id === tipo) || {}).label || tipo;
 
 // Ordem das abas em "Lançar" (nascimento primeiro: é o que mais se lança no dia a dia)
 // (a venda por peso e as pesagens ficam na tela Crias)
-export const ORDEM_LANCAR = ['nascimento', 'morte', 'iatf', 'diagnostico', 'desmama', 'recria', 'descarte', 'insumo', 'cadastro', 'touro'];
+export const ORDEM_LANCAR = ['nascimento', 'morte', 'desmama', 'descarte', 'insumo', 'iatf', 'diagnostico', 'recria', 'cadastro'];
 
 // Texto curto de um evento, para listas ("Nascimento · mãe 3012 · cria 6001")
 export function descreverEvento(e, dados) {
@@ -47,6 +47,10 @@ export function descreverEvento(e, dados) {
     if (e.tipoAnimal) partes.push(e.brinco ? `${e.tipoAnimal.toLowerCase()} ${e.brinco}` : `${e.tipoAnimal.toLowerCase()} sem número`);
     if (e.causa) partes.push(e.causa.toLowerCase());
     if (String(e.anulada ?? '').trim().toLowerCase() === 'sim') partes.push('anulada');
+  } else if (e.tipo === 'manejo') {
+    if (e.etapa) partes.push(e.etapa);
+    const n = String(e.presentes || '').split(',').filter(Boolean).length;
+    if (n) partes.push(`${n} animal(is)`);
   } else if (e.tipo === 'insumo') {
     if (e.produto) partes.push(e.produto);
     if (e.quantidade) partes.push(`${e.quantidade} ${e.unidade || ''}`.trim());

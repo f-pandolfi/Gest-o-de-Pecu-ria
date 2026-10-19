@@ -5,7 +5,30 @@ import {
   CAMPOS_EDICAO_MATRIZ, formatarDataBR, ultimoPartoDe, numeroCriaUltimoParto,
 } from '../logica.js';
 import { IndexTabs, Modal, Tag, Campo, Lead, Aviso } from '../ui.jsx';
-import { descreverEvento, fmtBRL } from '../util.js';
+import { descreverEvento } from '../util.js';
+import Touros from './Touros.jsx';
+import { aplicacoesPorAnimal, protocolosDoAnimal, situacaoVacinaVaca } from '../manejo.js';
+
+// Vacinas e protocolos da vaca (ficha)
+function VacinasDaVaca({ m, dados }) {
+  const aps = (aplicacoesPorAnimal(dados).get(m.id) || []).slice().reverse();
+  const prots = protocolosDoAnimal(dados, m.id);
+  const sit = situacaoVacinaVaca(dados, m);
+  return (
+    <>
+      {sit.texto && <div style={{ margin: '6px 0' }}><span className={`vac-tag ${sit.nivel}`}>{sit.texto}</span></div>}
+      {prots.length > 0 && <Lead rotulo="Protocolos" valor={prots.slice(0, 3).map((p) => p.nome).join(', ')} />}
+      {aps.length > 0 && (
+        <>
+          <h3 className="h2" style={{ fontSize: 18 }}>Vacinas e medicamentos<small>{aps.length}</small></h3>
+          <ul className="hist" data-testid="vacinas-vaca">
+            {aps.slice(0, 12).map((a, i) => <li key={i}><span>{a.tipo}{a.produto ? ` · ${a.produto}` : ''}{a.etapa ? ` (${a.etapa})` : ''}</span><span>{formatarDataBR(a.data)}</span></li>)}
+          </ul>
+        </>
+      )}
+    </>
+  );
+}
 
 function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar }) {
   const [edit, setEdit] = useState(false);
@@ -44,6 +67,7 @@ function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar }) {
           <Lead rotulo="Partos antes de entrar" valor={m.partosAnteriores || 0} />
           <Lead rotulo="Último parto" valor={ult ? `${formatarDataBR(ult)}${cria ? ` (cria ${cria})` : ''}` : '—'} />
 
+          <VacinasDaVaca m={m} dados={dados} />
           <h3 className="h2" style={{ fontSize: 18 }}>Histórico<small>{hist.length} lançamento(s)</small></h3>
           {hist.length === 0 ? <p className="sub">Nada lançado para esta vaca ainda.</p> : (
             <ul className="hist" data-testid="historico">
@@ -78,7 +102,7 @@ function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar }) {
   );
 }
 
-export default function Rebanho({ dados, ownerMode, onSalvarMatriz }) {
+export default function Rebanho({ dados, ownerMode, onSalvarMatriz, onSalvarTouro }) {
   const [aba, setAba] = useState('matrizes');
   const [filtro, setFiltro] = useState('todos');
   const [busca, setBusca] = useState('');
@@ -142,34 +166,7 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz }) {
         </section>
       )}
 
-      {aba === 'touros' && (
-        <section className="sheet">
-          {dados.touros.length === 0 ? (
-            <div className="empty">
-              Nenhum touro / sêmen cadastrado ainda.{ownerMode ? ' Cadastre em Lançar → Touro / sêmen.' : ''}
-              <div style={{ marginTop: 6, fontSize: 13 }}>Enquanto não houver cadastro, os relatórios mostram o pai como "não informado".</div>
-            </div>
-          ) : dados.touros.map((t) => {
-            const usadas = dados.eventos.filter((e) => e.tipo === 'iatf' && e.touroId === t.id).length;
-            const adq = parseInt(t.doses, 10) || 0;
-            const rest = adq - usadas;
-            return (
-              <div className="led-r" key={t.id} style={{ '--cols': ownerMode ? 'minmax(0,1fr) auto' : '1fr', minHeight: 64 }}>
-                <span className="two">
-                  <b>{t.nome}</b>
-                  <span>{[t.raca, t.fornecedor, t.anoAquisicao].filter(Boolean).join(' · ')}</span>
-                </span>
-                {ownerMode && adq > 0 && (
-                  <span className="r" style={{ color: rest <= 0 ? 'var(--late)' : rest <= 5 ? 'var(--amber)' : 'var(--green)' }}>
-                    {rest} dose(s)
-                    <div style={{ font: '500 11.5px var(--body)', color: 'var(--mut)' }}>{usadas} de {adq}{t.custoDose ? ` · ${fmtBRL(t.custoDose)}` : ''}</div>
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </section>
-      )}
+      {aba === 'touros' && <Touros dados={dados} ownerMode={ownerMode} onSalvarTouro={onSalvarTouro} />}
 
       {!ownerMode && (
         <p className="sub" style={{ marginTop: 14, display: 'flex', gap: 8, alignItems: 'center' }}>

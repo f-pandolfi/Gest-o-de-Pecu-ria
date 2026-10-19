@@ -50,8 +50,8 @@ function criarPlanilha() {
 }
 
 // Carrega o script .gs e devolve funções para chamar como se fosse o app (doGet / doPost)
-function carregarScript(arquivoGs) {
-  const { ss, abas } = criarPlanilha();
+function carregarScript(arquivoGs, existente) {
+  const { ss, abas } = existente || criarPlanilha();
   const p2 = (n) => String(n).padStart(2, '0');
   const ctx = {
     SpreadsheetApp: { getActiveSpreadsheet: () => ss, BandingTheme: { LIGHT_GREEN: 'LG' } },

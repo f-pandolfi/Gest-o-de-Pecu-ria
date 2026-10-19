@@ -1,16 +1,18 @@
-// Gestão da Pecuária · Fazenda Ibiraçu (app v9.5)
+// Gestão da Pecuária · Fazenda Ibiraçu (app v10)
 // Casca do app: menu, ano de gestão, senha do proprietário, leitura e gravação na planilha.
 // v9.5: tudo o que é lançado entra numa fila guardada no celular (fila.js) e vai para a planilha quando há internet.
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Plus, CalendarClock, List, LayoutDashboard, FileText, Lock, Unlock, Loader2, ChevronDown, Baby, CloudOff, AlertTriangle, RefreshCw, Trash2,
+  Plus, CalendarClock, List, LayoutDashboard, FileText, Lock, Unlock, Loader2, ChevronDown, Baby, CloudOff, AlertTriangle, RefreshCw, Trash2, Syringe,
 } from 'lucide-react';
 import {
-  VERSAO_APP, VERSAO_MINIMA_SCRIPT, todayISO, anoDe, anosDisponiveis, filtrarPorAno, normalizarDados,
+  VERSAO_APP, VERSAO_MINIMA_SCRIPT, todayISO, anoDe, anosDisponiveis, filtrarPorAno,
   aplicarLancamento, aplicarVenda, calcularKPIs, buildResumoRows, validarMorte, listarCrias,
-  editarNascimento, editarMorte, anularMorte, postsDeMudancas, aplicarMudancasNoEstado, aplicarPendentes, formatarDataBR,
+  editarNascimento, editarMorte, anularMorte, postsDeMudancas, aplicarMudancasNoEstado,
 } from './logica.js';
+import { normalizarTudo, aplicarPendentesTudo, protocoloParaPlanilha } from './manejo.js';
+import Manejo from './telas/Manejo.jsx';
 import { CSS } from './estilos.js';
 import { MODO_TESTE, lerTudo, postar as postarDireto } from './api.js';
 import {
@@ -30,7 +32,7 @@ import Relatorios from './telas/Relatorios.jsx';
 // (nos testes automáticos o build troca a senha por uma de mentira, via __PIN_TESTE__)
 const OWNER_PIN = typeof __PIN_TESTE__ !== 'undefined' ? __PIN_TESTE__ : '1537';
 
-const VAZIO = { matrizes: [], touros: [], eventos: [], config: {} };
+const VAZIO = { matrizes: [], touros: [], eventos: [], config: {}, protocolos: [] };
 
 function Marca() {
   return (
@@ -141,7 +143,7 @@ function GestaoPecuaria() {
     const temCopia = !!(copia && copia.dados && Array.isArray(copia.dados.matrizes));
     if (temCopia && dadosRef.current === VAZIO) {
       // a fila também entra (a cópia pode ter sido guardada um instante antes do último lançamento)
-      const comFila = aplicarPendentes(copia.dados, estadoFila().itens);
+      const comFila = aplicarPendentesTudo({ protocolos: [], ...copia.dados }, estadoFila().itens);
       dadosRef.current = comFila; setDados(comFila);
       definirVersao(copia.versao || null);
       setAtualizadoEm(copia.atualizadoEm || null);
@@ -156,7 +158,7 @@ function GestaoPecuaria() {
       const data = await lerTudo();
       // o que ainda está na fila (ou chegou na planilha enquanto ela era lida) continua aparecendo
       const extra = [...enviadosDesde(inicio), ...estadoFila().itens];
-      const novos = aplicarPendentes(normalizarDados(data), extra);
+      const novos = aplicarPendentesTudo(normalizarTudo(data), extra);
       const v = Number(data.versao) || 0;
       definirVersao(v);
       commit(novos);
@@ -166,7 +168,7 @@ function GestaoPecuaria() {
       guardarCopia(agora);
       if (v < VERSAO_MINIMA_SCRIPT) {
         if (MODO_TESTE) {
-          setAviso({ tipo: 'info', texto: `Modo teste: a planilha ainda está na versão ${v || 'antiga'} do script. As telas novas já funcionam, mas o registro de mortes só será gravado depois que o script v${VERSAO_MINIMA_SCRIPT} for publicado.` });
+          setAviso({ tipo: 'info', texto: `Modo teste: a planilha ainda está na versão ${v || 'antiga'} do script. As telas novas já funcionam aqui; protocolos, manejos e touros só serão gravados depois que o script v${VERSAO_MINIMA_SCRIPT} for publicado.` });
         } else {
           setAviso({ tipo: 'erro', texto: `ATENÇÃO: o script da planilha está desatualizado (versão ${v || 'antiga'}). O que você lançar aparece na tela, mas NÃO está sendo gravado na planilha. Avise o responsável pelo sistema.` });
         }
@@ -229,6 +231,31 @@ function GestaoPecuaria() {
   }
 
   const scriptAntes = (v) => !MODO_TESTE && versaoScript !== null && (versaoScript || 0) < v;
+  const MSG_SCRIPT_12 = 'O script da planilha está desatualizado e não aceita protocolos, manejos e touros. Avise o responsável pelo sistema.';
+
+  // Protocolo (IATF ou monta): grava ou atualiza pelo id
+  function salvarProtocolo(p) {
+    if (scriptAntes(12)) return MSG_SCRIPT_12;
+    const d = dadosRef.current;
+    const lista = d.protocolos || [];
+    commit({ ...d, protocolos: lista.some((x) => x.id === p.id) ? lista.map((x) => (x.id === p.id ? p : x)) : [...lista, p] });
+    enfileirar([{ action: 'upsertProtocolos', protocolos: [protocoloParaPlanilha(p)] }], `protocolo ${p.nome}`);
+    return `Protocolo "${p.nome}" salvo.${notaFila()}`;
+  }
+
+  function salvarTouro(t) {
+    if (scriptAntes(12)) return MSG_SCRIPT_12;
+    const d = dadosRef.current;
+    commit({ ...d, touros: d.touros.some((x) => x.id === t.id) ? d.touros.map((x) => (x.id === t.id ? t : x)) : [...d.touros, t] });
+    enfileirar([{ action: 'upsertTouros', touros: [t] }], `touro ${t.nome}`);
+    return null;
+  }
+
+  // Manejo de curral, toque e vacinação (mesma forma do lote): eventos, matrizes alteradas
+  async function gravarManejo(res, rotulo) {
+    if (scriptAntes(12)) return { ok: false, msg: MSG_SCRIPT_12 };
+    return gravarLote(res, rotulo);
+  }
 
   // eventos em pacotes de 40, depois as matrizes e os touros
   function postsDeLote(eventos, matrizes, touros) {
@@ -333,7 +360,7 @@ function GestaoPecuaria() {
     const a = anoDe(hoje);
     const resumo = buildResumoRows(calcularKPIs(d.matrizes, filtrarPorAno(d.eventos, a)), a);
     try {
-      await postarDireto({ action: 'syncAll', matrizes: d.matrizes, touros: d.touros, eventos: d.eventos, resumo });
+      await postarDireto({ action: 'syncAll', matrizes: d.matrizes, touros: d.touros, eventos: d.eventos, protocolos: (d.protocolos || []).map(protocoloParaPlanilha), resumo });
       setAviso({ tipo: 'ok', texto: `Planilha sincronizada${MODO_TESTE ? ' (modo teste: simulado)' : ''}. A aba Resumo mostra o ano ${a}.` });
     } catch (e) {
       setAviso({ tipo: 'erro', texto: `Não consegui sincronizar: ${e.message}.` });
@@ -351,7 +378,7 @@ function GestaoPecuaria() {
   }
   function sairDoModoDono() {
     setOwnerMode(false);
-    if (tab === 'painel' || tab === 'relatorios') setTab('lancar');
+    if (tab === 'painel') setTab('lancar');
   }
 
   function mudarTab(t) { setPreset(null); setTab(t); }
@@ -362,10 +389,11 @@ function GestaoPecuaria() {
   const itensNav = [
     ownerMode && { id: 'painel', label: 'Painel', Icon: LayoutDashboard },
     { id: 'lancar', label: 'Lançar', Icon: Plus },
+    { id: 'manejo', label: 'Manejo', Icon: Syringe },
     { id: 'parto', label: 'Parto', Icon: CalendarClock },
     { id: 'crias', label: 'Crias', Icon: Baby },
     { id: 'rebanho', label: 'Rebanho', Icon: List },
-    ownerMode && { id: 'relatorios', label: 'Relatórios', Icon: FileText },
+    { id: 'relatorios', label: 'Relatórios', Icon: FileText },
   ].filter(Boolean);
 
   const anoSel = <SeletorAno ano={ano} anos={anos} onChange={setAno} />;
@@ -425,7 +453,10 @@ function GestaoPecuaria() {
             onRegistrarMorte={registrarMorte} onEditarNascimento={corrigirNascimento} onEditarMorte={corrigirMorte} onAnularMorte={anularUmaMorte}
           />
         )}
-        {tab === 'parto' && <Parto dados={dados} hoje={hoje} onLancar={lancarDaVaca} />}
+        {tab === 'manejo' && (
+          <Manejo dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE} onGravarLote={gravarManejo} onSalvarProtocolo={salvarProtocolo} onSalvarConfig={salvarConfig} />
+        )}
+        {tab === 'parto' && <Parto dados={dados} hoje={hoje} onLancar={lancarDaVaca} onGravarLote={gravarManejo} />}
         {tab === 'crias' && (
           <Crias
             dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE}
@@ -434,16 +465,16 @@ function GestaoPecuaria() {
             onRegistrarMorte={registrarMorte} onEditarNascimento={corrigirNascimento} onEditarMorte={corrigirMorte} onAnularMorte={anularUmaMorte}
           />
         )}
-        {tab === 'rebanho' && <Rebanho dados={dados} ownerMode={ownerMode} onSalvarMatriz={salvarMatriz} />}
+        {tab === 'rebanho' && <Rebanho dados={dados} ownerMode={ownerMode} onSalvarMatriz={salvarMatriz} onSalvarTouro={salvarTouro} />}
         {tab === 'painel' && ownerMode && (
           <Painel
             anoSel={anoSel} dados={dados} ano={ano} hoje={hoje} go={mudarTab} modoTeste={MODO_TESTE} sincronizando={sincronizando}
             onExcel={() => exportarExcel(dadosRef.current, ano, hoje)} onSync={sincronizarTudo} onRecarregar={carregar}
           />
         )}
-        {tab === 'relatorios' && ownerMode && (
+        {tab === 'relatorios' && (
           <Relatorios
-            anoSel={anoSel} dados={dados} ano={ano} hoje={hoje}
+            anoSel={anoSel} dados={dados} ano={ano} hoje={hoje} ownerMode={ownerMode}
             onExcel={() => exportarExcel(dadosRef.current, ano, hoje)} onExcelRelatorio={(rel) => exportarRelatorioExcel(rel, ano, hoje)}
           />
         )}

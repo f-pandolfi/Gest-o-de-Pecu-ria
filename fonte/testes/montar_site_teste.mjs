@@ -19,7 +19,7 @@ fs.writeFileSync(`${OUT}/vendor/lucide-react.js`, embrulho('LUC', nomes('lucide-
 fs.writeFileSync(`${OUT}/vendor/xlsx.js`, embrulho('X', nomes('xlsx'), false));
 for (const f of ['app.js', 'logica.js', 'pdf.js', 'sw.js']) fs.copyFileSync(`site9/${f}`, `${OUT}/${f}`);
 const modo = process.argv[2] || 'producao';
-let html = fs.readFileSync('../teste/index.html.v95', 'utf8');
+let html = fs.readFileSync('../teste/index.html', 'utf8');
 if (modo === 'producao') html = html.replace(/<!-- MODO TESTE[^\n]*\n<script>window.MODO_TESTE = true;<\/script>\n/, '');
 html = html.replace(/<link[^>]*fonts[^>]*>\n/g, '')
   .replace(/"react": "[^"]+"/, '"react": "./vendor/react.js"')

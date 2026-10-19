@@ -2,12 +2,12 @@
 // É usado por dois lados: o app (app.jsx) e a integração por foto (lançamentos em lote feitos pelo Claude).
 // Mexeu aqui = mudou nos dois, de propósito: uma única fonte da verdade para status, previsão e relatórios.
 
-export const VERSAO_APP = '9.5 (19/10/26)';
-export const VERSAO_MINIMA_SCRIPT = 10; // v10 = aba Mortes (v9 = pesagens, venda por peso e baixa no rebanho)
+export const VERSAO_APP = '10.0 (19/10/26)';
+export const VERSAO_MINIMA_SCRIPT = 12; // v12 = protocolos, manejos, touros completos (v11 = não duplica reenvio; v10 = aba Mortes)
 export const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
 
 // Tipos de lançamento visíveis no modo Funcionário (restrito)
-export const TIPOS_FUNCIONARIO = ['nascimento', 'desmama', 'iatf', 'insumo', 'descarte', 'pesagem', 'morte'];
+export const TIPOS_FUNCIONARIO = ['nascimento', 'desmama', 'insumo', 'descarte', 'pesagem', 'morte']; // IATF agora é pelo protocolo (tela Manejo)
 
 // Morte de animal (qualquer um: cria, novilha, matriz, touro ou animal sem cadastro)
 export const CAUSAS_MORTE = ['Doença', 'Acidente', 'Picada de cobra', 'Raio', 'Parto difícil', 'Não sabe', 'Outra'];
@@ -27,6 +27,7 @@ export const TIPOS_EVENTO = [
   { id: 'insumo', label: 'Sal / Medicamento' },
   { id: 'descarte', label: 'Descarte' },
   { id: 'morte', label: 'Morte' },
+  { id: 'manejo', label: 'Manejo' },
 ];
 
 // Campos editáveis ao clicar numa matriz (modo proprietário)
@@ -68,7 +69,6 @@ export const CAMPOS = {
     { key: 'touroId', label: 'Sêmen / touro', type: 'touro' },
     { key: 'touroOutro', label: 'Nome (não cadastrado)', type: 'text', showIf: (f) => f.touroId === '__outro__' },
     { key: 'tecnico', label: 'Técnico', type: 'text' },
-    { key: 'custo', label: 'Custo (R$)', type: 'number' },
     { key: 'observacoes', label: 'Observações', type: 'text' },
   ],
   diagnostico: [
@@ -453,7 +453,7 @@ export function nomeTouroEvento(e, touros) {
 // IATF compatível = IATF da mesma mãe de 250 a 320 dias antes do parto (gestação de ~285). O pai é o touro/sêmen desse IATF.
 // Sem IATF compatível, ou com "Repasse (monta natural)", a cria é de monta natural.
 export const JANELA_IATF_DIAS = [250, 320];
-export function origemDaCria(nasc, eventos, touros) {
+export function origemDaCria(nasc, eventos, touros, protocolos) {
   const informado = nomeTouroEvento(nasc, touros); // lançamentos antigos que já traziam o pai
   if (informado) return { origem: 'Informado', pai: informado, iatfData: '', rotulo: informado };
   if (!nasc.matrizId) return { origem: 'Sem mãe', pai: '', iatfData: '', rotulo: 'Mãe não informada' };
@@ -461,7 +461,7 @@ export function origemDaCria(nasc, eventos, touros) {
   const [min, max] = JANELA_IATF_DIAS;
   const dias = (d) => Math.round((new Date(nasc.data) - new Date(d)) / 86400000);
   const candidatos = (eventos || []).filter((e) => e.tipo === 'iatf' && e.matrizId === nasc.matrizId && e.data && dias(e.data) >= min && dias(e.data) <= max);
-  if (!candidatos.length) return { origem: 'Monta', pai: 'Monta natural', iatfData: '', rotulo: 'Monta natural' };
+  if (!candidatos.length) return origemPelaMonta(nasc, touros, protocolos) || { origem: 'Monta', pai: 'Monta natural', iatfData: '', rotulo: 'Monta natural' };
   candidatos.sort((a, b) => Math.abs(dias(a.data) - PERIODO_GESTACAO_DIAS) - Math.abs(dias(b.data) - PERIODO_GESTACAO_DIAS));
   const e = candidatos[0];
   const nome = nomeTouroEvento(e, touros);
@@ -469,6 +469,20 @@ export function origemDaCria(nasc, eventos, touros) {
     return { origem: 'Monta', pai: nome || 'Monta natural', iatfData: e.data, rotulo: nome ? `Monta · ${nome}` : 'Monta natural' };
   }
   return { origem: 'IATF', pai: nome, iatfData: e.data, rotulo: nome ? `IATF · ${nome}` : 'IATF · touro não informado' };
+}
+
+// v10: sem IATF compatível, procura o lote de monta (protocolo de monta) em que a mãe estava na época da concepção.
+// O lote pode ter mais de um touro: o pai fica "touro A ou B".
+function origemPelaMonta(nasc, touros, protocolos) {
+  if (!protocolos || !protocolos.length) return null;
+  const concepcao = addDias(nasc.data, -PERIODO_GESTACAO_DIAS);
+  const montas = protocolos.filter((p) => p.tipo === 'Monta' && p.dataInicio && (p.animais || []).includes(nasc.matrizId)
+    && concepcao >= addDias(p.dataInicio, -20) && concepcao <= addDias(p.dataFim || addDias(p.dataInicio, 90), 20))
+    .sort((a, b) => (b.dataInicio || '').localeCompare(a.dataInicio || ''));
+  if (!montas.length) return null;
+  const nomes = (montas[0].touros || []).map((id) => { const t = (touros || []).find((x) => x.id === id); return t ? t.nome : ''; }).filter(Boolean);
+  const pai = nomes.length ? nomes.join(' ou ') : 'Monta natural';
+  return { origem: 'Monta', pai, iatfData: '', rotulo: nomes.length ? `Monta · ${pai}` : `Monta (${montas[0].nome})` };
 }
 
 const semAcento = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -969,7 +983,7 @@ export function listarCrias(estado, hoje) {
       return {
         id: n.id, nasc: n, brinco, sexo: n.sexo || '', nascData: n.data, idadeDias: n.data ? diasEntre(n.data, hoje) : null,
         matrizId: n.matrizId || '', maeBrinco: n.matrizId ? brincos[n.matrizId] || '?' : '',
-        origem: origemDaCria(n, eventos, touros), pelagem: n.pelagem || '',
+        origem: origemDaCria(n, eventos, touros, estado.protocolos), pelagem: n.pelagem || '',
         pontos, pesoAtual: ultimo ? ultimo.peso : null, pesoData: ultimo ? ultimo.data : '',
         diasDesdePeso: ultimo ? diasEntre(ultimo.data, hoje) : null, gmd: ganhoDiario(pontos),
         situacao, desmamaData: desm ? desm.data : '', novilha, vendaData: baixa ? baixa.data : (novilha && novilha.dataBaixa) || '',
@@ -2215,7 +2229,7 @@ export function relatorioPesagemDia(estado, data, hoje) {
 // Aplica sobre os dados lidos da planilha o que ainda está na fila do celular (não chegou na planilha).
 // Assim o que foi lançado sem internet continua aparecendo depois de recarregar.
 export function aplicarPendentes(dados, itensFila) {
-  let { matrizes, touros, eventos, config } = dados;
+  let { matrizes, touros, eventos, config, protocolos } = dados;
   const idsEv = new Set(eventos.map((e) => e.id));
   const addEv = (tipo, ev) => { if (!ev || !ev.id || idsEv.has(ev.id)) return; idsEv.add(ev.id); eventos = [...eventos, { ...ev, tipo: ev.tipo || tipo }]; };
   const upM = (m) => { if (!m || !m.id) return; matrizes = matrizes.some((x) => x.id === m.id) ? matrizes.map((x) => (x.id === m.id ? { ...x, ...m } : x)) : [...matrizes, m]; };
@@ -2226,11 +2240,18 @@ export function aplicarPendentes(dados, itensFila) {
     else if (p.action === 'upsertMatriz') upM(p.matriz);
     else if (p.action === 'upsertMatrizes') (p.matrizes || []).forEach(upM);
     else if (p.action === 'appendTouro') { if (p.touro && !touros.some((t) => t.id === p.touro.id)) touros = [...touros, p.touro]; }
+    else if (p.action === 'upsertTouros') (p.touros || []).forEach((t) => { touros = touros.some((x) => x.id === t.id) ? touros.map((x) => (x.id === t.id ? { ...x, ...t } : x)) : [...touros, t]; });
+    else if (p.action === 'upsertProtocolos') {
+      (p.protocolos || []).forEach((pr) => {
+        const lista = protocolos || [];
+        protocolos = lista.some((x) => x.id === pr.id) ? lista.map((x) => (x.id === pr.id ? { ...x, ...pr } : x)) : [...lista, pr];
+      });
+    }
     else if (p.action === 'setConfig') config = { ...(config || {}), ...(p.config || {}) };
     else if (p.action === 'atualizarCampos') {
       const mapa = new Map((p.itens || []).map((it) => [it.id, it.campos]));
       eventos = eventos.map((e) => (mapa.has(e.id) && e.tipo === p.tipo ? { ...e, ...mapa.get(e.id) } : e));
     }
   });
-  return { ...dados, matrizes, touros, eventos, config };
+  return { ...dados, matrizes, touros, eventos, config, protocolos };
 }

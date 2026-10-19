@@ -1,4 +1,4 @@
-# Código-fonte do app (versão 9.5)
+# Código-fonte do app (versão 10)
 
 - `src/logica.js`: regras (status, previsão de parto, crias, pesagem, novilhas, venda por peso, relatórios, lançamento em lote). Usado pelo app e pela integração por foto.
 - `src/app.jsx` e `src/telas/`: telas. A tela **Crias** é feita de `Crias.jsx` (abas) e `CriasLista`, `CriasPesar`, `CriasParaVender`, `CriasNovilhas`, `CriasVendas`. `src/estilos.js`: visual. `src/api.js`: conversa com a planilha. `src/excel.js`: exportação.
@@ -39,3 +39,15 @@
 - Navegador (Chromium, sem internet de verdade: bibliotecas locais e planilha simulada):
   `node build9.mjs && node testes/montar_site_teste.mjs && node testes/servidor.cjs 8765 &` e depois
   `python3 testes/test_navegador_95.py` (21 testes: Pesar, 2x, PDF, sem internet, reenvio sem duplicar, erro da planilha, Desmama, passeio por todas as telas). Para a área de teste: `node testes/montar_site_teste.mjs teste` e `python3 testes/test_modo_teste.py`.
+
+## App 10 (19/10/2026): curral, toque, vacinas, touros e relatórios para todos
+- **`src/manejo.js`**: regras novas (protocolos de IATF e monta, manejo de curral, toque geral, vacinas, touros, relatórios do app). `logica.js` continua com as regras antigas e é o arquivo usado pela integração por foto.
+- **Tela Manejo** (`telas/Manejo.jsx`, para todos): abas Protocolos (`Protocolos.jsx` + `ManejoCurral.jsx`), Toque (`Toque.jsx`) e Vacinas (`Vacinas.jsx`). Peças comuns em `ManejoComum.jsx` (vacinas do cabeçalho e lista que se marca, começando desmarcada).
+- **Protocolo IATF** (dono cria): nome, D0, modelo de 3 ou 4 manejos (dias, descrição, medicamentos, qual é a IA), sêmen padrão, técnico, custo opcional, animais (busca mostra último parto e última IATF; atalhos "todas as vazias" e "vazias e novilhas aptas do último toque"). No dia da IA cada vaca marcada ganha um lançamento de IATF (protocoloId, sêmen), que alimenta previsão de parto, doses do sêmen e pai da cria. Brinco digitado fora do protocolo é avisado.
+- **Monta (repasse)**: botão "Mandar para o repasse" cria o lote de monta 17 dias depois da IA, por 90 dias, com vários touros vivos. O pai da cria sem IATF compatível passa a ser "Monta · touro A ou B" (`origemDaCria` com protocolos).
+- **Toque geral**: cabeçalho (data, veterinário, método, vacinas) e todas as matrizes e novilhas com crias, último parto, serviço, último toque e vacina. Cheia (com dias, mostra concepção, previsão e origem), Vazia, Descarte (motivo), novilha Apta/Não apta, Ausente. Avisos: dias que não batem com o parto, prenhez sem IATF nem monta, perda. Marcações guardadas no celular; "Gravar" manda diagnósticos (com toqueId) e um manejo "Toque". Encerrar mostra o resumo (taxa de prenhez por protocolo, sêmen, touro, lote, categoria), PDF e "Montar protocolo" (dono). Novilha apta com destino de recria passa a destino Matriz.
+- **Vacinas**: aplicações ficam no manejo (aba Manejos, coluna aplicacoes) e valem para os presentes. Reforço da Lepto aos 6 meses de prenhez (concepção pela previsão de parto: toque menos dias de gestação, ou IATF); vacina reprodutiva por ciclo com "Foi vacinada?"; brucelose das bezerras de 3 a 8 meses (crias como `c:<id do nascimento>`); vacinas periódicas que o dono cria. Calendário e dias mínimos de parida na aba Config (`calendarioVacinas`, `diasMinPosParto`). A tela Parto mostra a vacina de cada cheia.
+- **Touros** (Rebanho > Touros): sêmen (central, código, partida, tipo, doses, ajuste, compra, botijão, caneca, parto fácil, RGD, DEPs) ou touro vivo (brinco, nascimento, origem, compra, RGD, pais, lote, peso, exame andrológico com aviso de vencido). Só o dono cadastra e altera.
+- **Relatórios para todos**, com PDF: crias por sexo (ordem numérica), vazias, prenhas, situação, previsão, último toque, IATF, vacinas, pesagens, crias e pesos, descartes, mortalidade, vendas (sem valores para o funcionário), touros. Dono vê também valores, Excel, Planilha, nascimentos e melhores vacas.
+- **Script v12** (`Code_v12.gs`): abas Protocolos e Manejos, colunas novas no fim de Touros, Diagnosticos e IATF, ações upsertTouros e upsertProtocolos, config nova. Inclui a regra da v11 (não duplica reenvio). O app 10 exige o script 12.
+- Testes: `node testes/test_script_v12.cjs`, `node testes/test_manejo.mjs`, `python3 testes/test_navegador_10.py` (com o servidor de teste no ar).

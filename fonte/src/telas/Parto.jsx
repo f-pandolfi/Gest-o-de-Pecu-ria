@@ -2,7 +2,8 @@
 import React, { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { linhasPrevisao, formatarDataBR, PERIODO_GESTACAO_DIAS } from '../logica.js';
-import { IndexTabs } from '../ui.jsx';
+import { IndexTabs, Aviso } from '../ui.jsx';
+import { aplicacoesPorAnimal, situacaoVacinaVaca, manejoConfirmacaoVacina } from '../manejo.js';
 
 function textoDias(dias) {
   if (dias === null || dias === undefined) return { t: '—', c: 'mut' };
@@ -19,7 +20,36 @@ function Calculo({ info }) {
   return <>Toque de <b>{formatarDataBR(info.base)}</b> sem os dias de gestação (DG) anotados: não dá para calcular a data.</>;
 }
 
-export default function Parto({ dados, hoje, onLancar }) {
+// Vacina da vaca cheia: reforço da Lepto aos 6 meses de prenhez e vacina reprodutiva (com "Foi vacinada?")
+function VacinaCheia({ m, sit, hoje, dados, onGravarLote }) {
+  const [data, setData] = useState(hoje);
+  const [msg, setMsg] = useState('');
+  async function confirmar(tipo) {
+    const ev = manejoConfirmacaoVacina([m.id], data, tipo);
+    const r = await onGravarLote({ estado: { ...dados, eventos: [...dados.eventos, ev] }, eventosParaGravar: [{ tipo: 'manejo', evento: ev }], matrizesParaGravar: [], tourosParaGravar: [] }, `vacina ${m.brinco}`);
+    setMsg(r.ok ? 'Registrado.' : r.msg);
+  }
+  const pedeInicial = !sit.inicial;
+  const pedeReforco = sit.reforco && !sit.reforco.feito && (sit.reforco.atrasoDias || sit.reforco.faltam <= 30);
+  const pergunta = (texto, tipo) => (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 8, color: 'var(--tx)' }}>
+      {texto}
+      <input type="date" aria-label={`Data: ${tipo}`} value={data} onChange={(e) => setData(e.target.value)} style={{ width: 'auto', minHeight: 34 }} />
+      <button className="btn sm" style={{ minHeight: 34 }} onClick={() => confirmar(tipo)}>Sim</button>
+      <button className="btn quiet sm" style={{ minHeight: 34 }} onClick={() => setMsg('Continua pendente. Vacine em Manejo > Vacinas.')}>Não</button>
+    </div>
+  );
+  return (
+    <div style={{ marginTop: 8 }} data-testid={`vacina-${m.brinco}`}>
+      <span className={`vac-tag ${sit.nivel}`}>{sit.texto || 'Sem vacina registrada'}</span>
+      {pedeReforco && onGravarLote && pergunta('Já tomou o reforço da Lepto?', 'Reforço Lepto')}
+      {pedeInicial && onGravarLote && pergunta('Foi vacinada (vacina reprodutiva)?', 'Vacina reprodutiva')}
+      {msg && <div className="hint" style={{ marginTop: 4 }}>{msg}</div>}
+    </div>
+  );
+}
+
+export default function Parto({ dados, hoje, onLancar, onGravarLote }) {
   const [aba, setAba] = useState('Cheia');
   const [busca, setBusca] = useState('');
   const [aberta, setAberta] = useState(null);
@@ -34,6 +64,9 @@ export default function Parto({ dados, hoje, onLancar }) {
   const vaziasSemParto = useMemo(() => linhasPrevisao(dados.matrizes, dados.eventos, 'Vazia', hoje, '').filter((l) => !l.ultimoParto).length, [dados, hoje]);
 
   const cols = '84px minmax(0,1fr) 78px 54px';
+  const cacheVac = useMemo(() => aplicacoesPorAnimal(dados), [dados]);
+  const vacinaDe = (m) => situacaoVacinaVaca(dados, m, hoje, cacheVac);
+  const pendVac = aba === 'Cheia' ? todasCheias.filter((l) => vacinaDe(l.matriz).pendente).length : 0;
 
   return (
     <div className="wrap">
@@ -59,6 +92,7 @@ export default function Parto({ dados, hoje, onLancar }) {
               <span className="late">{atrasadas} atrasadas</span>
               <span className="good">{porVir} por vir</span>
               {semPrev > 0 && <span className="mut">{semPrev} sem previsão</span>}
+              {pendVac > 0 && <span className="late">{pendVac} com vacina pendente</span>}
             </>
           ) : (
             <>
@@ -87,13 +121,16 @@ export default function Parto({ dados, hoje, onLancar }) {
             <React.Fragment key={m.id}>
               <button className="led-r" style={{ '--cols': cols }} aria-expanded={aberto} onClick={() => setAberta(aberto ? null : m.id)}>
                 <span className="b">{m.brinco}</span>
-                <span className="two"><b>{m.categoria}</b><span>{[m.raca, m.lote].filter(Boolean).join(' · ') || '—'}</span></span>
+                <span className="two"><b>{m.categoria}</b><span>{[m.raca, m.lote].filter(Boolean).join(' · ') || '—'}</span>
+                  {aba === 'Cheia' && (() => { const v = vacinaDe(m); return v.pendente ? <span style={{ color: v.nivel === 'atrasada' ? 'var(--late)' : 'var(--amber)' }}>{v.reforco && v.reforco.atrasoDias ? 'Lepto atrasada' : !v.inicial ? 'vacina pendente' : 'reforço Lepto em breve'}</span> : null; })()}
+                </span>
                 <span className="m">{data ? formatarDataBR(data) : '—'}</span>
                 <span className={`r ${dd.c}`}>{dd.t}</span>
               </button>
               {aberto && (
                 <div className="detalhe">
                   {aba === 'Cheia' && <div><Calculo info={l.info} /></div>}
+                  {aba === 'Cheia' && <VacinaCheia key={m.id} m={m} sit={vacinaDe(m)} hoje={hoje} dados={dados} onGravarLote={onGravarLote} />}
                   {l.ultimoParto
                     ? <div>Último parto: <b>{formatarDataBR(l.ultimoParto)}</b>{l.numeroCria ? ` (cria ${l.numeroCria})` : ''}</div>
                     : <div>Nenhum parto lançado para esta vaca.</div>}
@@ -101,7 +138,7 @@ export default function Parto({ dados, hoje, onLancar }) {
                   <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {aba === 'Cheia'
                       ? <button className="btn sm" onClick={() => onLancar('nascimento', m.id)}>Lançar nascimento desta vaca</button>
-                      : <button className="btn sm" onClick={() => onLancar('iatf', m.id)}>Lançar IATF desta vaca</button>}
+                      : null}
                   </div>
                 </div>
               )}

@@ -5,7 +5,7 @@ function dadosExemplo() {
     { id: 't2', nome: 'Full Metal', raca: 'Aberdeen', fornecedor: '', anoAquisicao: 2025, doses: 0, custoDose: 0, observacoes: '', createdAt: '2026-01-01T10:00:00.000Z' },
   ];
   for (let i = 1; i <= 30; i++) {
-    matrizes.push({ id: `m${i}`, brinco: String(3000 + i), categoria: i <= 4 ? 'Novilha' : 'Multípara', raca: 'Nelore', lote: i % 2 ? 'Paridas' : 'Solteiras', dataNascimento: '', partosAnteriores: 2, status: i <= 18 ? 'Vazia' : 'Cheia', createdAt: '2026-01-02T10:00:00.000Z', destino: '', dataBaixa: '', motivoBaixa: '' });
+    matrizes.push({ id: `m${i}`, brinco: String(3000 + i), categoria: i <= 4 ? 'Novilha' : 'Multípara', raca: 'Nelore', lote: i % 2 ? 'Paridas' : 'Solteiras', dataNascimento: '', partosAnteriores: i <= 4 ? 0 : 2, status: i <= 18 ? 'Vazia' : 'Cheia', createdAt: '2026-01-02T10:00:00.000Z', destino: '', dataBaixa: '', motivoBaixa: '' });
   }
   // nascimentos: machos 6501.. (vacas 3005..3016), fêmeas 6001.. (vacas 3017..3018 já paridas antes)
   const datas = ['2026-03-12', '2026-03-20', '2026-04-02', '2026-04-12', '2026-04-25', '2026-05-03', '2026-05-15', '2026-05-28', '2026-06-04', '2026-06-18', '2026-06-25', '2026-07-02'];
