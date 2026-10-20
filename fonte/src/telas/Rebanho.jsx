@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { Search, Lock, Save } from 'lucide-react';
 import {
-  CAMPOS_EDICAO_MATRIZ, formatarDataBR, ultimoPartoDe, numeroCriaUltimoParto,
+  CAMPOS_EDICAO_MATRIZ, formatarDataBR, ultimoPartoDe, numeroCriaUltimoParto, padronizarLote,
 } from '../logica.js';
 import { IndexTabs, Modal, Tag, Campo, Lead, Aviso } from '../ui.jsx';
 import { descreverEvento } from '../util.js';
@@ -34,7 +34,8 @@ function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar }) {
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({ ...m });
   const hist = useMemo(
-    () => dados.eventos.filter((e) => e.matrizId === m.id).sort((a, b) => (b.data || '').localeCompare(a.data || '')),
+    () => dados.eventos.filter((e) => e.matrizId === m.id || (e.tipo === 'manejo' && String(e.presentes || '').split(',').includes(m.id)))
+      .sort((a, b) => (b.data || '').localeCompare(a.data || '')),
     [dados.eventos, m.id],
   );
   const partos = dados.eventos.filter((e) => e.tipo === 'nascimento' && e.matrizId === m.id).length;
@@ -45,7 +46,7 @@ function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar }) {
     if (!String(form.brinco || '').trim()) return;
     onSalvar({
       ...m,
-      brinco: String(form.brinco).trim(), categoria: form.categoria, raca: form.raca || '', lote: form.lote || '',
+      brinco: String(form.brinco).trim(), categoria: form.categoria, raca: form.raca || '', lote: padronizarLote(form.lote, dados.matrizes.filter((x) => x.id !== m.id)),
       dataNascimento: form.dataNascimento || '', partosAnteriores: parseInt(form.partosAnteriores, 10) || 0, status: form.status,
     });
     onFechar();
@@ -72,7 +73,7 @@ function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar }) {
           {hist.length === 0 ? <p className="sub">Nada lançado para esta vaca ainda.</p> : (
             <ul className="hist" data-testid="historico">
               {hist.map((e) => (
-                <li key={e.id}><span>{descreverEvento(e, dados).replace(/ · (mãe|vaca) \S+/, '')}</span><span>{formatarDataBR(e.data)}</span></li>
+                <li key={e.id}><span>{descreverEvento(e, dados).replace(/ · (mãe|vaca) \S+/, '').replace(/ · \d+ animal\(is\)/, '')}</span><span>{formatarDataBR(e.data)}</span></li>
               ))}
             </ul>
           )}

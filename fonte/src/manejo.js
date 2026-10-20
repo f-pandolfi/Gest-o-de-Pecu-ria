@@ -6,7 +6,7 @@ import {
 } from './logica.js';
 
 // ---------------------------------------------------------------- listas
-export const TIPOS_APLICACAO = ['Vacina reprodutiva', 'Reforço Lepto', 'Vermífugo', 'Fortificante', 'Estimulante', 'Brucelose', 'Hormônio', 'Outra'];
+export const TIPOS_APLICACAO = ['Vacina reprodutiva', 'Reforço Lepto', 'Vermífugo', 'Fortificante', 'Estimulante', 'Brucelose', 'Hormônio', 'Pour-on', 'Brinco mosquicida', 'Carrapaticida', 'Outra'];
 export const RESULTADOS_TOQUE = ['Cheia', 'Vazia', 'Descarte'];
 export const MOTIVOS_DESCARTE = ['Vazia repetida', 'Idade', 'Problema de úbere', 'Problema de casco', 'Baixa produção', 'Doença', 'Outro'];
 export const TIPOS_TOURO = ['Sêmen', 'Touro vivo'];
@@ -686,6 +686,7 @@ export function relatorioTouros(estado, hoje, comValores) {
 
 // ---------------------------------------------------------------- dados completos e relatórios do app
 import { normalizarDados, aplicarPendentes, montarRelatorio, relatorioMortes, relatorioVendas, relatorioCrias } from './logica.js';
+import { relatorioManejosGerais } from './manejoGeral.js';
 
 export function normalizarTudo(data) {
   const d = normalizarDados(data);
@@ -712,6 +713,7 @@ export const RELATORIOS_APP = [
   { id: 'mortes', titulo: 'Mortalidade', curto: 'Mortes', porAno: true, todos: true },
   { id: 'vendas', titulo: 'Vendas por peso', curto: 'Vendas', porAno: true, todos: true },
   { id: 'touros', titulo: 'Touros e sêmen', curto: 'Touros', porAno: false, todos: true },
+  { id: 'manejos', titulo: 'Manejos gerais', curto: 'Manejos', porAno: true, todos: true },
   { id: 'nascimentos', titulo: 'Nascimentos por sexo', curto: 'Nascimentos', porAno: true, todos: false },
   { id: 'melhores', titulo: 'Melhores vacas em prenhez', curto: 'Melhores vacas', porAno: true, todos: false },
 ];
@@ -739,6 +741,7 @@ export function montarRelatorioApp(id, dados, ano, hoje, opcoes) {
   else if (id === 'pesagens') rel = relatorioPesagens(dados, ano, hoje);
   else if (id === 'descartes') rel = relatorioDescartes(dados, ano);
   else if (id === 'touros') rel = relatorioTouros(dados, hoje, dono);
+  else if (id === 'manejos') rel = relatorioManejosGerais(dados, ano);
   else if (id === 'mortes') rel = relatorioMortes(dados, ano);
   else if (id === 'vendas') rel = relatorioVendas(dados, ano);
   else if (id === 'crias') rel = relatorioCrias(dados, dados.config, ano, hoje);

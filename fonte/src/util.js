@@ -47,6 +47,11 @@ export function descreverEvento(e, dados) {
     if (e.tipoAnimal) partes.push(e.brinco ? `${e.tipoAnimal.toLowerCase()} ${e.brinco}` : `${e.tipoAnimal.toLowerCase()} sem número`);
     if (e.causa) partes.push(e.causa.toLowerCase());
     if (String(e.anulada ?? '').trim().toLowerCase() === 'sim') partes.push('anulada');
+  } else if (e.tipo === 'manejo' && e.etapa === 'Geral') {
+    if (e.descricao) partes.push(e.descricao);
+    if (e.lote) partes.push(`lote ${e.lote}`);
+    const n = String(e.presentes || '').split(',').filter(Boolean).length;
+    if (n) partes.push(`${n} animal(is)`);
   } else if (e.tipo === 'manejo') {
     if (e.etapa) partes.push(e.etapa);
     const n = String(e.presentes || '').split(',').filter(Boolean).length;

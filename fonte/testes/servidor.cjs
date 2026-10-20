@@ -9,7 +9,7 @@ const { dadosExemplo } = require('./dados_exemplo.cjs');
 
 const PORTA = Number(process.argv[2] || 8765);
 const SITE = path.join(__dirname, 'saida', 'site');
-const GS = path.join(__dirname, '..', process.argv[3] || 'Code_v12.gs');
+const GS = path.join(__dirname, '..', process.argv[3] || 'Code_v13.gs');
 let gs; let perder = 0; let erroProximo = 0; let posts = [];
 function reset() {
   gs = carregarScript(GS);

@@ -12,6 +12,7 @@ import {
   editarNascimento, editarMorte, anularMorte, postsDeMudancas, aplicarMudancasNoEstado,
 } from './logica.js';
 import { normalizarTudo, aplicarPendentesTudo, protocoloParaPlanilha } from './manejo.js';
+import { decidirLote } from './manejoGeral.js';
 import Manejo from './telas/Manejo.jsx';
 import { CSS } from './estilos.js';
 import { MODO_TESTE, lerTudo, postar as postarDireto } from './api.js';
@@ -232,6 +233,7 @@ function GestaoPecuaria() {
 
   const scriptAntes = (v) => !MODO_TESTE && versaoScript !== null && (versaoScript || 0) < v;
   const MSG_SCRIPT_12 = 'O script da planilha está desatualizado e não aceita protocolos, manejos e touros. Avise o responsável pelo sistema.';
+  const MSG_SCRIPT_13 = 'A planilha ainda não aceita o manejo geral (precisa do script 13). Avise o proprietário.';
 
   // Protocolo (IATF ou monta): grava ou atualiza pelo id
   function salvarProtocolo(p) {
@@ -254,7 +256,17 @@ function GestaoPecuaria() {
   // Manejo de curral, toque e vacinação (mesma forma do lote): eventos, matrizes alteradas
   async function gravarManejo(res, rotulo) {
     if (scriptAntes(12)) return { ok: false, msg: MSG_SCRIPT_12 };
+    if (scriptAntes(13) && res.eventosParaGravar.some((x) => x.tipo === 'manejo' && x.evento.etapa === 'Geral')) return { ok: false, msg: MSG_SCRIPT_13 };
     return gravarLote(res, rotulo);
+  }
+
+  // Proprietário confirma (ou recusa) a mudança de lote pedida num manejo geral
+  function decidirMudancaLote(decisoes) {
+    if (scriptAntes(13)) return MSG_SCRIPT_13;
+    const r = decidirLote(dadosRef.current, decisoes);
+    if (!r.mudancas.eventos.length) return 'Nada para confirmar.';
+    gravarCorrecao(r, 'confirmação de lote');
+    return [r.aprovadas ? `${r.aprovadas} animal(is) mudado(s) de lote.` : '', r.recusadas ? `${r.recusadas} continua(m) no lote de antes.` : ''].filter(Boolean).join(' ') + notaFila();
   }
 
   // eventos em pacotes de 40, depois as matrizes e os touros
@@ -454,7 +466,7 @@ function GestaoPecuaria() {
           />
         )}
         {tab === 'manejo' && (
-          <Manejo dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE} onGravarLote={gravarManejo} onSalvarProtocolo={salvarProtocolo} onSalvarConfig={salvarConfig} />
+          <Manejo dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE} onGravarLote={gravarManejo} onSalvarProtocolo={salvarProtocolo} onSalvarConfig={salvarConfig} scriptAntes13={scriptAntes(13)} onDecidirLote={decidirMudancaLote} />
         )}
         {tab === 'parto' && <Parto dados={dados} hoje={hoje} onLancar={lancarDaVaca} onGravarLote={gravarManejo} />}
         {tab === 'crias' && (

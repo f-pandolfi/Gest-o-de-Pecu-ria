@@ -65,7 +65,7 @@ export function ListaMarcar({ itens, marcados, onToggle, onDigitarFora, extraDaL
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); marcarDigitado(); } }}
         />
       </label>
-      {msg && <div className={`hint ${/não está|Não achei|Verifique/.test(msg) ? 'late' : 'good'}`} role="status" data-testid="msg-marcar" style={{ margin: '6px 2px', fontSize: 13.5 }}>{msg}</div>}
+      {msg && <div className={`hint ${/não está|Não achei|Verifique|Atenção|Escolha o lote|já está/.test(msg) ? 'late' : 'good'}`} role="status" data-testid="msg-marcar" style={{ margin: '6px 2px', fontSize: 13.5 }}>{msg}</div>}
       <div className="marcar" data-testid="lista-marcar">
         {filtrados.map((x) => {
           const on = marcados.has(x.id);

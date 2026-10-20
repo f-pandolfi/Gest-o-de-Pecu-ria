@@ -2,7 +2,7 @@
 // É usado por dois lados: o app (app.jsx) e a integração por foto (lançamentos em lote feitos pelo Claude).
 // Mexeu aqui = mudou nos dois, de propósito: uma única fonte da verdade para status, previsão e relatórios.
 
-export const VERSAO_APP = '10.2 (19/10/26)';
+export const VERSAO_APP = '10.3 (20/10/26)';
 export const VERSAO_MINIMA_SCRIPT = 12; // v12 = protocolos, manejos, touros completos (v11 = não duplica reenvio; v10 = aba Mortes)
 export const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
 
@@ -489,6 +489,30 @@ const semAcento = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, ''
 const chave = (s) => semAcento(s).toLowerCase().trim();
 
 // Acha matriz pelo brinco escrito (ignora espaços; "02024" casa com "2024"). Devolve { matriz } ou { erro }
+// ---------------------------------------------------------------- lotes
+// Nome do lote padronizado: se já existe um lote com o mesmo nome (sem diferença de maiúscula, acento ou espaço),
+// usa a escrita que já existe. Assim "Novilhas", "NOVILHAS" e " novilhas " viram um lote só.
+export const LOTE_NOVILHAS = 'NOVILHAS';
+const chaveLote = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+export function mesmoLote(a, b) { return chaveLote(a) === chaveLote(b); }
+export function padronizarLote(texto, matrizes) {
+  const t = String(texto ?? '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  if (mesmoLote(t, LOTE_NOVILHAS)) return LOTE_NOVILHAS;
+  const ex = (matrizes || []).map((m) => String(m.lote ?? '').trim()).find((l) => l && mesmoLote(l, t));
+  return ex || t;
+}
+// Lotes em uso (animais no rebanho), com quantos animais cada um tem
+export function lotesExistentes(matrizes) {
+  const cont = new Map();
+  (matrizes || []).filter((m) => m.status !== 'Vendida' && m.status !== 'Morta').forEach((m) => {
+    const l = padronizarLote(m.lote, matrizes);
+    if (!l) return;
+    cont.set(l, (cont.get(l) || 0) + 1);
+  });
+  return [...cont.entries()].map(([lote, n]) => ({ lote, n })).sort((a, b) => b.n - a.n || a.lote.localeCompare(b.lote, 'pt-BR'));
+}
+
 export function acharMatrizPorBrinco(matrizes, brinco) {
   const b = String(brinco ?? '').trim();
   if (!b) return { erro: 'brinco da matriz em branco' };
@@ -522,7 +546,7 @@ export function aplicarLancamento(estado, tipo, form, opcoes) {
   if (tipo === 'cadastro') {
     const nova = {
       id, brinco: form.brinco, categoria: form.categoria || 'Novilha',
-      raca: form.raca || '', lote: form.lote || '',
+      raca: form.raca || '', lote: padronizarLote(form.lote, matrizes),
       dataNascimento: form.dataNascimento || '',
       partosAnteriores: parseInt(form.partosAnteriores) || 0,
       status: form.statusInicial || 'Vazia', createdAt: now,
@@ -587,7 +611,7 @@ export function aplicarLancamento(estado, tipo, form, opcoes) {
       const jaTem = matrizes.some((x) => x.id === idNov || String(x.brinco).trim() === String(nasc.brincoBezerro).trim());
       if (!jaTem) {
         const nova = {
-          id: idNov, brinco: String(nasc.brincoBezerro).trim(), categoria: 'Novilha', raca: '', lote: 'Novilhas',
+          id: idNov, brinco: String(nasc.brincoBezerro).trim(), categoria: 'Novilha', raca: '', lote: padronizarLote(LOTE_NOVILHAS, matrizes),
           dataNascimento: nasc.data || '', partosAnteriores: 0, status: 'Vazia', destino: 'A definir',
           dataBaixa: '', motivoBaixa: '', createdAt: now,
         };

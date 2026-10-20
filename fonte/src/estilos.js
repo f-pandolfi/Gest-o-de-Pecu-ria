@@ -82,6 +82,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .toque-lin .mais input,.toque-lin .mais select{min-height:42px}
 .toque-lin .calc{font-size:12.8px;color:var(--green);margin-top:6px;line-height:1.4}
 .toque-lin .avs{font-size:12.8px;color:var(--late);margin-top:6px}
+.pend-lote{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line2)}
+.pend-lote .b{font:600 17px var(--mono)}
+.pend-lote .l2{font-size:14px;margin-top:2px}
+.pend-lote .l3{font-size:12.5px;color:var(--mut);margin-top:2px}
+.pend-bts{display:flex;gap:6px;flex:none}
+.fora-lote{margin-top:14px;padding:10px 12px;border:1px solid var(--late);border-radius:8px;background:var(--late-bg)}
+.fora-lin{padding:6px 0;border-bottom:1px solid var(--line2)}
+.fora-lin:last-child{border-bottom:none}
+.fora-top{display:grid;grid-template-columns:70px minmax(0,1fr) 32px;gap:8px;align-items:center}
+.fora-top .b{font:600 16px var(--mono)}
+.fora-top .late{font-size:13.5px}
+.chk input{width:20px;height:20px;accent-color:var(--amber)}
 .card-prot{display:block;width:100%;text-align:left;background:var(--s1);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:10px;color:inherit}
 .card-prot b{font:600 17px var(--body)}
 .card-prot .l2{font-size:13px;color:var(--mut);margin-top:3px;line-height:1.45}
