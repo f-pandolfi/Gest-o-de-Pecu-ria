@@ -91,7 +91,7 @@ export default function Vacinas({ dados, hoje, ownerMode, modoTeste, onGravarLot
   function vacinacaoAvulsa() {
     const vacas = dados.matrizes.filter((m) => m.status !== 'Vendida' && m.status !== 'Morta' && (noPlantel(m) || m.categoria === 'Novilha'))
       .map((m) => ({ id: m.id, brinco: m.brinco, linha1: [m.categoria, m.lote].filter(Boolean).join(' · '), linha2: m.status }));
-    const crias = listarCrias(dados, hoje).filter((c) => c.ativa && !c.novilha).map((c) => ({ id: `c:${c.id}`, brinco: c.brinco, linha1: c.sexo === 'Fêmea' ? 'Bezerra' : 'Bezerro', linha2: `mãe ${c.maeBrinco || '?'}` }));
+    const crias = listarCrias(dados, hoje).filter((c) => c.ativa && !c.novilha && c.situacao !== 'confirmar').map((c) => ({ id: `c:${c.id}`, brinco: c.brinco, linha1: c.sexo === 'Fêmea' ? 'Bezerra' : 'Bezerro', linha2: `mãe ${c.maeBrinco || '?'}` }));
     setVacinando({ titulo: 'Vacinação avulsa', itens: [...vacas, ...crias].sort((a, b) => String(a.brinco).localeCompare(String(b.brinco), 'pt-BR', { numeric: true })), aplicacoes: [] });
   }
   async function confirmar(p, foi) {

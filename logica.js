@@ -2,7 +2,7 @@
 // É usado por dois lados: o app (app.jsx) e a integração por foto (lançamentos em lote feitos pelo Claude).
 // Mexeu aqui = mudou nos dois, de propósito: uma única fonte da verdade para status, previsão e relatórios.
 
-export const VERSAO_APP = '10.3 (20/10/26)';
+export const VERSAO_APP = '10.4 (22/10/26)';
 export const VERSAO_MINIMA_SCRIPT = 12; // v12 = protocolos, manejos, touros completos (v11 = não duplica reenvio; v10 = aba Mortes)
 export const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
 
@@ -895,6 +895,35 @@ const mesmoBrinco = (a, b) => {
 };
 
 // Nascimento (cria viva) com aquele brinco; se houver repetido de outro ano, o mais recente até a data dada
+// ---------------------------------------------------------------- v10.4: nascimentos importados do histórico
+// Os nascimentos de 2023 a 2025 vieram da planilha REBANHO do Dropbox. A observação começa com "Histórico" e traz a
+// situação de origem da cria, num formato fixo que o app lê:
+//   "Histórico (planilha REBANHO 2026) · situação: VENDIDO em 03/06/2024 · raça NELORE · mãe 1001 (fora do cadastro)"
+// Situações: VENDIDO, MORTO, NA FAZENDA (macho que ficou), MATRIZ (fêmea que está no cadastro de matrizes com o
+// mesmo brinco) e A CONFIRMAR (fêmea sem informação ainda). Assim não se inventa registro de venda ou de morte.
+export const SITUACOES_HISTORICO = ['VENDIDO', 'MORTO', 'NA FAZENDA', 'MATRIZ', 'A CONFIRMAR'];
+export const ehHistorico = (n) => !!n && n.tipo === 'nascimento' && /^\s*hist[óo]rico/i.test(String(n.observacoes || ''));
+export function situacaoHistorica(n) {
+  if (!ehHistorico(n)) return null;
+  const obs = String(n.observacoes || '');
+  const m = /situa[çc][ãa]o:\s*(VENDIDO|MORTO|NA FAZENDA|MATRIZ|A CONFIRMAR)(?:\s+em\s+(\d{2})\/(\d{2})\/(\d{4}))?/i.exec(obs);
+  const mae = /m[ãa]e\s+(\S+)\s+\(fora do cadastro/i.exec(obs);
+  return {
+    sit: m ? m[1].toUpperCase() : 'A CONFIRMAR',
+    data: m && m[2] ? `${m[4]}-${m[3]}-${m[2]}` : '',
+    maeFora: mae ? mae[1] : '',
+  };
+}
+// Matriz do cadastro que é esta cria: a novilha criada na desmama (id cria-<nascimento>) ou, no histórico, a matriz com o mesmo brinco
+export function matrizDaCria(estado, n) {
+  if (!n) return null;
+  const porId = estado.matrizes.find((m) => m.id === idNovilha(n.id));
+  if (porId) return porId;
+  const h = situacaoHistorica(n);
+  if (h && h.sit === 'MATRIZ') return acharMatrizPorBrinco(estado.matrizes, n.brincoBezerro).matriz || null;
+  return null;
+}
+
 export function acharCriaPorBrinco(eventos, brinco, ate) {
   const lista = eventos
     .filter((e) => e.tipo === 'nascimento' && e.resultadoParto !== 'Natimorto' && mesmoBrinco(e.brincoBezerro, brinco))
@@ -909,11 +938,14 @@ export function acharAnimal(estado, brinco) {
   const b = String(brinco ?? '').trim();
   if (!b) return null;
   const nasc = acharCriaPorBrinco(estado.eventos, b);
-  if (nasc) {
-    const matriz = estado.matrizes.find((m) => m.id === idNovilha(nasc.id)) || null;
-    return { tipo: matriz ? 'matriz' : 'cria', nasc, matriz };
-  }
   const r = acharMatrizPorBrinco(estado.matrizes, b);
+  if (nasc) {
+    const matriz = matrizDaCria(estado, nasc);
+    if (matriz) return { tipo: 'matriz', nasc, matriz };
+    // número repetido: cria antiga (histórico) com o mesmo brinco de uma matriz do cadastro -> vale a matriz
+    if (ehHistorico(nasc) && r.matriz) return { tipo: 'matriz', nasc: null, matriz: r.matriz };
+    return { tipo: 'cria', nasc, matriz: null };
+  }
   if (r.matriz) return { tipo: 'matriz', nasc: null, matriz: r.matriz };
   return null;
 }
@@ -973,11 +1005,11 @@ function pontosDePeso(idx, { nasc, matriz }) {
 
 export function rotuloSituacao(c) {
   const f = c.sexo === 'Fêmea';
-  return { mamando: 'Mamando', desmamado: f ? 'Desmamada' : 'Desmamado', novilha: 'Novilha', matriz: 'Virou matriz', vendido: f ? 'Vendida' : 'Vendido', morto: f ? 'Morta' : 'Morto' }[c.situacao] || c.situacao;
+  return { mamando: 'Mamando', desmamado: f ? 'Desmamada' : 'Desmamado', novilha: 'Novilha', matriz: 'Virou matriz', vendido: f ? 'Vendida' : 'Vendido', morto: f ? 'Morta' : 'Morto', confirmar: 'Situação a confirmar' }[c.situacao] || c.situacao;
 }
 
 // Todas as crias vivas (uma por nascimento). Cada uma traz idade, mãe, origem/pai, pesos, ganho diário e situação.
-// situacao: mamando | desmamado | novilha | matriz | vendido | morto
+// situacao: mamando | desmamado | novilha | matriz | vendido | morto | confirmar (histórico sem informação ainda)
 // orfa = a mãe morreu e a cria ainda está mamando (os funcionários continuam criando)
 export function listarCrias(estado, hoje) {
   hoje = hoje || todayISO();
@@ -988,7 +1020,8 @@ export function listarCrias(estado, hoje) {
   return eventos
     .filter((e) => e.tipo === 'nascimento' && e.resultadoParto !== 'Natimorto')
     .map((n) => {
-      const novilha = matrizPorId.get(idNovilha(n.id)) || null;
+      const hist = situacaoHistorica(n);
+      const novilha = matrizPorId.get(idNovilha(n.id)) || (hist && hist.sit === 'MATRIZ' ? matrizDaCria(estado, n) : null) || null;
       const pontos = pontosDePeso(idx, { nasc: n, matriz: novilha });
       const ultimo = pontos.length ? pontos[pontos.length - 1] : null;
       const brinco = String(n.brincoBezerro ?? '').trim();
@@ -999,20 +1032,24 @@ export function listarCrias(estado, hoje) {
       let situacao = 'mamando';
       if (morte || (novilha && novilha.status === 'Morta')) situacao = 'morto';
       else if (itensVenda.length || (novilha && novilha.status === 'Vendida')) situacao = 'vendido';
-      else if (novilha) situacao = novilha.destino === 'Matriz' ? 'matriz' : 'novilha';
-      else if (desm) situacao = 'desmamado';
+      else if (novilha) situacao = novilha.destino === 'Matriz' ? 'matriz' : hist && !novilha.destino ? (novilha.categoria === 'Novilha' ? 'novilha' : 'matriz') : 'novilha';
+      else if (hist && hist.sit === 'VENDIDO') situacao = 'vendido';
+      else if (hist && hist.sit === 'MORTO') situacao = 'morto';
+      else if (hist && hist.sit === 'A CONFIRMAR') situacao = 'confirmar';
+      else if (desm || (hist && hist.sit === 'NA FAZENDA')) situacao = 'desmamado';
       const baixa = itensVenda[0] || null;
       const mae = n.matrizId ? matrizPorId.get(n.matrizId) || null : null;
       const maeMorta = !!(mae && mae.status === 'Morta');
       return {
         id: n.id, nasc: n, brinco, sexo: n.sexo || '', nascData: n.data, idadeDias: n.data ? diasEntre(n.data, hoje) : null,
-        matrizId: n.matrizId || '', maeBrinco: n.matrizId ? brincos[n.matrizId] || '?' : '',
+        matrizId: n.matrizId || '', maeBrinco: n.matrizId ? brincos[n.matrizId] || '?' : (hist && hist.maeFora) || '', maeFora: !n.matrizId && !!(hist && hist.maeFora),
         origem: origemDaCria(n, eventos, touros, estado.protocolos), pelagem: n.pelagem || '',
         pontos, pesoAtual: ultimo ? ultimo.peso : null, pesoData: ultimo ? ultimo.data : '',
         diasDesdePeso: ultimo ? diasEntre(ultimo.data, hoje) : null, gmd: ganhoDiario(pontos),
-        situacao, desmamaData: desm ? desm.data : '', novilha, vendaData: baixa ? baixa.data : (novilha && novilha.dataBaixa) || '',
+        situacao, desmamaData: desm ? desm.data : '', novilha, vendaData: baixa ? baixa.data : (novilha && novilha.dataBaixa) || (hist && hist.sit === 'VENDIDO' ? hist.data : '') || '',
+        historico: !!hist,
         ativa: situacao !== 'vendido' && situacao !== 'morto',
-        mortoData: morte ? morte.data : (novilha && novilha.status === 'Morta' && novilha.dataBaixa) || '', causaMorte: morte ? morte.causa : '',
+        mortoData: morte ? morte.data : (novilha && novilha.status === 'Morta' && novilha.dataBaixa) || (hist && hist.sit === 'MORTO' ? hist.data : '') || '', causaMorte: morte ? morte.causa : '',
         maeMorta, maeMortaData: maeMorta ? mae.dataBaixa || '' : '', orfa: maeMorta && situacao === 'mamando',
       };
     })
@@ -2192,32 +2229,41 @@ export function fichaAnimal(estado, brinco, ref, crias) {
   };
 }
 
+// ---------------------------------------------------------------- v10.4: pesagem de animal sem brinco
+// Animal que perdeu o brinco é pesado assim mesmo: a pesagem fica sem cria ligada e com a observação "SEM BRINCO: <sinal>".
+// Depois, na conferência da pesagem, ele é ligado a um dos animais que ficaram sem peso naquela data.
+export const MARCA_SEM_BRINCO = 'SEM BRINCO';
+export const ehSemBrinco = (e) => !!e && e.tipo === 'pesagem' && !e.criaId && !e.matrizId && /^\s*sem brinco/i.test(String(e.observacoes || ''));
+export const sinalSemBrinco = (e) => String((e && e.observacoes) || '').replace(/^\s*sem brinco\s*:?\s*/i, '').trim();
+export const chavePesagem = (e) => (ehSemBrinco(e) ? `sb:${e.id}` : e.criaId || e.matrizId || String(e.brinco ?? '').trim());
+
 // Relatório da pesagem de um dia (tela Pesar e PDF). Pesagens e desmamas gravadas na data, com idade, mãe, peso anterior e ganho.
 export function relatorioPesagemDia(estado, data, hoje) {
   const crias = listarCrias(estado, hoje);
   const evs = estado.eventos.filter((e) => (e.tipo === 'pesagem' || (e.tipo === 'desmama' && numPeso(e.pesoDesmama) > 0)) && e.data === data);
   const porAnimal = new Map();
   evs.forEach((e) => {
-    const brinco = String(e.tipo === 'desmama' ? e.brincoBezerro : e.brinco || '').trim();
-    const k = e.criaId || e.matrizId || brinco;
-    if (!porAnimal.has(k)) porAnimal.set(k, { brinco, lista: [] });
+    const sb = ehSemBrinco(e);
+    const brinco = sb ? '' : String(e.tipo === 'desmama' ? e.brincoBezerro : e.brinco || '').trim();
+    const k = e.tipo === 'desmama' ? `d:${brinco}` : chavePesagem(e);
+    if (!porAnimal.has(k)) porAnimal.set(k, { brinco, sb, lista: [] });
     porAnimal.get(k).lista.push(e);
   });
   const linhas = [];
-  porAnimal.forEach(({ brinco, lista }) => {
-    const f = fichaAnimal(estado, brinco, data, crias);
+  porAnimal.forEach(({ brinco, sb, lista }) => {
+    const f = sb ? { mesmaData: [] } : fichaAnimal(estado, brinco, data, crias);
     const vezes = lista.length;
     lista.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || '')).forEach((e) => {
       const peso = numPeso(e.tipo === 'desmama' ? e.pesoDesmama : e.peso);
       const ant = f.pesoAnterior;
       const dias = ant ? diasEntre(ant.data, data) : null;
       linhas.push({
-        brinco: brinco || '—', sexo: f.sexo || '—', idade: f.idade ? f.idade.texto : '—', nasc: f.nascData ? formatarDataBR(f.nascData) : '—',
+        brinco: sb ? 'SB' : brinco || '—', sexo: f.sexo || '—', idade: f.idade ? f.idade.texto : '—', nasc: f.nascData ? formatarDataBR(f.nascData) : '—',
         mae: f.maeBrinco || '—', peso, pesoTxt: `${String(peso).replace('.', ',')} kg`,
         anterior: ant ? `${String(ant.peso).replace('.', ',')} kg em ${formatarDataBR(ant.data)}` : 'primeira pesagem',
         ganho: ant && dias > 0 ? `${((peso - ant.peso) / dias).toFixed(2).replace('.', ',')} kg/dia` : '—',
-        obs: [e.tipo === 'desmama' ? 'Desmama' : '', vezes > 1 ? `PESADO ${vezes}x NESTA DATA` : ''].filter(Boolean).join(' · '),
-        vezes,
+        obs: sb ? `Sem brinco${sinalSemBrinco(e) ? `: ${sinalSemBrinco(e)}` : ''}` : [e.tipo === 'desmama' ? 'Desmama' : '', vezes > 1 ? `PESADO ${vezes}x NESTA DATA` : ''].filter(Boolean).join(' · '),
+        vezes, sb,
       });
     });
   });
@@ -2236,6 +2282,7 @@ export function relatorioPesagemDia(estado, data, hoje) {
       { rotulo: 'Média dos machos', valor: fmtMedia(linhas.filter((l) => l.sexo === 'Macho').map((l) => l.peso)) },
       { rotulo: 'Média das fêmeas', valor: fmtMedia(linhas.filter((l) => l.sexo === 'Fêmea').map((l) => l.peso)) },
       { rotulo: 'Pesados 2x nesta data', valor: dup.length ? dup.join(', ') : 'nenhum' },
+      { rotulo: 'Sem brinco', valor: linhas.filter((l) => l.sb).length },
     ],
     secoes: [{
       titulo: 'Animais pesados',

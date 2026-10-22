@@ -1,12 +1,13 @@
 // Correção de nascimentos já lançados (só proprietário, com a senha): lista com busca e janela de edição.
 import React, { useMemo, useState } from 'react';
 import { Search, Save, Loader2 } from 'lucide-react';
-import { CAMPOS, formatarDataBR, mapaBrincos } from '../logica.js';
+import { CAMPOS, formatarDataBR, mapaBrincos, situacaoHistorica } from '../logica.js';
 import { Aviso, Campo, Modal } from '../ui.jsx';
 
 const CHAVES_EDICAO = ['matrizId', 'data', 'resultadoParto', 'sexo', 'brincoBezerro', 'pelagem', 'tipoParto', 'observacoes'];
 
-export const faltaNoNascimento = (e) => [!e.matrizId && 'mãe', !e.sexo && 'sexo', !String(e.brincoBezerro ?? '').trim() && 'brinco'].filter(Boolean);
+// mãe de fora do cadastro (histórico, com o número anotado) não conta como dado faltando
+export const faltaNoNascimento = (e) => [!e.matrizId && !(situacaoHistorica(e) || {}).maeFora && 'mãe', !e.sexo && 'sexo', !String(e.brincoBezerro ?? '').trim() && 'brinco'].filter(Boolean);
 
 export function ModalNascimento({ nasc, dados, onEditar, onFechar, onFeito }) {
   const [form, setForm] = useState(() => Object.fromEntries(CHAVES_EDICAO.map((k) => [k, nasc[k] ?? ''])));

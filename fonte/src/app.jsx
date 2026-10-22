@@ -331,6 +331,13 @@ function GestaoPecuaria() {
     return null;
   }
 
+  // Pesagem: ligar um sem brinco a um animal, ou um peso repetido virar sem brinco (conferência da pesagem)
+  function corrigirPesagem(mudancas, rotulo) {
+    if (!mudancas || !mudancas.eventos || !mudancas.eventos.length) return 'Nada para corrigir.';
+    gravarCorrecao({ mudancas }, rotulo || 'conferência da pesagem');
+    return null;
+  }
+
   async function corrigirNascimento(id, campos) {
     const r = editarNascimento(dadosRef.current, id, campos);
     if (r.erro) return { ok: false, msg: r.erro };
@@ -475,6 +482,7 @@ function GestaoPecuaria() {
             onLancar={salvarLancamento} onGravarLote={gravarLote} onVender={registrarVenda}
             onSalvarMatriz={salvarMatriz} onSalvarConfig={salvarConfig}
             onRegistrarMorte={registrarMorte} onEditarNascimento={corrigirNascimento} onEditarMorte={corrigirMorte} onAnularMorte={anularUmaMorte}
+            onCorrigirPesagem={corrigirPesagem}
           />
         )}
         {tab === 'rebanho' && <Rebanho dados={dados} ownerMode={ownerMode} onSalvarMatriz={salvarMatriz} onSalvarTouro={salvarTouro} />}

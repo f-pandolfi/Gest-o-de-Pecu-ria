@@ -2,8 +2,9 @@
 // No modo "Pesar e desmamar" (proprietário) o mesmo peso vira o peso da desmama e as fêmeas vão para as novilhas.
 // v9.5: a lista fica guardada no celular enquanto se digita; aviso de animal já pesado na mesma data (lança marcando 2x);
 // cartão com idade, nascimento e mãe; PDF da pesagem do dia.
+// v10.4: animal sem brinco (pesa com um sinal) e conferência do dia: quem ficou sem peso x os sem brinco.
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { Plus, Trash2, Save, Loader2, ClipboardPaste, FileDown } from 'lucide-react';
+import { Plus, Trash2, Save, Loader2, ClipboardPaste, FileDown, Tag as TagIcon } from 'lucide-react';
 import {
   infoAnimalVenda, numPeso, avisoDePeso, lerListaPesos, aplicarLote, formatarDataBR, fichaAnimal, relatorioPesagemDia,
 } from '../logica.js';
@@ -12,6 +13,8 @@ import { fmtKg } from '../util.js';
 import FichaRapida from './FichaRapida.jsx';
 import { lerLocal, gravarNoCelular, apagarLocal, CHAVE_RASCUNHO_PESAR } from '../fila.js';
 import { baixarPDF } from '../pdfloader.js';
+import { pesagemSemBrinco } from '../pesagemConferencia.js';
+import ConferenciaPesagem from './ConferenciaPesagem.jsx';
 
 const mesmo = (a, b) => String(a).trim() === String(b).trim() || (/^\d+$/.test(String(a).trim()) && /^\d+$/.test(String(b).trim()) && Number(a) === Number(b));
 
@@ -20,7 +23,7 @@ const lerRascunho = () => {
   return r && Array.isArray(r.linhas) ? r : null;
 };
 
-export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote }) {
+export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorrigirPesagem }) {
   const rascunho0 = useRef(lerRascunho());
   const [data, setData] = useState(() => (rascunho0.current && rascunho0.current.linhas.length && rascunho0.current.data) || hoje);
   const [modo, setModo] = useState(() => (rascunho0.current && rascunho0.current.linhas.length && ownerMode && rascunho0.current.modo) || 'pesagem');
@@ -34,6 +37,8 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
   const [gravando, setGravando] = useState(false);
   const [travado, setTravado] = useState(false);
   const [colar, setColar] = useState('');
+  const [semBrinco, setSemBrinco] = useState(false);
+  const [sinal, setSinal] = useState('');
   const brincoRef = useRef(null);
   const pesoRef = useRef(null);
   const timer = useRef(null);
@@ -48,7 +53,7 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
   // informações de cada linha (refeitas quando os dados ou a data mudam; a lista guardada no celular volta sem elas)
   const infos = useMemo(() => {
     const mapa = new Map();
-    linhas.forEach((l) => mapa.set(l.k, fichaAnimal(dados, l.brinco, data || hoje, crias)));
+    linhas.forEach((l) => mapa.set(l.k, l.semBrinco ? { semBrinco: true, mesmaData: [] } : fichaAnimal(dados, l.brinco, data || hoje, crias)));
     return mapa;
   }, [linhas, dados, data, hoje, crias]);
 
@@ -64,7 +69,7 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
     if (!info.achado) return { erro: `Não achei o brinco ${brincoTxt}. Confira o número (cria ou novilha).` };
     if (info.jaMorto) return { erro: `O animal ${brincoTxt} morreu${info.mortoEm ? ` em ${formatarDataBR(info.mortoEm)}` : ''}.` };
     if (info.jaVendido) return { erro: `O animal ${brincoTxt} já foi vendido${info.vendidoEm ? ` em ${formatarDataBR(info.vendidoEm)}` : ''}.` };
-    const naLista = jaNaLista.find((l) => mesmo(l.brinco, brincoTxt));
+    const naLista = jaNaLista.find((l) => !l.semBrinco && mesmo(l.brinco, brincoTxt));
     if (naLista) return { erro: `O brinco ${brincoTxt} já está na lista com ${fmtKg(naLista.peso)}. Verifique a duplicidade.` };
     const linha = { k: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, brinco: info.brinco, peso: p };
     if (modo === 'pesagem' && data) {
@@ -75,11 +80,21 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
   }
 
   function limparDigitacao() {
-    setBrinco(''); setPesoTxt('');
+    setBrinco(''); setPesoTxt(''); setSinal(''); setSemBrinco(false);
     if (brincoRef.current) brincoRef.current.focus();
   }
 
+  const linhaSemBrinco = (peso, sinalTxt) => ({ k: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, semBrinco: true, brinco: 'SB', sinal: String(sinalTxt || '').trim(), peso });
+
   function adicionar() {
+    if (semBrinco) {
+      const p = numPeso(pesoTxt);
+      if (isNaN(p) || p <= 0) { setErro({ texto: 'Digite o peso do animal sem brinco.' }); return; }
+      setErro(null); setResultado(null);
+      setLinhas((ls) => [...ls, linhaSemBrinco(p, sinal)]);
+      limparDigitacao();
+      return;
+    }
     const r = preparar(brinco, numPeso(pesoTxt), linhas);
     if (r.erro) { setErro({ texto: r.erro }); return; }
     setErro(null); setResultado(null);
@@ -89,7 +104,8 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
   }
 
   function confirmarDup(sim) {
-    if (sim && confDup) setLinhas((ls) => [...ls, { ...confDup.linha, forcar: true }]);
+    if (sim === 'outro' && confDup) setLinhas((ls) => [...ls, linhaSemBrinco(confDup.linha.peso, `anotado como ${confDup.linha.brinco}`)]);
+    else if (sim && confDup) setLinhas((ls) => [...ls, { ...confDup.linha, forcar: true }]);
     setConfDup(null);
     limparDigitacao();
   }
@@ -128,20 +144,28 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
   async function gravar() {
     if (gravando || travado || linhas.length === 0) return;
     if (!data) { setErro({ texto: 'Escolha a data da pesagem.' }); return; }
-    const itens = linhas.map((l) => ({ tipo: modo, brincoCria: l.brinco, data, peso: l.peso, ...(l.forcar && modo === 'pesagem' ? { forcar: true } : {}) }));
-    const res = aplicarLote(dados, itens, { hoje });
-    if (res.aplicados.length === 0) {
+    const normais = linhas.filter((l) => !l.semBrinco);
+    const sbs = modo === 'pesagem' ? linhas.filter((l) => l.semBrinco) : [];
+    const itens = normais.map((l) => ({ tipo: modo, brincoCria: l.brinco, data, peso: l.peso, ...(l.forcar && modo === 'pesagem' ? { forcar: true } : {}) }));
+    const res = itens.length ? aplicarLote(dados, itens, { hoje }) : { estado: dados, aplicados: [], rejeitados: [], eventosParaGravar: [], matrizesParaGravar: [], tourosParaGravar: [] };
+    const evSB = sbs.map((l) => pesagemSemBrinco(data, l.peso, l.sinal).evento);
+    if (res.aplicados.length === 0 && evSB.length === 0) {
       setErro({ texto: 'Nada foi gravado:', itens: res.rejeitados.map((r) => `${itens[r.indice].brincoCria}: ${r.motivo}`) });
       return;
     }
+    const lote = {
+      ...res, estado: { ...res.estado, eventos: [...res.estado.eventos, ...evSB] },
+      eventosParaGravar: [...res.eventosParaGravar, ...evSB.map((e) => ({ tipo: 'pesagem', evento: e }))],
+    };
+    const qtd = res.aplicados.length + evSB.length;
     setGravando(true); setErro(null);
-    const r = await onGravarLote(res, modo === 'desmama' ? `desmama de ${res.aplicados.length}` : `pesagem de ${res.aplicados.length}`);
+    const r = await onGravarLote(lote, modo === 'desmama' ? `desmama de ${qtd}` : `pesagem de ${qtd}`);
     setGravando(false);
     if (!r.ok) { setErro({ texto: r.msg }); return; }
-    const okIdx = new Set(res.aplicados.map((a) => a.indice));
-    setLinhas((ls) => ls.filter((_, i) => !okIdx.has(i)));
+    const okK = new Set([...res.aplicados.map((a) => normais[a.indice].k), ...sbs.map((l) => l.k)]);
+    setLinhas((ls) => ls.filter((l) => !okK.has(l.k)));
     setResultado({
-      qtd: res.aplicados.length, novilhas: res.matrizesParaGravar.length, modo, offline: !!r.offline,
+      qtd, semBrinco: evSB.length, novilhas: res.matrizesParaGravar.length, modo, offline: !!r.offline,
       rejeitados: res.rejeitados.map((x) => `${itens[x.indice].brincoCria}: ${x.motivo}`),
     });
     setTravado(true);
@@ -174,14 +198,25 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
       {modo === 'desmama' && <Aviso tipo="info">Modo desmama: cada peso vira o peso da desmama. As fêmeas passam para o lote de novilhas (destino "a definir").</Aviso>}
 
       <div className="linha-add">
-        <div className="fld">
-          <label htmlFor="pesar-brinco">Brinco</label>
-          <input
-            id="pesar-brinco" ref={brincoRef} type="text" inputMode="numeric" autoComplete="off" value={brinco}
-            onChange={(e) => { setBrinco(e.target.value); setErro(null); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (pesoRef.current) pesoRef.current.focus(); } }}
-          />
-        </div>
+        {semBrinco ? (
+          <div className="fld">
+            <label htmlFor="pesar-sinal">Sem brinco: sinal (cor, marca)</label>
+            <input
+              id="pesar-sinal" type="text" autoComplete="off" value={sinal} placeholder="Ex.: branco, orelha cortada"
+              onChange={(e) => { setSinal(e.target.value); setErro(null); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (pesoRef.current) pesoRef.current.focus(); } }}
+            />
+          </div>
+        ) : (
+          <div className="fld">
+            <label htmlFor="pesar-brinco">Brinco</label>
+            <input
+              id="pesar-brinco" ref={brincoRef} type="text" inputMode="numeric" autoComplete="off" value={brinco}
+              onChange={(e) => { setBrinco(e.target.value); setErro(null); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (pesoRef.current) pesoRef.current.focus(); } }}
+            />
+          </div>
+        )}
         <div className="fld">
           <label htmlFor="pesar-peso">Peso (kg)</label>
           <input
@@ -192,8 +227,13 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
         </div>
         <button className="btn" onClick={adicionar} aria-label="Adicionar à lista"><Plus size={20} /></button>
       </div>
+      {modo === 'pesagem' && (
+        <button type="button" className={`btn ${semBrinco ? '' : 'quiet'} sm`} style={{ marginTop: 6 }} aria-pressed={semBrinco} onClick={() => { setSemBrinco((v) => !v); setErro(null); }}>
+          <TagIcon size={15} /> {semBrinco ? 'Animal sem brinco (tocar para voltar ao brinco)' : 'Animal sem brinco'}
+        </button>
+      )}
       <div style={{ minHeight: 8 }}>
-        <FichaRapida ficha={infoDigitado} digitado={brinco} />
+        {!semBrinco && <FichaRapida ficha={infoDigitado} digitado={brinco} />}
       </div>
 
       {confDup && (
@@ -205,6 +245,7 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
           <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn quiet sm" onClick={() => confirmarDup(false)}>Cancelar</button>
             <button className="btn sm" onClick={() => confirmarDup(true)}>Lançar mesmo assim</button>
+            <button className="btn ghost sm" onClick={() => confirmarDup('outro')}>É outro animal (sem brinco)</button>
           </div>
         </Aviso>
       )}
@@ -220,6 +261,15 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
       {linhas.length === 0 ? <p className="sub">Nenhum animal na lista ainda.</p> : (
         <div data-testid="lista-pesar">
           {linhas.map((l) => {
+            if (l.semBrinco) {
+              return (
+                <div className="item-lin" key={l.k} data-testid="linha-SB">
+                  <div className="t"><b>SB <span className="tag2x" style={{ background: 'var(--late-bg)', color: 'var(--late)' }}>sem brinco</span></b><span>{l.sinal || 'sem sinal anotado'} · fica na conferência para ligar a um animal sem peso</span></div>
+                  <div className="p">{fmtKg(l.peso)}</div>
+                  <button className="x-peq" onClick={() => setLinhas((ls) => ls.filter((x) => x.k !== l.k))} aria-label="Tirar o sem brinco da lista"><Trash2 size={17} /></button>
+                </div>
+              );
+            }
             const info = infos.get(l.k) || { pontos: [], mesmaData: [] };
             const aviso = info.achado ? avisoDePeso((info.pontos || []).filter((p) => p.data !== data), l.peso, data) : 'Brinco não encontrado.';
             const ant = info.pesoAnterior;
@@ -255,6 +305,7 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
       {resultado && (
         <Aviso tipo="ok">
           {resultado.modo === 'desmama' ? `${resultado.qtd} desmama(s) gravada(s)` : `${resultado.qtd} pesagem(ns) gravada(s)`}
+          {resultado.semBrinco ? ` (${resultado.semBrinco} sem brinco: ligue cada um a um animal na conferência abaixo)` : ''}
           {resultado.novilhas > 0 ? `; ${resultado.novilhas} novilha(s) entraram no lote de novilhas` : ''}.
           {resultado.offline ? ' Sem internet: ficou guardado neste celular e vai para a planilha quando a internet voltar.' : ''}
           {modoTeste ? ' (modo teste: só na tela, nada foi para a planilha)' : ''}
@@ -277,6 +328,10 @@ export default function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGrav
           {gerandoPdf ? <Loader2 size={16} className="spin" /> : <FileDown size={16} />} PDF da pesagem
         </button>
       </div>
+
+      {modo === 'pesagem' && data && doDia && doDia.secoes[0].linhas.length > 0 && (
+        <ConferenciaPesagem dados={dados} data={data} hoje={hoje} onCorrigirPesagem={onCorrigirPesagem} />
+      )}
 
       <details className="ferr noprint">
         <summary><ClipboardPaste size={15} style={{ marginRight: 8 }} /> Colar uma lista pronta</summary>

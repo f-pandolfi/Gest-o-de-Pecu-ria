@@ -2,7 +2,7 @@
 // Só regras (sem tela). As telas ficam em telas/Manejo*.jsx, telas/Toque.jsx e telas/Touros.jsx.
 import {
   addDias, diasEntre, todayISO, formatarDataBR, ultimoPartoDe, previsaoPartoInfo, noPlantel, aplicarLancamento, jaExiste,
-  novoId, acharMatrizPorBrinco, listarCrias, nomeTouroEvento, PERIODO_GESTACAO_DIAS, mapaBrincos, addMeses, idadeMesesDias, anoDe,
+  novoId, acharMatrizPorBrinco, listarCrias, nomeTouroEvento, PERIODO_GESTACAO_DIAS, mapaBrincos, addMeses, idadeMesesDias, anoDe, chavePesagem, ehSemBrinco,
 } from './logica.js';
 
 // ---------------------------------------------------------------- listas
@@ -485,7 +485,8 @@ export function pendenciasVacinas(estado, cfg, hoje) {
       });
     } else if (r.tipo === 'idade') {
       const min = num(r.idadeMin) ?? 3; const max = num(r.idadeMax) ?? 8;
-      listarCrias(estado, hoje).filter((c) => c.ativa && (r.publico !== 'bezerras' || c.sexo === 'Fêmea') && c.nascData).forEach((c) => {
+      // crias do histórico (nascidas antes do app) ficam de fora: as vacinas daquela época não estão registradas
+      listarCrias(estado, hoje).filter((c) => c.ativa && !c.historico && (r.publico !== 'bezerras' || c.sexo === 'Fêmea') && c.nascData).forEach((c) => {
         const id = c.novilha ? c.novilha.id : `c:${c.id}`;
         const feitas = [...(cache.get(id) || []), ...(cache.get(`c:${c.id}`) || [])].filter((a) => a.tipo === r.nome || (r.id === 'brucelose' && a.tipo === 'Brucelose'));
         if (feitas.length && r.unica !== false) return;
@@ -608,9 +609,10 @@ export function relatorioPesagens(estado, ano, hoje) {
   pes.forEach((e) => { if (!porData.has(e.data)) porData.set(e.data, []); porData.get(e.data).push(e); });
   const linhas = [...porData.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([d, l]) => {
     const pesos = l.map((e) => parseFloat(e.peso)).filter((x) => x > 0);
-    const chaves = l.map((e) => e.criaId || e.matrizId || e.brinco);
+    const chaves = l.map(chavePesagem);
+    const sb = l.filter(ehSemBrinco).length;
     const dup = chaves.filter((k, i) => chaves.indexOf(k) !== i).length;
-    return { data: formatarDataBR(d), qtd: l.length, total: `${pesos.reduce((s, x) => s + x, 0)} kg`, media: pesos.length ? `${(pesos.reduce((s, x) => s + x, 0) / pesos.length).toFixed(1).replace('.', ',')} kg` : '—', dup: dup ? `${dup} pesado(s) 2x` : '' };
+    return { data: formatarDataBR(d), qtd: l.length, total: `${pesos.reduce((s, x) => s + x, 0)} kg`, media: pesos.length ? `${(pesos.reduce((s, x) => s + x, 0) / pesos.length).toFixed(1).replace('.', ',')} kg` : '—', dup: [dup ? `${dup} pesado(s) 2x` : '', sb ? `${sb} sem brinco` : ''].filter(Boolean).join(' · ') };
   });
   return {
     titulo: `Pesagens · ${ano === 'todos' ? 'todos os anos' : ano}`,

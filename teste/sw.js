@@ -3,7 +3,7 @@
 //   se não houver ou demorar, usa a cópia guardada.
 // - Bibliotecas e fontes (esm.sh, Google Fonts): usa a cópia guardada; só baixa na primeira vez.
 // - A planilha (script.google.com) nunca passa por aqui: os dados ficam guardados pelo próprio app (fila.js).
-const VERSAO = '10.3';
+const VERSAO = '10.4';
 const ESCOPO = self.registration ? self.registration.scope : '';
 const CACHE = `gp-${ESCOPO}-${VERSAO}`;
 const BASICOS = ['./', 'index.html', `app.js?v=${VERSAO}`, 'logica.js', `pdf.js?v=${VERSAO}`];

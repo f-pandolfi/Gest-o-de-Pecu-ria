@@ -12,11 +12,11 @@ import { ModalNascimento } from './Nascimentos.jsx';
 const NO_REBANHO = ['mamando', 'desmamado', 'novilha'];
 const FILTROS_SIT = [
   ['rebanho', 'No rebanho'], ['mamando', 'Mamando'], ['desmamado', 'Desmamadas(os)'], ['novilha', 'Novilhas'],
-  ['matriz', 'Viraram matriz'], ['vendido', 'Vendidas(os)'], ['morto', 'Mortas(os)'], ['orfa', 'Órfãs (mãe morreu)'], ['todas', 'Todas'],
+  ['matriz', 'Viraram matriz'], ['vendido', 'Vendidas(os)'], ['morto', 'Mortas(os)'], ['confirmar', 'A confirmar'], ['orfa', 'Órfãs (mãe morreu)'], ['todas', 'Todas'],
 ];
 const ORDENS = [['nova', 'Mais novas primeiro'], ['velha', 'Mais velhas primeiro'], ['peso', 'Mais pesadas'], ['ganho', 'Maior ganho por dia'], ['brinco', 'Número do brinco']];
 
-const corSituacao = (s) => (s === 'vendido' || s === 'morto' ? 'fora' : s === 'mamando' ? 'falta' : 'pronto');
+const corSituacao = (s) => (s === 'vendido' || s === 'morto' ? 'fora' : s === 'mamando' || s === 'confirmar' ? 'falta' : 'pronto');
 
 function CriaFicha({
   c, dados, hoje, ownerMode, modoTeste, onLancar, onVender, onSalvarMatriz, onFechar, onRegistrarMorte, onEditarNascimento, onEditarMorte, onAnularMorte,
@@ -88,7 +88,7 @@ function CriaFicha({
       )}
       <Lead rotulo="Sexo" valor={c.sexo || '—'} />
       <Lead rotulo="Nascimento" valor={`${formatarDataBR(c.nascData)} · ${fmtIdade(c.idadeDias)}`} />
-      <Lead rotulo="Mãe" valor={c.maeBrinco ? `${c.maeBrinco}${c.maeMorta ? ' (morreu)' : ''}` : 'não informada'} />
+      <Lead rotulo="Mãe" valor={c.maeBrinco ? `${c.maeBrinco}${c.maeMorta ? ' (morreu)' : ''}${c.maeFora ? ' (fora do cadastro)' : ''}` : 'não informada'} />
       <Lead rotulo="Origem / pai" valor={c.origem.rotulo} />
       {c.origem.iatfData && <Lead rotulo="IATF da mãe" valor={formatarDataBR(c.origem.iatfData)} />}
       {c.pelagem && <Lead rotulo="Pelagem" valor={c.pelagem} />}
@@ -96,6 +96,8 @@ function CriaFicha({
       <Lead rotulo="Ganho recente" valor={fmtGmd(c.gmd)} />
       {c.desmamaData && <Lead rotulo="Desmama" valor={formatarDataBR(c.desmamaData)} />}
       {c.situacao === 'vendido' && <Lead rotulo="Baixa (venda)" valor={c.vendaData ? formatarDataBR(c.vendaData) : 'vendida'} />}
+      {c.historico && <Lead rotulo="Origem do registro" valor="Histórico (planilha REBANHO do Dropbox)" />}
+      {c.situacao === 'confirmar' && <Aviso tipo="info">Cria do histórico sem a situação atual (novilha, apartada, vendida ou em sociedade). Falta confirmar.</Aviso>}
       {c.situacao === 'morto' && <Lead rotulo="Morte" valor={`${c.mortoData ? formatarDataBR(c.mortoData) : 'sem data'} · ${c.causaMorte || 'causa não informada'}`} cor="var(--late)" />}
       {morte && morte.e.observacoes && <Lead rotulo="Observação" valor={morte.e.observacoes} />}
 
