@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="robots" content="noindex" />
+<meta name="theme-color" content="#131B16" />
+<title>Protótipo 11 · Gestão da Pecuária</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#131B16; --s1:#1A241E; --s2:#212D26; --s3:#2A372F; --line:#33423A; --line2:#28342D;
+  --tx:#EFEADD; --mut:#A3B0A5; --dim:#7D8A80;
+  --amber:#E0A458; --amber-bg:rgba(224,164,88,.14);
+  --green:#8DBB78; --green-bg:rgba(141,187,120,.14);
+  --late:#F0937A; --late-bg:rgba(240,147,122,.14);
+  --blue:#8FB4C9; --blue-bg:rgba(143,180,201,.14);
+  --gray-bg:rgba(169,181,170,.12);
+  --disp:'Newsreader',Georgia,serif; --body:'Instrument Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--body);-webkit-text-size-adjust:100%}
+button,input{font-family:inherit;color:inherit}
+button{cursor:pointer}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.proto{background:var(--amber);color:#1B140A;font:600 11.5px var(--mono);letter-spacing:.05em;text-align:center;padding:5px 10px}
+/* topo */
+.top{position:sticky;top:0;z-index:30;background:rgba(19,27,22,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .in{max-width:1000px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px}
+.brand{flex:1;min-width:0;line-height:1.05}
+.brand small{display:block;font:600 10.5px var(--mono);letter-spacing:.14em;color:var(--amber);text-transform:uppercase}
+.brand b{font:600 20px var(--disp)}
+.ico{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--s1);display:grid;place-items:center;flex:none}
+.ico.on{border-color:var(--amber);color:var(--amber);background:var(--amber-bg)}
+.ico svg{width:20px;height:20px}
+.busca{flex:1.4;display:flex;align-items:center;gap:8px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--s1);padding:0 12px;color:var(--mut);min-width:0}
+.busca svg{width:18px;height:18px;flex:none}
+.busca span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+@media (max-width:520px){.brand b{font-size:17px}.busca span{display:none}.busca{flex:none;width:42px;justify-content:center;padding:0}}
+/* corpo */
+main{max-width:1000px;margin:0 auto;padding:16px 16px calc(96px + env(safe-area-inset-bottom))}
+h1{font:600 30px var(--disp);margin:2px 0 4px}
+.eyebrow{font:600 11px var(--mono);letter-spacing:.14em;color:var(--amber);text-transform:uppercase}
+.sub{color:var(--mut);font-size:14px;margin:0 0 14px}
+.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:10px -16px 14px;padding:0 16px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;height:38px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--s1);font:600 12.5px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mut)}
+.tab.on{background:var(--amber);border-color:var(--amber);color:#1B140A}
+.tab .n{opacity:.75;margin-left:4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.cp{height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:transparent;font-size:13px;color:var(--mut)}
+.cp.on{border-color:var(--green);color:var(--tx);background:var(--green-bg)}
+.cp b{font-family:var(--mono);margin-left:4px;font-weight:600}
+.resumo{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:14px}
+.kpi{background:var(--s1);border:1px solid var(--line2);border-radius:var(--r);padding:12px 14px}
+.kpi small{display:block;color:var(--mut);font-size:12px;margin-bottom:4px}
+.kpi b{font:600 24px var(--mono)}
+.kpi i{font-style:normal;color:var(--dim);font-size:12px;margin-left:6px}
+.kpi.clic{cursor:pointer;text-align:left;color:inherit}
+.kpi.clic:hover{border-color:var(--line)}
+.campo{display:flex;align-items:center;gap:8px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--s1);padding:0 12px;margin-bottom:10px}
+.campo input{flex:1;background:transparent;border:none;outline:none;font-size:15px;min-width:0}
+.campo svg{width:18px;height:18px;color:var(--mut)}
+/* lista */
+.lista{background:var(--s1);border:1px solid var(--line2);border-radius:var(--r);overflow:hidden}
+.li{display:grid;grid-template-columns:78px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;min-height:62px;padding:8px 14px;border:none;border-bottom:1px solid var(--line2);background:transparent;text-align:left;color:inherit}
+.li:last-child{border-bottom:none}
+.li:hover{background:var(--s2)}
+.li .bb{font:600 19px var(--mono)}
+.li .bb small{display:block;font:500 10.5px var(--mono);color:var(--dim);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+.li .two{min-width:0;line-height:1.35}
+.li .two b{display:block;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .two span{display:block;font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mais{display:block;width:100%;height:46px;border:none;background:var(--s2);color:var(--amber);font:600 13px var(--mono)}
+.pill{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:999px;font:600 11.5px var(--mono);letter-spacing:.03em;white-space:nowrap}
+.p-green{background:var(--green-bg);color:var(--green)} .p-amber{background:var(--amber-bg);color:var(--amber)}
+.p-late{background:var(--late-bg);color:var(--late)} .p-blue{background:var(--blue-bg);color:var(--blue)} .p-gray{background:var(--gray-bg);color:var(--mut)}
+.vazio{padding:28px 18px;text-align:center;color:var(--mut);font-size:14px;line-height:1.5}
+.aviso{border:1px dashed var(--line);border-radius:var(--r);padding:16px;color:var(--mut);font-size:14px;line-height:1.5;background:var(--s1)}
+.aviso b{color:var(--tx)}
+.btn{height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--amber);background:var(--amber);color:#1B140A;font-weight:700;font-size:14px}
+.btn.sec{background:transparent;color:var(--amber)}
+/* nav */
+nav.bot{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(26,36,30,.97);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav.bot .in{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
+nav.bot button{height:64px;border:none;background:transparent;color:var(--dim);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font:600 9.5px var(--mono);letter-spacing:.04em;text-transform:uppercase;position:relative}
+nav.bot button svg{width:21px;height:21px}
+nav.bot button.on{color:var(--amber)}
+nav.bot button.on::before{content:'';position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--amber)}
+nav.bot .novo{position:absolute;top:6px;right:calc(50% - 26px);background:var(--green);color:#132015;font-size:8px;padding:1px 4px;border-radius:4px}
+/* sobreposições */
+.sobre{position:fixed;inset:0;z-index:50;background:var(--bg);overflow-y:auto}
+.sobre.anim{animation:sobe .18s ease-out}
+@keyframes sobe{from{transform:translateY(14px);opacity:.4}to{transform:none;opacity:1}}
+.sobre .barra{position:sticky;top:0;z-index:2;background:rgba(19,27,22,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.sobre .barra .in{max-width:860px;margin:0 auto;padding:10px 16px;display:flex;gap:10px;align-items:center}
+.sobre .corpo{max-width:860px;margin:0 auto;padding:16px 16px 60px}
+.buscaG{flex:1;display:flex;align-items:center;gap:8px;height:48px;border-radius:12px;border:1px solid var(--amber);background:var(--s1);padding:0 14px}
+.buscaG svg{width:20px;height:20px;flex:none;color:var(--amber)}
+.buscaG input{flex:1;background:transparent;border:none;outline:none;font:600 20px var(--mono);min-width:0}
+.dica{color:var(--mut);font-size:13.5px;margin:6px 2px 14px;line-height:1.5}
+/* ficha */
+.fhead{background:linear-gradient(160deg,var(--s2),var(--s1));border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:12px;position:relative;overflow:hidden}
+.fhead::after{content:'';position:absolute;right:-40px;top:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(var(--amber-bg),transparent 70%)}
+.fhead .tipo{font:600 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber)}
+.fhead .brinco{font:600 46px var(--mono);line-height:1.05;margin:4px 0 8px}
+.fhead .pills{display:flex;gap:6px;flex-wrap:wrap}
+.fhead .linha{color:var(--mut);font-size:13.5px;margin-top:10px}
+.grid2{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){.grid2{grid-template-columns:1fr 1fr}.grid2 .full{grid-column:1/-1}}
+.card{background:var(--s1);border:1px solid var(--line2);border-radius:var(--r);padding:14px 16px}
+.card h3{margin:0 0 10px;font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mut);display:flex;justify-content:space-between;align-items:center}
+.dl{display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:14px}
+.dl dt{color:var(--mut)}
+.dl dd{margin:0;text-align:right;font-weight:600}
+.link{color:var(--amber);background:none;border:none;padding:0;font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.parto{display:grid;grid-template-columns:86px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line2);font-size:14px}
+.parto:last-child{border-bottom:none}
+.parto .d{font:600 13px var(--mono);color:var(--mut)}
+.destaque{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.destaque div{flex:1;min-width:110px;background:var(--s2);border-radius:10px;padding:9px 11px}
+.destaque small{display:block;color:var(--mut);font-size:11.5px}
+.destaque b{font:600 16px var(--mono)}
+.tl{position:relative;margin-left:8px}
+.tl::before{content:'';position:absolute;left:5px;top:4px;bottom:4px;width:2px;background:var(--line)}
+.tl .ev{position:relative;padding:0 0 14px 24px;font-size:14px;line-height:1.4}
+.tl .ev::before{content:'';position:absolute;left:0;top:4px;width:12px;height:12px;border-radius:50%;background:var(--s1);border:2px solid var(--c,var(--mut))}
+.tl .ev small{display:block;font:600 11.5px var(--mono);color:var(--dim)}
+.tl .ev span{color:var(--mut)}
+.alerta{border-left:3px solid var(--amber);background:var(--amber-bg);border-radius:8px;padding:9px 12px;font-size:13.5px;margin-bottom:8px}
+.alerta.ruim{border-color:var(--late);background:var(--late-bg)}
+svg.spark{width:100%;height:110px;display:block}
+.cad{margin-bottom:12px}
+.cad .vals{display:flex;flex-wrap:wrap;gap:6px}
+.cad .v{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;background:var(--s2);border:1px solid var(--line2);font-size:13px}
+.cad .v.add{border-style:dashed;color:var(--amber);background:transparent}
+.cad p{color:var(--mut);font-size:12.5px;margin:-4px 0 10px}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:60;background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:90vw}
+.carregando{min-height:60vh;display:grid;place-items:center;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="proto">PROTÓTIPO 11 · SÓ CONSULTA, NADA É GRAVADO · DADOS REAIS DA PLANILHA</div>
+<div id="app"><div class="carregando">Lendo a planilha…</div></div>
+<script type="module">
+import {
+  normalizarDados, listarCrias, partosPorMatriz, previsaoPartoInfo, formatarDataBR, todayISO, idadeMesesDias, diasEntre,
+  rotuloSituacao, situacaoHistorica, infoAnimalVenda, noPlantel, CAUSAS_MORTE, TIPOS_ANIMAL_VENDA, lotesExistentes, nomeTouroEvento,
+} from '../../logica.js';
+
+const URL_API = 'https://script.google.com/macros/s/AKfycbyDBTMVGJGeBj92qtiIRfrzZciWyzgP8mvDx8inCjdvVBb2Erm5laJyuuiwx8YjJQlI/exec';
+const HOJE = todayISO();
+const I = {
+  busca: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  eng: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  unlock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>',
+  voltar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  lancar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  manejo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m14 4 6 6M4 20l6-1 10-10-5-5L5 14z"/></svg>',
+  diag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 3h6v4H9zM7 5H5v16h14V5h-2"/><path d="m9 14 2 2 4-4"/></svg>',
+  nasc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21c4.4 0 8-3.1 8-7 0-5-8-11-8-11S4 9 4 14c0 3.9 3.6 7 8 7z"/></svg>',
+  rebanho: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+  rel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4M9 13h6M9 17h6"/></svg>',
+};
+
+let E, CRIAS, CRIA_POR_ID, PARTOS, MAT_POR_ID, CRIA_DA_MATRIZ, LIDO;
+const S = { aba: 'rebanho', sub: { rebanho: 'todos', nasc: 'nascimentos', diag: 'cheias' }, filtros: { reb: 'todos', crias: 'fazenda', sexo: '', ano: HOJE.slice(0, 4), nascFalta: false, busca: '' }, dono: false, pilha: [], buscando: null, cadastros: false, lim: 60 };
+
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const br = (d) => (d ? formatarDataBR(d) : '—');
+const idadeTxt = (d) => { const x = d && idadeMesesDias(d, HOJE); return x ? x.texto : ''; };
+const anos = (d) => { const x = d && idadeMesesDias(d, HOJE); return x ? (x.meses >= 24 ? `${Math.floor(x.meses / 12)} anos` : x.texto) : ''; };
+const racaHist = (n) => { const m = /ra[çc]a\s+([A-Za-zÀ-ú]+)/i.exec(n && n.observacoes || ''); return m ? m[1] : ''; };
+const pill = (t, c) => `<span class="pill p-${c}">${esc(t)}</span>`;
+const corStatus = (s) => ({ Cheia: 'green', Vazia: 'amber', Descarte: 'late', Vendida: 'gray', Morta: 'gray' }[s] || 'gray');
+const corSit = (s) => ({ mamando: 'blue', desmamado: 'green', novilha: 'green', matriz: 'green', vendido: 'gray', morto: 'late', confirmar: 'amber' }[s] || 'gray');
+const parseLista = (v) => { try { const x = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(x) ? x : []; } catch (e) { return []; } };
+
+function categoriaCria(c) {
+  const m = c.idadeDias ?? 0; const f = c.sexo === 'Fêmea';
+  if (c.situacao === 'mamando') return f ? 'Bezerra' : 'Bezerro';
+  if (m < 365) return f ? 'Bezerra desmamada' : 'Bezerro desmamado';
+  return f ? 'Novilha' : 'Garrote';
+}
+
+async function carregar() {
+  const r = await fetch(`${URL_API}?action=getAll`);
+  const d = await r.json();
+  if (d.error) throw new Error(d.error);
+  E = normalizarDados(d);
+  E.protocolos = (d.protocolos || []).map((p) => ({ ...p, animais: Array.isArray(p.animais) ? p.animais : String(p.animais || '').split(',').filter(Boolean), touros: Array.isArray(p.touros) ? p.touros : String(p.touros || '').split(',').filter(Boolean) }));
+  CRIAS = listarCrias(E, HOJE);
+  CRIA_POR_ID = new Map(CRIAS.map((c) => [c.id, c]));
+  PARTOS = partosPorMatriz(E.eventos);
+  MAT_POR_ID = new Map(E.matrizes.map((m) => [m.id, m]));
+  CRIA_DA_MATRIZ = new Map(); CRIAS.forEach((c) => { if (c.novilha) CRIA_DA_MATRIZ.set(c.novilha.id, c); });
+  LIDO = new Date();
+}
+
+// ------------------------------------------------------------------ busca
+function candidatos(q) {
+  q = String(q || '').trim(); if (!q) return [];
+  const ql = q.toLowerCase();
+  const out = [];
+  const igual = (b) => String(b).trim() === q || (/^\d+$/.test(q) && /^\d+$/.test(String(b).trim()) && Number(b) === Number(q));
+  E.matrizes.forEach((m) => { if (igual(m.brinco)) out.push({ k: 'm:' + m.id, exato: 1 }); });
+  CRIAS.forEach((c) => { if (c.brinco && igual(c.brinco) && !c.novilha) out.push({ k: 'c:' + c.id, exato: 1 }); });
+  E.touros.forEach((t) => { if (String(t.nome || '').toLowerCase().includes(ql) || (t.brinco && igual(t.brinco))) out.push({ k: 't:' + t.id, exato: 1 }); });
+  if (out.length) return out;
+  E.matrizes.forEach((m) => { if (String(m.brinco).startsWith(q)) out.push({ k: 'm:' + m.id }); });
+  CRIAS.forEach((c) => { if (c.brinco && String(c.brinco).startsWith(q) && !c.novilha) out.push({ k: 'c:' + c.id }); });
+  return out.slice(0, 30);
+}
+
+function resumoAnimal(k) {
+  const [t, id] = [k.slice(0, 1), k.slice(2)];
+  if (t === 'm') {
+    const m = MAT_POR_ID.get(id); const p = PARTOS.get(id) || [];
+    return { brinco: m.brinco, rot: m.categoria || 'Matriz', titulo: `${m.categoria || 'Matriz'} · ${m.lote || 'sem lote'}`, linha: `${p.length} parto${p.length === 1 ? '' : 's'}${p[0] ? ' · último ' + br(p[0].data) : ''}${m.dataNascimento ? ' · ' + anos(m.dataNascimento) : ''}`, pill: pill(m.status, corStatus(m.status)) };
+  }
+  if (t === 'c') {
+    const c = CRIA_POR_ID.get(id);
+    return { brinco: c.brinco || 's/ nº', rot: categoriaCria(c), titulo: `${categoriaCria(c)} · nasc. ${br(c.nascData)}`, linha: `Mãe ${c.maeBrinco || '?'} · ${c.origem ? c.origem.rotulo : ''}${c.pesoAtual ? ' · ' + c.pesoAtual + ' kg' : ''}`, pill: pill(rotuloSituacao(c), corSit(c.situacao)) };
+  }
+  const tt = E.touros.find((x) => x.id === id);
+  return { brinco: tt.brinco || '♂', rot: 'Touro', titulo: tt.nome, linha: `${tt.tipo || 'Touro / sêmen'}${tt.raca ? ' · ' + tt.raca : ''}`, pill: pill(tt.tipo === 'Sêmen' ? 'Sêmen' : 'Touro', 'blue') };
+}
+const linhaAnimal = (k) => { const r = resumoAnimal(k); return `<button class="li" data-abrir="${k}"><div class="bb num">${esc(r.brinco)}<small>${esc(r.rot)}</small></div><div class="two"><b>${esc(r.titulo)}</b><span>${esc(r.linha)}</span></div>${r.pill}</button>`; };
+const linkAnimal = (k, txt) => `<button class="link" data-abrir="${k}">${esc(txt)}</button>`;
+const kMae = (matrizId) => (matrizId && MAT_POR_ID.get(matrizId) ? 'm:' + matrizId : '');
+
+// ------------------------------------------------------------------ ficha
+function eventosDe(ids, brinco) {
+  const set = new Set(ids.filter(Boolean));
+  return E.eventos.filter((e) => set.has(e.matrizId) || set.has(e.criaId) || (e.tipo === 'manejo' && (String(e.presentes || '').split(',').some((x) => set.has(x)) || parseLista(e.foraDoLote).some((f) => set.has(f.animal) || (brinco && String(f.brinco) === String(brinco))))));
+}
+function manejosCard(evs, ids, brinco) {
+  const set = new Set(ids);
+  const ms = evs.filter((e) => e.tipo === 'manejo').sort((a, b) => b.data.localeCompare(a.data));
+  if (!ms.length) return `<div class="card"><h3>Sanidade e manejos</h3><div class="vazio" style="padding:10px">Nenhum manejo registrado para este animal.</div></div>`;
+  return `<div class="card"><h3>Sanidade e manejos <span>${ms.length}</span></h3>${ms.slice(0, 8).map((e) => {
+    const apl = parseLista(e.aplicacoes).map((a) => [a.tipo, a.produto].filter(Boolean).join(': ')).join(' · ');
+    const nota = parseLista(e.foraDoLote).find((f) => set.has(f.animal) || (brinco && String(f.brinco) === String(brinco)));
+    return `<div class="parto"><span class="d">${br(e.data)}</span><span>${esc(e.descricao || e.etapa || 'Manejo')}${apl ? `<br><span style="color:var(--mut);font-size:12.5px">${esc(apl)}</span>` : ''}${nota && nota.nota ? `<br><span style="color:var(--amber);font-size:12.5px">Obs.: ${esc(nota.nota)}</span>` : ''}</span><span>${e.lote ? pill(e.lote, 'gray') : ''}</span></div>`;
+  }).join('')}</div>`;
+}
+function pesoCard(pontos, gmd) {
+  const pts = (pontos || []).filter((p) => p.peso > 0);
+  if (!pts.length) return `<div class="card"><h3>Peso</h3><div class="vazio" style="padding:10px">Ainda não foi pesado.</div></div>`;
+  const W = 300, H = 100, pad = 8;
+  const xs = pts.map((p) => new Date(p.data).getTime()); const ys = pts.map((p) => p.peso);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs) || x0 + 1, y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const X = (x) => pad + (x1 === x0 ? (W - 2 * pad) / 2 : ((x - x0) / (x1 - x0)) * (W - 2 * pad));
+  const Y = (y) => H - pad - (y1 === y0 ? (H - 2 * pad) / 2 : ((y - y0) / (y1 - y0)) * (H - 2 * pad));
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${X(xs[i]).toFixed(1)},${Y(p.peso).toFixed(1)}`).join(' ');
+  const u = pts[pts.length - 1];
+  return `<div class="card"><h3>Peso <span>${pts.length} pesagem${pts.length > 1 ? 's' : ''}</span></h3>
+  <div class="destaque"><div><small>Último peso</small><b>${u.peso} kg</b></div><div><small>Em</small><b>${br(u.data)}</b></div>${gmd ? `<div><small>Ganho por dia</small><b>${String(gmd.toFixed ? gmd.toFixed(2) : gmd).replace('.', ',')} kg</b></div>` : ''}</div>
+  <svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="var(--green)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>${pts.map((p, i) => `<circle cx="${X(xs[i])}" cy="${Y(p.peso)}" r="3.5" fill="var(--green)"/>`).join('')}</svg></div>`;
+}
+function timeline(itens) {
+  itens = itens.filter((x) => x.data).sort((a, b) => b.data.localeCompare(a.data));
+  if (!itens.length) return '';
+  return `<div class="card full"><h3>Linha do tempo <span>${itens.length}</span></h3><div class="tl">${itens.slice(0, 40).map((x) => `<div class="ev" style="--c:var(--${x.c || 'mut'})"><small>${br(x.data)}</small>${x.t}${x.s ? ` <span>· ${x.s}</span>` : ''}</div>`).join('')}</div></div>`;
+}
+
+function fichaMatriz(m) {
+  const cria = CRIA_DA_MATRIZ.get(m.id);
+  const ps = PARTOS.get(m.id) || [];
+  const evs = eventosDe([m.id], m.brinco);
+  const diags = evs.filter((e) => e.tipo === 'diagnostico').sort((a, b) => b.data.localeCompare(a.data));
+  const iatfs = evs.filter((e) => e.tipo === 'iatf').sort((a, b) => b.data.localeCompare(a.data));
+  const prev = previsaoPartoInfo(m.id, E.eventos);
+  const info = infoAnimalVenda(E, m.brinco, HOJE, CRIAS);
+  const nasc = m.dataNascimento || (cria && cria.nascData) || '';
+  const intervalos = []; for (let i = 0; i < ps.length - 1; i++) intervalos.push(diasEntre(ps[i + 1].data, ps[i].data));
+  const ipp = intervalos.length ? Math.round(intervalos.reduce((a, b) => a + b, 0) / intervalos.length) : null;
+  const alertas = [];
+  if (m.status === 'Vazia' && ps[0]) { const d = diasEntre(ps[0].data, HOJE); if (d > 120) alertas.push([`Vazia há ${d} dias desde o último parto`, d > 365 ? 'ruim' : '']); }
+  if (prev && prev.data && m.status === 'Cheia') { const d = diasEntre(HOJE, prev.data); if (d >= 0 && d <= 30) alertas.push([`Parto previsto em ${d} dias (${br(prev.data)})`, '']); if (d < 0) alertas.push([`Previsão de parto passou há ${-d} dias: conferir`, 'ruim']); }
+  if (!nasc) alertas.push(['Data de nascimento não informada', '']);
+  const ult = diags[0];
+  const partosHtml = ps.length ? ps.map((p) => { const c = CRIA_POR_ID.get(p.id); const kc = c && (c.novilha ? 'm:' + c.novilha.id : 'c:' + c.id);
+    return `<div class="parto"><span class="d">${br(p.data)}</span><span>${c ? linkAnimal(kc, c.brinco || 's/ nº') : esc(p.brincoBezerro || 's/ nº')} · ${esc(p.sexo || '?')}${c && c.origem ? `<br><span style="color:var(--mut);font-size:12.5px">${esc(c.origem.rotulo)}</span>` : ''}</span>${c ? pill(rotuloSituacao(c), corSit(c.situacao)) : (p.resultadoParto === 'Natimorto' ? pill('Natimorto', 'late') : '')}</div>`; }).join('') : '<div class="vazio" style="padding:10px">Nenhum parto registrado.</div>';
+  const tl = [
+    ...(nasc ? [{ data: nasc, t: 'Nasceu', s: cria ? `mãe ${cria.maeBrinco || '?'}` : '', c: 'blue' }] : []),
+    ...ps.map((p) => ({ data: p.data, t: `Pariu ${p.brincoBezerro || 's/ nº'}`, s: p.sexo, c: 'green' })),
+    ...iatfs.map((e) => ({ data: e.data, t: e.tipoServico || 'IATF', s: nomeTouroEvento(e, E.touros), c: 'blue' })),
+    ...diags.map((e) => ({ data: e.data, t: `Toque: ${e.resultado}`, s: [e.dg ? e.dg + ' dias' : '', e.veterinario].filter(Boolean).join(' · '), c: e.resultado === 'Prenhe' ? 'green' : e.resultado === 'Vazia' ? 'amber' : 'late' })),
+    ...evs.filter((e) => e.tipo === 'manejo').map((e) => ({ data: e.data, t: e.descricao || 'Manejo', s: e.lote, c: 'mut' })),
+    ...evs.filter((e) => e.tipo === 'pesagem').map((e) => ({ data: e.data, t: `Pesagem ${e.peso} kg`, c: 'mut' })),
+    ...evs.filter((e) => e.tipo === 'morte').map((e) => ({ data: e.data, t: 'Morte', s: e.causa, c: 'late' })),
+    ...evs.filter((e) => e.tipo === 'descarte').map((e) => ({ data: e.data, t: 'Descarte', s: e.motivo, c: 'late' })),
+  ];
+  return `
+  <div class="fhead"><div class="tipo">${esc(m.categoria || 'Matriz')}${m.raca ? ' · ' + esc(m.raca) : ''}</div><div class="brinco">${esc(m.brinco)}</div>
+    <div class="pills">${pill(m.status, corStatus(m.status))}${m.lote ? pill(m.lote, 'gray') : ''}${ps.length ? pill(ps.length + (ps.length > 1 ? ' partos' : ' parto'), 'blue') : ''}</div>
+    <div class="linha">${nasc ? `Nascida em ${br(nasc)} · ${anos(nasc)}` : 'Nascimento não informado'}</div></div>
+  ${alertas.map(([t, c]) => `<div class="alerta ${c}">${esc(t)}</div>`).join('')}
+  <div class="grid2">
+    <div class="card"><h3>Identificação</h3><dl class="dl">
+      <dt>Nascimento</dt><dd>${br(nasc)}</dd><dt>Idade</dt><dd>${anos(nasc) || '—'}</dd><dt>Raça</dt><dd>${esc(m.raca || (cria && racaHist(cria.nasc)) || '—')}</dd>
+      <dt>Mãe</dt><dd>${cria && cria.matrizId ? linkAnimal(kMae(cria.matrizId), cria.maeBrinco) : esc((cria && cria.maeBrinco) || '—')}</dd>
+      <dt>Pai / origem</dt><dd>${esc(cria && cria.origem ? cria.origem.rotulo : '—')}</dd><dt>Lote</dt><dd>${esc(m.lote || '—')}</dd>
+      ${m.status === 'Vendida' || m.status === 'Morta' ? `<dt>Baixa</dt><dd>${br(m.dataBaixa)} ${esc(m.motivoBaixa || '')}</dd>` : ''}</dl></div>
+    <div class="card"><h3>Reprodução agora</h3>
+      <div class="destaque"><div><small>Último toque</small><b>${ult ? esc(ult.resultado) : '—'}</b><small>${ult ? br(ult.data) + (ult.dg ? ' · ' + ult.dg + ' d' : '') : ''}</small></div>
+      <div><small>Previsão de parto</small><b>${prev && prev.data && m.status === 'Cheia' ? br(prev.data) : '—'}</b><small>${prev && m.status === 'Cheia' ? 'pelo ' + prev.origem : ''}</small></div></div>
+      <dl class="dl"><dt>Última IATF</dt><dd>${iatfs[0] ? br(iatfs[0].data) + (nomeTouroEvento(iatfs[0], E.touros) ? ' · ' + esc(nomeTouroEvento(iatfs[0], E.touros)) : '') : '—'}</dd>
+      <dt>Último parto</dt><dd>${ps[0] ? br(ps[0].data) : '—'}</dd><dt>Intervalo entre partos</dt><dd>${ipp ? `${Math.round(ipp / 30.4)} meses (${ipp} d)` : '—'}</dd></dl></div>
+    <div class="card full"><h3>Partos e crias <span>${ps.length}</span></h3>${partosHtml}</div>
+    ${pesoCard(info.pontos)}
+    ${manejosCard(evs, [m.id], m.brinco)}
+    ${timeline(tl)}
+  </div>`;
+}
+
+function fichaCria(c) {
+  const n = c.nasc; const h = situacaoHistorica(n);
+  const evs = eventosDe([c.id], c.brinco);
+  const irmaos = c.matrizId ? (PARTOS.get(c.matrizId) || []).filter((p) => p.id !== c.id) : [];
+  const tl = [
+    { data: c.nascData, t: 'Nasceu', s: `mãe ${c.maeBrinco || '?'}`, c: 'blue' },
+    ...c.pontos.filter((p) => p.fonte !== 'Nascimento').map((p) => ({ data: p.data, t: `${p.fonte || 'Pesagem'} ${p.peso} kg`, c: 'mut' })),
+    ...(c.desmamaData ? [{ data: c.desmamaData, t: 'Desmama', c: 'green' }] : []),
+    ...(c.vendaData ? [{ data: c.vendaData, t: 'Vendido', c: 'mut' }] : []),
+    ...(c.mortoData ? [{ data: c.mortoData, t: 'Morte', s: c.causaMorte, c: 'late' }] : []),
+    ...evs.filter((e) => e.tipo === 'manejo').map((e) => ({ data: e.data, t: e.descricao || 'Manejo', s: e.lote, c: 'mut' })),
+  ];
+  return `
+  <div class="fhead"><div class="tipo">${esc(categoriaCria(c))}${racaHist(n) ? ' · ' + esc(racaHist(n)) : ''}</div><div class="brinco">${esc(c.brinco || 's/ nº')}</div>
+    <div class="pills">${pill(rotuloSituacao(c), corSit(c.situacao))}${pill(c.sexo || 'sexo?', c.sexo === 'Fêmea' ? 'amber' : 'blue')}${c.orfa ? pill('Órfã', 'late') : ''}${c.historico ? pill('Histórico', 'gray') : ''}</div>
+    <div class="linha">Nasceu em ${br(c.nascData)} · ${idadeTxt(c.nascData)}</div></div>
+  ${c.situacao === 'confirmar' ? '<div class="alerta">Situação a confirmar: não sabemos se virou novilha, foi apartada, vendida ou está a meia.</div>' : ''}
+  ${c.orfa ? '<div class="alerta ruim">A mãe morreu: cria órfã, mamando.</div>' : ''}
+  <div class="grid2">
+    <div class="card"><h3>Identificação</h3><dl class="dl">
+      <dt>Nascimento</dt><dd>${br(c.nascData)}</dd><dt>Idade</dt><dd>${idadeTxt(c.nascData) || '—'}</dd><dt>Sexo</dt><dd>${esc(c.sexo || '—')}</dd>
+      <dt>Mãe</dt><dd>${c.matrizId ? linkAnimal(kMae(c.matrizId), c.maeBrinco) : esc(c.maeBrinco || '—')}${c.maeFora ? ' <span style="color:var(--dim);font-weight:400">(fora do cadastro)</span>' : ''}</dd>
+      <dt>Pai / origem</dt><dd>${esc(c.origem ? c.origem.rotulo : '—')}</dd><dt>Tipo de parto</dt><dd>${esc(n.tipoParto || '—')}</dd>
+      <dt>Peso ao nascer</dt><dd>${n.pesoNascer ? esc(n.pesoNascer) + ' kg' : '—'}</dd><dt>Pelagem</dt><dd>${esc(n.pelagem || '—')}</dd>
+      <dt>Registro</dt><dd>${c.historico ? 'Planilha antiga' : 'Lançado no app'}</dd></dl></div>
+    <div class="card"><h3>Situação</h3><dl class="dl">
+      <dt>Agora</dt><dd>${esc(rotuloSituacao(c))}</dd><dt>Desmama</dt><dd>${br(c.desmamaData)}</dd>
+      <dt>Venda</dt><dd>${c.situacao === 'vendido' ? br(c.vendaData) : '—'}</dd><dt>Morte</dt><dd>${c.situacao === 'morto' ? br(c.mortoData) + (c.causaMorte ? ' · ' + esc(c.causaMorte) : '') : '—'}</dd>
+      </dl>${n.observacoes ? `<p style="color:var(--mut);font-size:12.5px;margin:10px 0 0;line-height:1.5">${esc(n.observacoes)}</p>` : ''}</div>
+    ${pesoCard(c.pontos, c.gmd)}
+    <div class="card"><h3>Irmãos (mesma mãe) <span>${irmaos.length}</span></h3>${irmaos.length ? irmaos.map((p) => { const x = CRIA_POR_ID.get(p.id); const kx = x && (x.novilha ? 'm:' + x.novilha.id : 'c:' + x.id); return `<div class="parto"><span class="d">${br(p.data)}</span><span>${x ? linkAnimal(kx, x.brinco || 's/ nº') : esc(p.brincoBezerro || 's/ nº')} · ${esc(p.sexo || '')}</span>${x ? pill(rotuloSituacao(x), corSit(x.situacao)) : ''}</div>`; }).join('') : '<div class="vazio" style="padding:10px">Nenhum outro parto da mãe registrado.</div>'}</div>
+    ${manejosCard(evs, [c.id], c.brinco)}
+    ${timeline(tl)}
+  </div>`;
+}
+
+function fichaTouro(t) {
+  const filhos = CRIAS.filter((c) => c.origem && c.origem.pai && String(c.origem.pai).toUpperCase().includes(String(t.nome).toUpperCase()));
+  const M = filhos.filter((c) => c.sexo === 'Macho').length;
+  return `<div class="fhead"><div class="tipo">${esc(t.tipo || 'Touro / sêmen')}${t.raca ? ' · ' + esc(t.raca) : ''}</div><div class="brinco" style="font-size:36px">${esc(t.nome)}</div>
+    <div class="pills">${pill(t.tipo === 'Sêmen' ? 'Sêmen' : t.tipo || 'Reprodutor', 'blue')}${t.situacao ? pill(t.situacao, 'gray') : ''}</div></div>
+  <div class="grid2"><div class="card"><h3>Dados</h3><dl class="dl"><dt>Raça</dt><dd>${esc(t.raca || '—')}</dd><dt>Doses</dt><dd>${esc(t.doses ?? '—')}</dd><dt>Fornecedor</dt><dd>${esc(t.fornecedor || '—')}</dd></dl>
+  ${t.observacoes ? `<p style="color:var(--mut);font-size:12.5px;line-height:1.5">${esc(t.observacoes)}</p>` : ''}</div>
+  <div class="card"><h3>Filhos registrados <span>${filhos.length}</span></h3><div class="destaque"><div><small>Machos</small><b>${M}</b></div><div><small>Fêmeas</small><b>${filhos.length - M}</b></div></div>
+  ${filhos.slice(0, 12).map((c) => `<div class="parto"><span class="d">${br(c.nascData)}</span><span>${linkAnimal(c.novilha ? 'm:' + c.novilha.id : 'c:' + c.id, c.brinco || 's/ nº')} · mãe ${esc(c.maeBrinco || '?')}</span>${pill(rotuloSituacao(c), corSit(c.situacao))}</div>`).join('')}</div></div>`;
+}
+
+function renderFicha(k) {
+  const t = k[0], id = k.slice(2);
+  if (t === 'm') return fichaMatriz(MAT_POR_ID.get(id));
+  if (t === 'c') return fichaCria(CRIA_POR_ID.get(id));
+  return fichaTouro(E.touros.find((x) => x.id === id));
+}
+
+// ------------------------------------------------------------------ telas
+function telaRebanho() {
+  const plantel = E.matrizes.filter(noPlantel);
+  const naFaz = CRIAS.filter((c) => !c.novilha && ['mamando', 'desmamado'].includes(c.situacao));
+  const conf = CRIAS.filter((c) => !c.novilha && c.situacao === 'confirmar');
+  const vacas = plantel.filter((m) => m.categoria !== 'Novilha'), novs = plantel.filter((m) => m.categoria === 'Novilha');
+  const sub = S.sub.rebanho;
+  const tabs = [['todos', 'Todos', plantel.length + naFaz.length + E.touros.length], ['matrizes', 'Matrizes', plantel.length], ['crias', 'Crias', CRIAS.length], ['touros', 'Touros', E.touros.length], ['bois', 'Bois', 0]];
+  let corpo = '';
+  const q = S.filtros.busca.trim();
+  const fb = (b) => !q || String(b).startsWith(q);
+  if (sub === 'todos') {
+    const f = S.filtros.reb;
+    let ks = [];
+    if (f === 'todos' || f === 'vacas') ks.push(...vacas.map((m) => 'm:' + m.id));
+    if (f === 'todos' || f === 'novilhas') ks.push(...novs.map((m) => 'm:' + m.id));
+    if (f === 'todos' || f === 'bezerros') ks.push(...naFaz.map((c) => 'c:' + c.id));
+    if (f === 'todos' || f === 'touros') ks.push(...E.touros.map((t) => 't:' + t.id));
+    ks = ks.filter((k) => fb(resumoAnimal(k).brinco));
+    corpo = `<div class="chips">${[['todos', 'Todos'], ['vacas', 'Vacas', vacas.length], ['novilhas', 'Novilhas', novs.length], ['bezerros', 'Bezerros(as)', naFaz.length], ['touros', 'Touros', E.touros.length]].map(([v, t, n]) => `<button class="cp ${S.filtros.reb === v ? 'on' : ''}" data-f="reb" data-v="${v}">${t}${n !== undefined ? `<b>${n}</b>` : ''}</button>`).join('')}</div>${lista(ks)}`;
+  } else if (sub === 'matrizes') {
+    const ks = plantel.filter((m) => fb(m.brinco)).sort((a, b) => String(a.brinco).localeCompare(String(b.brinco), 'pt-BR', { numeric: true })).map((m) => 'm:' + m.id);
+    corpo = lista(ks);
+  } else if (sub === 'crias') {
+    const fs = S.filtros;
+    const anosL = [...new Set(CRIAS.map((c) => (c.nascData || '').slice(0, 4)).filter(Boolean))].sort().reverse();
+    let l = CRIAS.filter((c) => !c.novilha || fs.crias === 'todas');
+    if (fs.crias === 'fazenda') l = l.filter((c) => ['mamando', 'desmamado'].includes(c.situacao));
+    if (fs.crias === 'confirmar') l = l.filter((c) => c.situacao === 'confirmar');
+    if (fs.crias === 'vendidas') l = l.filter((c) => c.situacao === 'vendido');
+    if (fs.crias === 'mortas') l = l.filter((c) => c.situacao === 'morto');
+    if (fs.sexo) l = l.filter((c) => c.sexo === fs.sexo);
+    if (fs.ano && fs.crias !== 'fazenda') l = l.filter((c) => (c.nascData || '').startsWith(fs.ano));
+    l = l.filter((c) => fb(c.brinco));
+    corpo = `<div class="chips">${[['fazenda', 'Na fazenda'], ['confirmar', 'A confirmar'], ['vendidas', 'Vendidas'], ['mortas', 'Mortas'], ['todas', 'Todas']].map(([v, t]) => `<button class="cp ${fs.crias === v ? 'on' : ''}" data-f="crias" data-v="${v}">${t}</button>`).join('')}</div>
+      <div class="chips">${[['', 'Machos e fêmeas'], ['Macho', 'Machos'], ['Fêmea', 'Fêmeas']].map(([v, t]) => `<button class="cp ${fs.sexo === v ? 'on' : ''}" data-f="sexo" data-v="${v}">${t}</button>`).join('')}
+      ${fs.crias !== 'fazenda' ? anosL.map((a) => `<button class="cp ${fs.ano === a ? 'on' : ''}" data-f="ano" data-v="${a}">${a}</button>`).join('') : ''}</div>
+      ${lista(l.map((c) => (c.novilha ? 'm:' + c.novilha.id : 'c:' + c.id)))}`;
+  } else if (sub === 'touros') {
+    corpo = lista(E.touros.map((t) => 't:' + t.id));
+  } else {
+    corpo = `<div class="aviso"><b>Bois e outros animais</b><br>Aqui ficam os animais que não são matriz nem cria: boi de engorda, garrote comprado, rufião. Cada um ganha ficha própria, com pesagens, manejos e venda.<br><br>Campos do cadastro: <b>brinco, categoria (boi, garrote, rufião), raça, origem (nascido ou comprado), data de entrada, peso de entrada, lote e observação</b>.<br><br><button class="btn" data-acao="proto">+ Cadastrar boi</button></div>`;
+  }
+  return `<div class="eyebrow">Livro do rebanho</div><h1>Rebanho</h1><p class="sub">Todos os animais da fazenda. Toque em qualquer um para abrir a ficha.</p>
+  <div class="resumo">
+    <button class="kpi clic" data-sub="rebanho:matrizes"><small>Vacas</small><b>${vacas.length}</b><i>${plantel.filter((m) => m.status === 'Cheia').length} cheias</i></button>
+    <button class="kpi clic" data-sub="rebanho:matrizes"><small>Novilhas</small><b>${novs.length}</b></button>
+    <button class="kpi clic" data-sub="rebanho:crias"><small>Bezerros(as) na fazenda</small><b>${naFaz.length}</b><i>${naFaz.filter((c) => c.sexo === 'Macho').length}M · ${naFaz.filter((c) => c.sexo === 'Fêmea').length}F</i></button>
+    <button class="kpi clic" data-sub="rebanho:touros"><small>Touros / sêmen</small><b>${E.touros.length}</b></button>
+    <button class="kpi clic" data-sub="rebanho:bois"><small>Bois</small><b>0</b><i>cadastrar 7</i></button>
+    ${conf.length ? `<button class="kpi clic" data-sub="rebanho:crias" data-fc="confirmar"><small>Crias a confirmar</small><b style="color:var(--amber)">${conf.length}</b></button>` : ''}
+  </div>
+  <div class="tabs">${tabs.map(([v, t, n]) => `<button class="tab ${sub === v ? 'on' : ''}" data-sub="rebanho:${v}">${t}<span class="n">${n}</span></button>`).join('')}</div>
+  ${sub !== 'bois' ? `<label class="campo">${I.busca}<input id="filtroBrinco" inputmode="numeric" placeholder="Filtrar pelo brinco" value="${esc(S.filtros.busca)}"></label>` : ''}
+  ${corpo}`;
+}
+function lista(ks) {
+  if (!ks.length) return '<div class="lista"><div class="vazio">Nenhum animal com esse filtro.</div></div>';
+  const mostra = ks.slice(0, S.lim);
+  return `<div class="lista">${mostra.map(linhaAnimal).join('')}${ks.length > mostra.length ? `<button class="mais" data-acao="mais">Mostrar mais (${ks.length - mostra.length})</button>` : ''}</div>`;
+}
+
+function telaNascimentos() {
+  const sub = S.sub.nasc;
+  const tabs = [['nascimentos', 'Nascimentos'], ['pesar', 'Pesar'], ['desmama', 'Desmama'], ['novilhas', 'Novilhas'], ['vender', 'Para vender'], ['vendas', 'Vendas']];
+  let corpo;
+  if (sub === 'nascimentos') {
+    const fs = S.filtros;
+    const anosL = [...new Set(E.eventos.filter((e) => e.tipo === 'nascimento').map((e) => (e.data || '').slice(0, 4)).filter(Boolean))].sort().reverse();
+    const doAno = E.eventos.filter((e) => e.tipo === 'nascimento' && (e.data || '').startsWith(fs.ano));
+    const falta = (e) => !e.sexo || (!e.matrizId && !(situacaoHistorica(e) || {}).maeFora) || !String(e.brincoBezerro || '').trim();
+    let l = fs.nascFalta ? doAno.filter(falta) : doAno;
+    l = l.slice().sort((a, b) => b.data.localeCompare(a.data));
+    const M = doAno.filter((e) => e.sexo === 'Macho').length, F = doAno.filter((e) => e.sexo === 'Fêmea').length;
+    const nat = doAno.filter((e) => e.resultadoParto === 'Natimorto').length;
+    const vivas = doAno.map((e) => CRIA_POR_ID.get(e.id)).filter((c) => c && c.ativa).length;
+    const porMes = Array.from({ length: 12 }, (_, i) => doAno.filter((e) => Number(e.data.slice(5, 7)) === i + 1).length);
+    const mx = Math.max(1, ...porMes);
+    corpo = `<div class="chips">${anosL.map((a) => `<button class="cp ${fs.ano === a ? 'on' : ''}" data-f="ano" data-v="${a}">${a}</button>`).join('')}</div>
+    <div class="resumo"><div class="kpi"><small>Nascimentos ${fs.ano}</small><b>${doAno.length}</b></div><div class="kpi"><small>Machos</small><b>${M}</b><i>${doAno.length ? Math.round(M / doAno.length * 100) : 0}%</i></div><div class="kpi"><small>Fêmeas</small><b>${F}</b><i>${doAno.length ? Math.round(F / doAno.length * 100) : 0}%</i></div><div class="kpi"><small>Natimortos</small><b>${nat}</b></div><div class="kpi"><small>Ainda na fazenda</small><b>${vivas}</b></div></div>
+    <div class="card" style="margin-bottom:12px"><h3>Nascimentos por mês</h3><div style="display:grid;grid-template-columns:repeat(12,1fr);gap:4px;align-items:end;height:90px">${porMes.map((n, i) => `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end"><span class="num" style="font-size:10.5px;color:var(--mut)">${n || ''}</span><div style="width:100%;border-radius:4px 4px 0 0;background:${n ? 'var(--amber)' : 'var(--s3)'};height:${Math.max(3, n / mx * 62)}px"></div><span style="font:600 9.5px var(--mono);color:var(--dim)">${'JFMAMJJASOND'[i]}</span></div>`).join('')}</div></div>
+    <div class="chips"><button class="cp ${!fs.nascFalta ? 'on' : ''}" data-f="nascFalta" data-v="">Todos<b>${doAno.length}</b></button><button class="cp ${fs.nascFalta ? 'on' : ''}" data-f="nascFalta" data-v="1">Faltando dados<b>${doAno.filter(falta).length}</b></button></div>
+    ${lista(l.map((e) => { const c = CRIA_POR_ID.get(e.id); return c ? (c.novilha ? 'm:' + c.novilha.id : 'c:' + c.id) : null; }).filter(Boolean))}`;
+  } else {
+    const nomes = { pesar: 'Pesar', desmama: 'Desmama', novilhas: 'Novilhas', vender: 'Para vender', vendas: 'Vendas' };
+    corpo = `<div class="aviso"><b>${nomes[sub]}</b> continua exatamente como está hoje na aba Crias. Só muda de lugar: passa a ficar aqui em Nascimentos. Ao digitar um brinco, o cartão do animal abre a ficha completa.</div>`;
+  }
+  return `<div class="eyebrow">Nascimentos e crias</div><h1>Nascimentos</h1><p class="sub">Tudo sobre os nascimentos e o trabalho com as crias. O lançamento do parto continua em Lançar.</p>
+  <div class="tabs">${tabs.map(([v, t]) => `<button class="tab ${sub === v ? 'on' : ''}" data-sub="nasc:${v}">${t}</button>`).join('')}</div>${corpo}`;
+}
+
+function telaDiagnostico() {
+  const sub = S.sub.diag;
+  const plantel = E.matrizes.filter(noPlantel);
+  const cheias = plantel.filter((m) => m.status === 'Cheia').map((m) => ({ m, p: previsaoPartoInfo(m.id, E.eventos) })).sort((a, b) => ((a.p && a.p.data) || '9').localeCompare((b.p && b.p.data) || '9'));
+  const vazias = plantel.filter((m) => m.status === 'Vazia');
+  const tabs = [['toque', 'Toque'], ['cheias', 'Cheias', cheias.length], ['vazias', 'Vazias', vazias.length], ['previsao', 'Previsão de parto']];
+  let corpo;
+  const linhaPrev = ({ m, p }) => { const d = p && p.data ? diasEntre(HOJE, p.data) : null; return `<button class="li" data-abrir="m:${m.id}"><div class="bb num">${esc(m.brinco)}<small>${esc(m.categoria || '')}</small></div><div class="two"><b>${p && p.data ? 'Parto previsto ' + br(p.data) : 'Sem previsão'}</b><span>${p ? 'pelo ' + p.origem + (p.base ? ' de ' + br(p.base) : '') : 'sem toque ou IATF depois do último parto'} · ${esc(m.lote || '')}</span></div>${d === null ? pill('?', 'gray') : d < 0 ? pill(`${-d}d atrasado`, 'late') : d <= 30 ? pill(`em ${d}d`, 'amber') : pill(`em ${d}d`, 'green')}</button>`; };
+  if (sub === 'cheias') corpo = `<div class="lista">${cheias.map(linhaPrev).join('')}</div>`;
+  else if (sub === 'previsao') corpo = `<p class="sub">Próximos 120 dias</p><div class="lista">${cheias.filter(({ p }) => p && p.data && diasEntre(HOJE, p.data) <= 120).map(linhaPrev).join('') || '<div class="vazio">Nenhum parto previsto.</div>'}</div>`;
+  else if (sub === 'vazias') corpo = lista(vazias.sort((a, b) => ((PARTOS.get(a.id) || [])[0] || { data: '' }).data.localeCompare(((PARTOS.get(b.id) || [])[0] || { data: '' }).data)).map((m) => 'm:' + m.id));
+  else corpo = '<div class="aviso"><b>Toque</b> continua como está hoje (cabeçalho com data, veterinário e medicamentos, lista para marcar cheia, vazia ou descarte). Muda só o nome da aba, de Parto para Diagnóstico, e cada vaca da lista abre a ficha.</div>';
+  return `<div class="eyebrow">Reprodução</div><h1>Diagnóstico</h1><p class="sub">Toque, cheias, vazias e previsão de parto.</p>
+  <div class="tabs">${tabs.map(([v, t, n]) => `<button class="tab ${sub === v ? 'on' : ''}" data-sub="diag:${v}">${t}${n !== undefined ? `<span class="n">${n}</span>` : ''}</button>`).join('')}</div>${corpo}`;
+}
+
+function telaSimples(t) {
+  const txt = {
+    lancar: ['Lançamentos', 'Lançar', 'Continua igual: Nascimento, Morte, Desmama, Descarte e Insumo. Os campos de lista (produto, unidade, causa da morte) passam a vir dos Cadastros.'],
+    manejo: ['Manejo', 'Manejo', 'Continua igual: Protocolos, IATF, Geral, Vacinas. Ao digitar um brinco, aparece a situação e o link para a ficha completa.'],
+    rel: ['Relatórios', 'Relatórios', 'Continua igual. Cada animal citado num relatório passa a abrir a ficha.'],
+  }[t];
+  return `<div class="eyebrow">${txt[0]}</div><h1>${txt[1]}</h1><div class="aviso">${txt[2]}<br><br>No protótipo esta aba não muda. Explore <b>Rebanho</b>, <b>Nascimentos</b>, <b>Diagnóstico</b>, a <b>busca</b> 🔍 e os <b>Cadastros</b> ⚙️.</div>`;
+}
+
+function telaCadastros() {
+  const aplics = new Set(), prods = new Set(), pessoas = new Set(), comps = new Set(), pel = new Set(), racas = new Set();
+  E.eventos.forEach((e) => {
+    if (e.tipo === 'manejo') parseLista(e.aplicacoes).forEach((a) => { if (a.tipo) aplics.add(a.tipo); if (a.produto) prods.add(a.produto); });
+    if (e.tipo === 'insumo' && e.produto) prods.add(e.produto);
+    ['veterinario', 'tecnico', 'responsavel'].forEach((k) => { if (e[k]) pessoas.add(String(e[k]).trim()); });
+    if (e.tipo === 'venda' && e.comprador) comps.add(e.comprador);
+    if (e.pelagem) pel.add(e.pelagem);
+  });
+  E.matrizes.forEach((m) => { if (m.raca) racas.add(m.raca); });
+  ['Vacina reprodutiva', 'Reforço Lepto', 'Vermífugo', 'Fortificante', 'Estimulante', 'Brucelose', 'Pour-on', 'Brinco mosquicida', 'Carrapaticida'].forEach((x) => aplics.add(x));
+  ['Sal Mineral'].forEach((x) => prods.add(x));
+  const grupos = [
+    ['Unidades', 'Usadas no Insumo e nos produtos.', ['kg', 'L', 'mL', 'un', 'dose', 'saco']],
+    ['Produtos', 'Nome, tipo, unidade padrão, custo e carência. Aparecem no Insumo e nas aplicações do manejo.', [...prods]],
+    ['Vacinas e aplicações', 'Cada vacina pode ter regra de reforço (ex.: Lepto aos 6 meses de prenhez) que gera os alertas.', [...aplics]],
+    ['Causas de morte', 'Lista da aba Morte.', CAUSAS_MORTE],
+    ['Motivos de descarte', 'Lista do toque e do descarte.', ['Vazia repetida', 'Idade', 'Problema de úbere', 'Problema de casco', 'Baixa produção', 'Doença', 'Outro']],
+    ['Lotes e pastos', 'Um nome por lote: acaba com "Novilhas" e "NOVILHAS".', lotesExistentes(E.matrizes).map((x) => `${x.lote} (${x.n})`)],
+    ['Raças', 'Matriz, nascimento e bois.', [...racas, 'Nelore', 'Sindi', 'Aberdeen', 'Gir'].filter((v, i, a) => a.findIndex((x) => x.toLowerCase() === v.toLowerCase()) === i)],
+    ['Pelagens', 'Nascimento.', pel.size ? [...pel] : ['Branca', 'Vermelha', 'Preta', 'Malhada']],
+    ['Pessoas', 'Veterinários, técnicos de IA e funcionários (responsável do manejo).', pessoas.size ? [...pessoas] : ['(nenhuma ainda)']],
+    ['Compradores', 'Vendas.', comps.size ? [...comps] : ['(nenhum ainda)']],
+    ['Tipos de animal na venda', 'Venda por peso.', TIPOS_ANIMAL_VENDA],
+  ];
+  return `<div class="eyebrow">Só o proprietário</div><h1>Cadastros</h1><p class="sub">As listas que alimentam os campos do app. Item já usado não é apagado, só desativado, para não estragar o histórico. Valores abaixo são os que o app usa hoje.</p>
+  ${grupos.map(([t, d, v]) => `<div class="card cad"><h3>${t} <span>${v.length}</span></h3><p>${d}</p><div class="vals">${v.map((x) => `<span class="v">${esc(x)}</span>`).join('')}<button class="v add" data-acao="proto">+ adicionar</button></div></div>`).join('')}`;
+}
+
+// ------------------------------------------------------------------ montagem
+function render() {
+  const tela = { rebanho: telaRebanho, nasc: telaNascimentos, diag: telaDiagnostico }[S.aba];
+  const nav = [['lancar', 'Lançar', I.lancar], ['manejo', 'Manejo', I.manejo], ['diag', 'Diagnóstico', I.diag], ['nasc', 'Nascimentos', I.nasc], ['rebanho', 'Rebanho', I.rebanho], ['rel', 'Relatórios', I.rel]];
+  document.getElementById('app').innerHTML = `
+  <header class="top"><div class="in">
+    <div class="brand"><small>Fazenda Ibiraçu</small><b>Gestão da Pecuária</b></div>
+    <button class="busca" data-acao="buscar" aria-label="Buscar animal">${I.busca}<span>Buscar animal pelo brinco</span></button>
+    ${S.dono ? `<button class="ico ${S.cadastros ? 'on' : ''}" data-acao="cadastros" aria-label="Cadastros">${I.eng}</button>` : ''}
+    <button class="ico ${S.dono ? 'on' : ''}" data-acao="dono" aria-label="Senha do proprietário">${S.dono ? I.unlock : I.lock}</button>
+  </div></header>
+  <main>${S.cadastros ? telaCadastros() : tela ? tela() : telaSimples(S.aba)}
+  <p style="color:var(--dim);font:500 11px var(--mono);margin-top:22px">Protótipo 11 · dados lidos às ${LIDO.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · <a href="../../" style="color:var(--amber)">voltar ao app</a></p></main>
+  <nav class="bot"><div class="in">${nav.map(([v, t, ic]) => `<button class="${S.aba === v && !S.cadastros ? 'on' : ''}" data-aba="${v}">${ic}${t}</button>`).join('')}</div></nav>
+  ${sobreposicao()}`;
+  const fb = document.getElementById('filtroBrinco');
+  if (fb && S._foco) { fb.focus(); fb.setSelectionRange(fb.value.length, fb.value.length); }
+  const bg = document.getElementById('buscaG');
+  if (bg && S._focoBusca) { bg.focus(); bg.setSelectionRange(bg.value.length, bg.value.length); }
+  S._anim = false;
+  document.body.style.overflow = S.pilha.length || S.buscando !== null ? 'hidden' : '';
+}
+function sobreposicao() {
+  if (S.pilha.length) {
+    const k = S.pilha[S.pilha.length - 1];
+    return `<div class="sobre${S._anim ? ' anim' : ''}" id="sobre"><div class="barra"><div class="in"><button class="ico" data-acao="voltar" aria-label="Voltar">${I.voltar}</button><b style="flex:1;font:600 17px var(--disp)">Ficha do animal</b><button class="ico" data-acao="buscar" aria-label="Buscar">${I.busca}</button><button class="ico" data-acao="fechar" aria-label="Fechar">${I.x}</button></div></div><div class="corpo">${renderFicha(k)}
+    ${S.dono ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn" data-acao="proto">Editar</button><button class="btn sec" data-acao="proto">Pesar</button><button class="btn sec" data-acao="proto">Registrar morte</button><button class="btn sec" data-acao="proto">Vender</button></div>' : '<p style="color:var(--dim);font-size:12.5px;margin-top:14px">Funcionário vê a ficha completa. Editar só com a senha.</p>'}</div></div>`;
+  }
+  if (S.buscando !== null) {
+    return `<div class="sobre${S._anim ? ' anim' : ''}"><div class="barra"><div class="in"><div class="buscaG">${I.busca}<input id="buscaG" inputmode="numeric" autocomplete="off" placeholder="Brinco ou nome do touro" value="${esc(S.buscando)}"></div><button class="ico" data-acao="fechar" aria-label="Fechar">${I.x}</button></div></div>
+    <div class="corpo" id="resBusca">${resultadosBusca()}</div></div>`;
+  }
+  return '';
+}
+function resultadosBusca() {
+    const c = candidatos(S.buscando);
+    return `<p class="dica">${S.buscando ? (c.length ? (c.length > 1 && c.every((x) => x.exato) ? '<b style="color:var(--amber)">Número repetido:</b> mais de um animal com esse brinco. Escolha qual.' : `${c.length} encontrado${c.length > 1 ? 's' : ''}`) : 'Nenhum animal com esse brinco no banco.') : 'Digite o brinco: vaca, novilha, cria ou touro. Experimente 41, 2020 ou 4626.'}</p>
+    ${c.length ? `<div class="lista">${c.map((x) => linhaAnimal(x.k)).join('')}</div>` : ''}`;
+}
+let toastT;
+function toast(t) { let el = document.querySelector('.toast'); if (!el) { el = document.createElement('div'); el.className = 'toast'; document.body.appendChild(el); } el.textContent = t; clearTimeout(toastT); toastT = setTimeout(() => el.remove(), 2600); }
+
+document.addEventListener('click', (ev) => {
+  const b = ev.target.closest('button'); if (!b) return;
+  S._foco = false; S._focoBusca = false;
+  if (b.dataset.abrir) { S._anim = true; S.pilha.push(b.dataset.abrir); S.buscando = null; render(); document.getElementById('sobre')?.scrollTo(0, 0); return; }
+  if (b.dataset.aba) { S.aba = b.dataset.aba; S.cadastros = false; S.lim = 60; render(); scrollTo(0, 0); return; }
+  if (b.dataset.sub) { const [a, s] = b.dataset.sub.split(':'); S.aba = a === 'nasc' ? 'nasc' : a; S.sub[a] = s; S.lim = 60; if (b.dataset.fc) S.filtros.crias = b.dataset.fc; render(); return; }
+  if (b.dataset.f) { const f = b.dataset.f; S.filtros[f] = f === 'nascFalta' ? !!b.dataset.v : b.dataset.v; S.lim = 60; render(); return; }
+  const a = b.dataset.acao;
+  if (a === 'buscar') { S.pilha = []; S.buscando = ''; S._focoBusca = true; S._anim = true; render(); }
+  else if (a === 'fechar') { S.pilha = []; S.buscando = null; render(); }
+  else if (a === 'voltar') { S.pilha.pop(); render(); }
+  else if (a === 'dono') { S.dono = !S.dono; if (!S.dono) S.cadastros = false; toast(S.dono ? 'Modo proprietário (no app real pede a senha)' : 'Modo funcionário'); render(); }
+  else if (a === 'cadastros') { S.cadastros = !S.cadastros; render(); scrollTo(0, 0); }
+  else if (a === 'mais') { S.lim += 100; render(); }
+  else if (a === 'proto') toast('No protótipo nada é gravado');
+});
+document.addEventListener('input', (ev) => {
+  if (ev.target.id === 'filtroBrinco') { S.filtros.busca = ev.target.value; S._foco = true; render(); }
+  if (ev.target.id === 'buscaG') { S.buscando = ev.target.value; document.getElementById('resBusca').innerHTML = resultadosBusca(); }
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') { if (S.pilha.length) S.pilha.pop(); else S.buscando = null; render(); }
+  if (ev.key === 'Enter' && ev.target.id === 'buscaG') { const c = candidatos(S.buscando); if (c.length === 1) { S.pilha.push(c[0].k); S.buscando = null; render(); } }
+});
+
+carregar().then(() => {
+  const p = new URLSearchParams(location.search).get('brinco');
+  render();
+  if (p) { S.buscando = p; S._focoBusca = true; render(); }
+}).catch((e) => { document.getElementById('app').innerHTML = `<div class="carregando">Não consegui ler a planilha: ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>
