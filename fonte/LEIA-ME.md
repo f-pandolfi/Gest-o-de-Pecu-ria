@@ -86,3 +86,10 @@
 - **Manejo > Indução**: etapas D0 · Implante, D12 · Retirada e Avaliação, gravadas como manejo com etapa "Indução · <etapa>". Na avaliação: presentes = ciclando, ausentes = não ciclou.
 - **Cadastros** (engrenagem, só dono): listas do app na aba Config, chave `cadastros` (JSON). Campos com `cadastro:` em `CAMPOS` (logica.js) usam a lista; texto vira sugestão. **Precisa do script v15** (`Code_v15.gs`: só acrescenta a chave `cadastros` na Config). Sem o v15 a mudança fica só na tela.
 - Testes: `node testes/test_script_v15.cjs` e `python3 testes/test_navegador_11.py` (servidor de teste agora simula o v15).
+
+### 11.2 (01/11/26): Conferência do rebanho
+- Rebanho > Conferência (`src/conferencia.js`, `telas/Conferencia.jsx`): cruza os brincos dos manejos, toques, IATF, pesagens, desmamas e partos com o rebanho ativo.
+- Rodada 1 desde 30/10/26; cada toque geral (10+ matrizes no mesmo toqueId) abre a rodada seguinte. Manejo retroativo cai na rodada da data dele.
+- Mostra quem passou e quem falta (por categoria e lote), suspeitas (faltaram e pesam contra na Produtividade), brincos sem cadastro, animais fora do rebanho que passaram e crias "a confirmar" que passaram. PDF da lista e PDF para o curral (quem falta, por lote).
+- Ficha do animal mostra se passou no curral na rodada atual. Sem mudança no script (v15).
+- Testes: `testes/test_conferencia.mjs`, `testes/test_navegador_conferencia.py`.

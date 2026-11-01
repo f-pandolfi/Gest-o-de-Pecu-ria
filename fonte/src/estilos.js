@@ -435,6 +435,7 @@ button.fx-pill{cursor:pointer;height:30px}
 .p-late{background:var(--late-bg);color:var(--late)} .p-blue{background:rgba(143,180,201,.14);color:var(--blue)} .p-gray{background:rgba(169,181,170,.12);color:var(--mut)}
 .fx-alerta{border-left:3px solid var(--amber);background:var(--amber-bg);border-radius:8px;padding:9px 12px;font-size:13.5px;margin-bottom:8px}
 .fx-alerta.ruim{border-color:var(--late);background:var(--late-bg)}
+.fx-alerta.ok{border-color:var(--green);background:rgba(141,187,120,.12)}
 .fx-grid{display:grid;grid-template-columns:1fr;gap:12px}
 @media (min-width:760px){.fx-grid{grid-template-columns:1fr 1fr}.fx-grid .full{grid-column:1/-1}}
 .fx-card{background:var(--s1);border:1px solid var(--line2);border-radius:14px;padding:14px 16px}

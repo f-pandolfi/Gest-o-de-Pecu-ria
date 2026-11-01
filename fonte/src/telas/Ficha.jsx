@@ -7,6 +7,7 @@ import {
   indiceRebanho, buscarAnimais, resumoAnimal, reproducaoDaMatriz, manejosDoAnimal, eventosDoAnimal, categoriaCria, racaDoHistorico,
   idadeTexto, idadeCurta, rotuloSit, corSituacao, corStatus, chaveDaCria, ehBoi, pesagensBoi, boiAtivo, situacaoHistorica, nomeTouroEvento, infoAnimalVenda, categoriaBoi,
 } from '../ficha.js';
+import { vistoNoCurral } from '../conferencia.js';
 
 const br = (d) => (d ? formatarDataBR(d) : '—');
 const Ctx = createContext({ abrir: () => {}, buscar: () => {}, ix: null });
@@ -106,6 +107,14 @@ function Linha({ itens }) {
   );
 }
 
+// Conferência: passou no curral nesta rodada?
+function NoCurral({ ix, k }) {
+  const v = vistoNoCurral(ix, k);
+  const r = v.rodada;
+  if (v.naRodada) return <div className="fx-alerta ok" data-testid="no-curral">Passou no curral em {br(v.naRodada.data)} · {v.naRodada.fonte} ({r.nome} da conferência)</div>;
+  return <div className="fx-alerta" data-testid="no-curral">Ainda não passou no curral na {r.nome.toLowerCase()} da conferência (desde {br(r.inicio)}). {v.ultimo ? `Última vez: ${br(v.ultimo.data)} · ${v.ultimo.fonte}.` : 'Nenhum manejo, toque ou pesagem registrado.'}</div>;
+}
+
 function Cabecalho({ tipo, brinco, pills, linha, grande = true }) {
   return (
     <div className="fx-head">
@@ -142,6 +151,7 @@ function FichaMatriz({ ix, m }) {
         linha={r.nasc ? `Nascida em ${br(r.nasc)} · ${idadeCurta(r.nasc, ix.hoje)}` : 'Nascimento não informado'}
       />
       {r.alertas.map((a, i) => <div key={i} className={`fx-alerta${a.ruim ? ' ruim' : ''}`}>{a.t}</div>)}
+      {m.status !== 'Vendida' && m.status !== 'Morta' && <NoCurral ix={ix} k={`m:${m.id}`} />}
       <div className="fx-grid">
         <Card titulo="Identificação">
           <Dl itens={[
@@ -216,6 +226,7 @@ function FichaCria({ ix, c }) {
       />
       {c.situacao === 'confirmar' && <div className="fx-alerta">Situação a confirmar: não se sabe se virou novilha, foi apartada, vendida ou está a meia.</div>}
       {c.orfa && <div className="fx-alerta ruim">A mãe morreu: cria órfã, mamando.</div>}
+      {(c.situacao === 'mamando' || c.situacao === 'desmamado' || c.situacao === 'confirmar') && <NoCurral ix={ix} k={`c:${c.id}`} />}
       <div className="fx-grid">
         <Card titulo="Identificação">
           <Dl itens={[
@@ -289,6 +300,7 @@ function FichaBoi({ ix, t }) {
       <Cabecalho tipo={`${categoriaBoi(t)}${t.raca ? ` · ${t.raca}` : ''}`} brinco={t.brinco || t.nome}
         pills={<><Pill t={ativo ? 'Na fazenda' : 'Saiu'} cor={ativo ? 'green' : 'gray'} />{t.lote && <Pill t={t.lote} />}</>}
         linha={t.dataNascimento ? `Nascido em ${br(t.dataNascimento)} · ${idadeCurta(t.dataNascimento, ix.hoje)}` : t.dataCompra ? `Entrou em ${br(t.dataCompra)}` : ''} />
+      {ativo && <NoCurral ix={ix} k={`t:${t.id}`} />}
       <div className="fx-grid">
         <Card titulo="Identificação">
           <Dl itens={[
