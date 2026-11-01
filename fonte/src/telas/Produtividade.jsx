@@ -1,13 +1,28 @@
 // v11.1: aba Produtividade. Meta de um bezerro por vaca por ano: números do plantel, matrizes por situação,
 // alerta de "mais de 6 meses sem emprenhar" e a lista de cada matriz com o que fazer. Toque na linha abre a ficha.
 import React, { useMemo, useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { Search, FileDown, Loader2 } from 'lucide-react';
+import { baixarPDF } from '../pdfloader.js';
 import { formatarDataBR } from '../logica.js';
 import { useFicha } from './Ficha.jsx';
 import { analisarMatrizes, resumoProdutividade, GRUPOS_PROD, MESES_SEM_EMPRENHAR } from '../produtividade.js';
 
 const br = (d) => (d ? formatarDataBR(d) : '');
 const virgula = (v) => String(v).replace('.', ',');
+// PDF: uma seção por estudo (situação), com o resumo do plantel no topo
+const COLS_PDF = [
+  { k: 'brinco', label: 'Brinco' }, { k: 'sit', label: 'Situação' }, { k: 'toque', label: 'Toque / lote' },
+  { k: 'partos', label: 'Partos', align: 'right' }, { k: 'meses', label: 'Meses sem parir', align: 'right' }, { k: 'iep', label: 'Intervalo (meses)', align: 'right' },
+  { k: 'prev', label: 'Previsão' }, { k: 'datas', label: 'Datas dos partos' }, { k: 'crias', label: 'Crias' }, { k: 'acao', label: 'O que fazer' },
+];
+const linhaPDF = (l) => ({
+  brinco: l.brinco, sit: GRUPOS_PROD[l.ordem].nome + (l.semEmprenhar ? `\n${l.mesesSemParir} meses sem emprenhar` : ''),
+  toque: [l.status, l.lote].filter(Boolean).join(' · '), partos: `${l.nPartos}${l.antes ? ` (+${l.antes} antes)` : ''}`,
+  meses: l.mesesSemParir ?? '', iep: l.iepMeses !== null ? virgula(l.iepMeses) : '',
+  prev: l.previsao ? `${br(l.previsao)}${l.previsaoVencida ? `\nvenceu há ${l.previsaoVencida} d` : ''}` : '',
+  datas: l.partos.map((p) => br(p.data)).join('\n'), crias: l.partos.map((p) => (p.resultadoParto === 'Natimorto' ? 'natim.' : p.brincoBezerro || 's/ nº')).join('\n'),
+  acao: l.acao,
+});
 const COLS = [
   { k: 'brinco', t: 'Brinco' }, { k: 'ordem', t: 'Situação' }, { k: 'nPartos', t: 'Partos', num: true },
   { k: 'mesesSemParir', t: 'Meses sem parir', num: true }, { k: 'iepMeses', t: 'Intervalo médio', num: true }, { k: 'previsao', t: 'Previsão' },
@@ -34,6 +49,35 @@ export default function Produtividade({ dados, hoje, filtroInicial }) {
     return String(va).localeCompare(String(vb), 'pt-BR', { numeric: true }) * sort.dir;
   });
   const maxG = Math.max(1, ...r.porGrupo.map((g) => g.n));
+  const [gerando, setGerando] = useState('');
+  const nomeFiltro = (f) => (f === 'seis' ? `Mais de ${MESES_SEM_EMPRENHAR} meses sem emprenhar` : f === 'vencida' ? 'Cheias com previsão vencida' : (GRUPOS_PROD.find((g) => g.id === f) || {}).nome || 'Todas as matrizes');
+  const resumoPDF = [
+    { rotulo: 'Vacas no plantel (sem novilhas)', valor: r.vacas }, { rotulo: 'Pariram nos últimos 12 meses', valor: `${r.pariram12m} (${Math.round(r.pct12m * 100)}%)` },
+    { rotulo: 'Intervalo médio entre partos', valor: r.iepMedio !== null ? `${virgula(r.iepMedio)} meses (meta 12)` : '—' }, { rotulo: `Mais de ${MESES_SEM_EMPRENHAR} meses sem emprenhar`, valor: r.semEmprenhar },
+    { rotulo: 'Candidatas a descarte', valor: r.descarte }, { rotulo: 'Cheias com previsão vencida', valor: r.previsaoVencida },
+  ];
+  async function gerarPDF(tipo) {
+    setGerando(tipo);
+    try {
+      const data = br(hoje);
+      if (tipo === 'lista') {
+        await baixarPDF({
+          titulo: `Produtividade das matrizes · ${nomeFiltro(filtro)}`, subtitulo: `Fazenda Ibiraçu · ${data}${q ? ` · busca "${q}"` : ''} · ${lista.length} matriz(es)`,
+          resumo: resumoPDF, secoes: [{ titulo: nomeFiltro(filtro), colunas: COLS_PDF, linhas: lista.map(linhaPDF) }],
+        }, { paisagem: true, arquivo: `produtividade-${(filtro || 'todas')}-${hoje}.pdf` });
+      } else {
+        const secoes = [
+          { titulo: `Mais de ${MESES_SEM_EMPRENHAR} meses sem emprenhar`, nota: 'Vazias com o último parto há mais de 6 meses. Vaca que pariu e ainda não passou por toque aparece como vazia: o toque confirma.', colunas: COLS_PDF, linhas: linhas.filter((l) => l.semEmprenhar).sort((a, b) => b.diasSemParir - a.diasSemParir).map(linhaPDF) },
+          ...GRUPOS_PROD.map((g) => ({ g, ls: linhas.filter((l) => l.grupo === g.id) })).filter((x) => x.ls.length).map(({ g, ls }) => ({
+            titulo: g.nome, colunas: COLS_PDF,
+            linhas: ls.sort((a, b) => (b.diasSemParir ?? -1) - (a.diasSemParir ?? -1) || a.brinco.localeCompare(b.brinco, 'pt-BR', { numeric: true })).map(linhaPDF),
+          })),
+        ];
+        await baixarPDF({ titulo: 'Produtividade das matrizes', subtitulo: `Fazenda Ibiraçu · ${data} · meta: um bezerro por vaca por ano`, resumo: resumoPDF, secoes }, { paisagem: true, arquivo: `produtividade-completa-${hoje}.pdf` });
+      }
+    } catch (e) { console.error(e); }
+    setGerando('');
+  }
   const ordenar = (k) => setSort((s) => ({ k, dir: s.k === k ? -s.dir : 1 }));
   const Chip = ({ id, children, cor }) => (
     <button className={`fx-cp${filtro === id ? ' on' : ''}`} aria-pressed={filtro === id} onClick={() => setFiltro(id)}>
@@ -77,6 +121,10 @@ export default function Produtividade({ dados, hoje, filtroInicial }) {
         <Chip id="seis" cor="late">Mais de {MESES_SEM_EMPRENHAR} meses sem emprenhar<b>{r.semEmprenhar}</b></Chip>
         {r.previsaoVencida > 0 && <Chip id="vencida" cor="amber">Previsão vencida<b>{r.previsaoVencida}</b></Chip>}
         {r.porGrupo.filter((g) => g.n > 0).map((g) => <Chip key={g.id} id={g.id} cor={corVar[g.cor]}>{g.nome}<b>{g.n}</b></Chip>)}
+      </div>
+      <div className="pd-pdf">
+        <button className="btn sm" onClick={() => gerarPDF('lista')} disabled={!!gerando} data-testid="pdf-lista">{gerando === 'lista' ? <Loader2 size={16} className="spin" /> : <FileDown size={16} />} PDF: {nomeFiltro(filtro)}</button>
+        <button className="btn sm quiet" onClick={() => gerarPDF('tudo')} disabled={!!gerando} data-testid="pdf-tudo">{gerando === 'tudo' ? <Loader2 size={16} className="spin" /> : <FileDown size={16} />} PDF completo (todos os estudos)</button>
       </div>
       <label className="search fx-search">
         <Search />

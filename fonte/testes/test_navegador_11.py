@@ -52,7 +52,7 @@ srv('/exec', 'POST', {'action': 'appendEventos', 'itens': [
 
 with sync_playwright() as p:
     b = p.chromium.launch()
-    ctx = b.new_context(viewport={'width': 390, 'height': 844}, locale='pt-BR', timezone_id='America/Sao_Paulo')
+    ctx = b.new_context(viewport={'width': 390, 'height': 844}, locale='pt-BR', timezone_id='America/Sao_Paulo', accept_downloads=True)
     pg = ctx.new_page(); erros = []; pg.on('pageerror', lambda e: erros.append(str(e)))
     pg.goto(BASE + '/'); pg.wait_for_selector('.foot-note')
 
@@ -191,6 +191,15 @@ with sync_playwright() as p:
         pg.get_by_role('button', name='Todas').first.click()
         pg.get_by_test_id('prod-3005').click(); expect(pg.locator('.fx-sobre')).to_contain_text('Partos e crias')
         pg.get_by_role('button', name='Fechar').click()
+
+    @teste('Produtividade: PDF do estudo filtrado e PDF completo')
+    def _():
+        nav(pg, 'Produtividade'); pg.get_by_test_id('kpi-seis').click()
+        with pg.expect_download() as d: pg.get_by_test_id('pdf-lista').click()
+        assert d.value.suggested_filename.startswith('produtividade-seis'), d.value.suggested_filename
+        with pg.expect_download() as d2: pg.get_by_test_id('pdf-tudo').click()
+        assert d2.value.suggested_filename.startswith('produtividade-completa'), d2.value.suggested_filename
+        assert pg.evaluate('window.__ultimoPDF.paginas') >= 1
 
     @teste('Diagnóstico avisa vacas com mais de 6 meses sem emprenhar e filtra as Vazias')
     def _():
