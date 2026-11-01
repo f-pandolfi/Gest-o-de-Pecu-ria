@@ -1,7 +1,8 @@
 // Peças comuns das telas de curral (protocolo, toque, vacinação): aplicações do cabeçalho e lista para marcar presentes.
 import React, { useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Search, Check } from 'lucide-react';
-import { TIPOS_APLICACAO } from '../manejo.js';
+import { TIPOS_APLICACAO as TIPOS_FIXOS } from '../manejo.js';
+import { opcoesAtuais } from '../ficha.js';
 
 const ROTULO = { display: 'block', font: '600 11.5px var(--mono)', letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--mut)', marginBottom: 6 };
 export const Rotulo = ({ children }) => <span className="lbl" style={ROTULO}>{children}</span>;
@@ -9,6 +10,8 @@ export const Rotulo = ({ children }) => <span className="lbl" style={ROTULO}>{ch
 // Vacinas, vermífugo, fortificante... aplicados a todos os animais presentes no manejo
 export function AplicacoesEditor({ valor, onChange, extras }) {
   const itens = valor || [];
+  const TIPOS_APLICACAO = opcoesAtuais('aplicacoes', '', TIPOS_FIXOS);
+  const produtos = opcoesAtuais('produtos', '');
   const tipos = [...TIPOS_APLICACAO.filter((t) => t !== 'Outra'), ...(extras || []).filter((t) => !TIPOS_APLICACAO.includes(t)), 'Outra'];
   const mudar = (i, campo, v) => onChange(itens.map((x, j) => (j === i ? { ...x, [campo]: v } : x)));
   return (
@@ -21,10 +24,11 @@ export function AplicacoesEditor({ valor, onChange, extras }) {
             <option value="">Escolha</option>
             {tipos.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
-          <input aria-label="Produto" placeholder="Produto (opcional)" value={a.produto || ''} onChange={(e) => mudar(i, 'produto', e.target.value)} />
+          <input aria-label="Produto" placeholder="Produto (opcional)" list="lista-produtos" value={a.produto || ''} onChange={(e) => mudar(i, 'produto', e.target.value)} />
           <button type="button" className="x-peq" aria-label="Tirar esta aplicação" onClick={() => onChange(itens.filter((_, j) => j !== i))}><Trash2 size={16} /></button>
         </div>
       ))}
+      <datalist id="lista-produtos">{produtos.map((o) => <option key={o} value={o} />)}</datalist>
       <button type="button" className="btn quiet sm" onClick={() => onChange([...itens, { tipo: '', produto: '' }])}><Plus size={15} /> Aplicação</button>
     </div>
   );

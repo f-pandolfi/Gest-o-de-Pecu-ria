@@ -1,6 +1,7 @@
 // Toque geral: cabeçalho (data, veterinário, método, vacinas) e todas as matrizes e novilhas embaixo.
 // Para cada uma: Cheia (com os dias), Vazia, Descarte (novilha: Apta / Não apta). Mostra o histórico na hora da avaliação.
 // As marcações ficam guardadas no celular; "Gravar" manda as marcadas para a planilha e dá para continuar depois.
+import { opcoesAtuais } from '../ficha.js';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Save, Loader2, FileDown, Search, ClipboardList } from 'lucide-react';
 import { formatarDataBR, previsaoPartoInfo, novoId } from '../logica.js';
@@ -69,7 +70,7 @@ function Linha({ dados, m, info, marca, data, cfg, onMarcar, gravada }) {
       {marca && res === 'Descarte' && (
         <div className="mais">
           <select aria-label={`Motivo do descarte da ${m.brinco}`} value={marca.motivo || ''} disabled={gravada} onChange={(e) => set({ ...marca, motivo: e.target.value })}>
-            <option value="">Motivo</option>{MOTIVOS_DESCARTE.map((x) => <option key={x}>{x}</option>)}
+            <option value="">Motivo</option>{opcoesAtuais('motivosDescarte', '', MOTIVOS_DESCARTE).map((x) => <option key={x}>{x}</option>)}
           </select>
           <input aria-label={`Observação da ${m.brinco}`} placeholder="Observação" value={marca.observacoes || ''} disabled={gravada} onChange={(e) => set({ ...marca, observacoes: e.target.value })} />
         </div>

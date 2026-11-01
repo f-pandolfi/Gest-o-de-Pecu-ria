@@ -12,7 +12,7 @@ with sync_playwright() as p:
     pg.goto(BASE + '/'); pg.wait_for_selector('.foot-note')
     assert 'MODO TESTE' in pg.inner_text('.banner-teste')
     assert 'TESTE' in pg.inner_text('.foot-note')
-    pg.get_by_role('navigation', name='Telas (celular)').get_by_role('button', name='Crias').click()
+    pg.get_by_role('navigation', name='Telas (celular)').get_by_role('button', name='Nascimentos').click()
     pg.get_by_role('tab', name='Pesar', exact=True).click()
     for br, w in [('6502', 230)]:
         pg.locator('#pesar-brinco').fill(br); pg.locator('#pesar-brinco').press('Enter'); pg.locator('#pesar-peso').fill(str(w)); pg.locator('#pesar-peso').press('Enter')

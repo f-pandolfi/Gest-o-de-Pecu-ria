@@ -173,7 +173,7 @@ with sync_playwright() as p:
     @teste('Toque: cabeçalho, cada vaca mostra crias, parto, serviço e vacina; marca cheia/vazia/descarte/apta')
     def _():
         sair_dono(pg)
-        nav(pg, 'Manejo'); aba(pg, 'Toque')
+        nav(pg, 'Diagnóstico'); aba(pg, 'Toque')
         pg.locator('#tq-vet').fill('Dr. Paulo')
         pg.get_by_role('button', name='Ultrassom').click()
         pg.get_by_role('button', name='Começar o toque').click()
@@ -200,7 +200,7 @@ with sync_playwright() as p:
     @teste('Toque: marcações ficam guardadas no celular (recarregar não perde)')
     def _():
         pg.reload(); pg.wait_for_selector('.foot-note')
-        nav(pg, 'Manejo'); aba(pg, 'Toque')
+        nav(pg, 'Diagnóstico'); aba(pg, 'Toque')
         expect(pg.get_by_test_id('placar-toque')).to_contain_text('5 de 30 avaliadas')
 
     @teste('Toque sem internet: grava no celular; com internet vai para a planilha e muda status')
@@ -232,7 +232,7 @@ with sync_playwright() as p:
     @teste('Dono: do resumo do toque monta o próximo protocolo já com vazias e novilhas aptas')
     def _():
         entrar_dono(pg)
-        nav(pg, 'Manejo'); aba(pg, 'Toque')
+        nav(pg, 'Diagnóstico'); aba(pg, 'Toque')
         pg.locator('.card-prot').first.click()
         pg.get_by_role('button', name='Montar protocolo com vazias e novilhas aptas (3)').click()
         pg.get_by_test_id('form-protocolo').wait_for()
@@ -266,7 +266,7 @@ with sync_playwright() as p:
 
     @teste('Parto: vaca cheia mostra Lepto atrasada e pede confirmação do reforço')
     def _():
-        nav(pg, 'Parto')
+        nav(pg, 'Diagnóstico')
         corpo = pg.inner_text('body')
         assert 'COM VACINA PENDENTE' in corpo.upper() and 'Lepto atrasada' in corpo, corpo[:1500]
         pg.locator('button.led-r').first.click()
@@ -305,7 +305,7 @@ with sync_playwright() as p:
     def _():
         entrar_dono(pg2)
         nav(pg2, 'Manejo')
-        for a in ['Protocolos', 'Toque', 'Vacinas']:
+        for a in ['Protocolos', 'Vacinas', 'Indução']:
             aba(pg2, a); pg2.wait_for_timeout(200)
         aba(pg2, 'Vacinas'); pg2.get_by_role('button', name='Calendário de vacinas').click()
         pg2.get_by_role('button', name='Vacina periódica (ex.: clostridioses, raiva)').click()

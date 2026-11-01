@@ -176,9 +176,9 @@ with sync_playwright() as p:
 
     @teste('Ficha da vaca (Rebanho) mostra os manejos em que ela passou')
     def _():
-        ir('Rebanho'); pg.get_by_test_id(f"reb-{paridas[3]['brinco']}").click()
-        h = pg.get_by_test_id('historico').inner_text()
-        assert 'Brinco mosquicida · lote Paridas' in h and 'Pour-on no lombo · lote Paridas' in h, h
+        ir('Rebanho'); pg.get_by_test_id(f"animal-{paridas[3]['brinco']}").first.click()
+        h = pg.locator('.fx-sobre').inner_text()
+        assert 'Brinco mosquicida' in h and 'Pour-on no lombo' in h and 'Paridas' in h, h
         pg.keyboard.press('Escape')
 
     @teste('Relatórios: "Manejos" lista os manejos do ano com quem faltou')

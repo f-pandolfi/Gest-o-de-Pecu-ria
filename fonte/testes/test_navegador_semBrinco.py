@@ -32,7 +32,7 @@ with sync_playwright() as p:
     ctx = b.new_context(viewport={'width': 390, 'height': 844}, locale='pt-BR', timezone_id='America/Sao_Paulo', accept_downloads=True)
     pg = ctx.new_page(); erros = []; pg.on('pageerror', lambda e: erros.append(str(e)))
     pg.goto(BASE + '/'); pg.wait_for_selector('.foot-note'); pg.wait_for_timeout(2500)
-    pg.get_by_role('navigation', name='Telas (celular)').get_by_role('button', name='Crias').click()
+    pg.get_by_role('navigation', name='Telas (celular)').get_by_role('button', name='Nascimentos').click()
     pg.get_by_role('tab', name='Pesar').first.click()
     pg.locator('#pesar-data').fill(DATA)
     def add(brinco, peso):

@@ -1,6 +1,7 @@
 // Peças visuais reutilizadas nas telas (abas de índice, livro-caixa, campos, janelas).
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { X, AlertCircle, Info, Check } from 'lucide-react';
+import { opcoesAtuais, ehBoi } from './ficha.js';
 
 export const corStatus = (s) => (s === 'Cheia' ? 'var(--green)' : s === 'Vazia' ? 'var(--amber)' : s === 'Vendida' || s === 'Morta' ? 'var(--mut)' : 'var(--late)');
 
@@ -151,7 +152,11 @@ export function MatrizPicker({ value, onChange, matrizes, filtro, rotulo }) {
 }
 
 // Um campo de formulário, conforme a definição em CAMPOS (logica.js)
-export function Campo({ campo, value, onChange, matrizes, touros }) {
+export function Campo({ campo: campoOrig, value, onChange, matrizes, touros: tourosOrig }) {
+  // v11: listas que o proprietário cadastra (Cadastros) substituem as opções fixas; nos campos de texto viram sugestões
+  const campo = campoOrig.cadastro && campoOrig.type === 'select' ? { ...campoOrig, options: opcoesAtuais(campoOrig.cadastro, value, campoOrig.options) } : campoOrig;
+  const sugestoes = campoOrig.cadastro && campoOrig.type === 'text' ? opcoesAtuais(campoOrig.cadastro, '') : null;
+  const touros = (tourosOrig || []).filter((t) => !ehBoi(t));
   const id = `f-${campo.key}`;
   const rotulo = <>{campo.label}{campo.required ? <span className="req"> *</span> : null}</>;
   if (campo.type === 'select' && campo.options.length <= 3) {
@@ -192,8 +197,10 @@ export function Campo({ campo, value, onChange, matrizes, touros }) {
           inputMode={campo.type === 'number' ? 'decimal' : undefined}
           value={value || ''}
           onChange={(e) => onChange(campo.key, e.target.value)}
+          list={sugestoes && sugestoes.length ? `${id}-lista` : undefined}
         />
       )}
+      {sugestoes && sugestoes.length > 0 && <datalist id={`${id}-lista`}>{sugestoes.map((o) => <option key={o} value={o} />)}</datalist>}
     </div>
   );
 }

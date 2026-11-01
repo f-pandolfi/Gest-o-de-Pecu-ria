@@ -1,4 +1,4 @@
-// Tela "Crias": acompanhamento das crias do nascimento até a desmama, a venda por peso e a escolha das novilhas.
+// Tela "Nascimentos" (antes "Crias"; v11): acompanhamento das crias do nascimento até a desmama, a venda por peso e a escolha das novilhas.
 // Funcionário: vê a lista e pesa. Proprietário (com a senha): também desmama, analisa a venda, vende e decide o destino das novilhas.
 import React, { useState, useMemo, useEffect } from 'react';
 import { listarCrias } from '../logica.js';
@@ -8,17 +8,19 @@ import Pesar from './CriasPesar.jsx';
 import ParaVender from './CriasParaVender.jsx';
 import Vendas from './CriasVendas.jsx';
 import Novilhas from './CriasNovilhas.jsx';
+import NascimentosAno from './NascimentosAno.jsx';
 
 export default function Crias({
   dados, hoje, ownerMode, modoTeste, onLancar, onGravarLote, onVender, onSalvarMatriz, onSalvarConfig,
   onRegistrarMorte, onEditarNascimento, onEditarMorte, onAnularMorte, onCorrigirPesagem,
 }) {
-  const [aba, setAba] = useState('lista');
+  const [aba, setAba] = useState('nascimentos');
   const [vendaPreset, setVendaPreset] = useState(null); // { brincos: [...], n } vindo de "Para vender" / "Novilhas" / ficha da cria
   const [vendasAberta, setVendasAberta] = useState(false); // a tela de vendas fica montada depois da 1ª visita, para não perder o que foi digitado ao trocar de aba
   const crias = useMemo(() => listarCrias(dados, hoje), [dados, hoje]);
 
   const abas = [
+    { id: 'nascimentos', label: 'Nascimentos' },
     { id: 'lista', label: 'Crias' },
     { id: 'pesar', label: 'Pesar' },
     ...(ownerMode ? [{ id: 'vender', label: 'Para vender' }, { id: 'novilhas', label: 'Novilhas' }, { id: 'vendas', label: 'Vendas' }] : []),
@@ -26,7 +28,7 @@ export default function Crias({
 
   // Se o app foi travado de novo (voltou a funcionário) numa aba do proprietário, volta para a lista
   useEffect(() => {
-    if (!abas.some((a) => a.id === aba)) setAba('lista');
+    if (!abas.some((a) => a.id === aba)) setAba('nascimentos');
     if (!ownerMode) setVendasAberta(false);
   }, [ownerMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -43,10 +45,13 @@ export default function Crias({
   return (
     <div className="wrap">
       <div className="head">
-        <div><small>Livro do rebanho</small><h1>Crias</h1></div>
+        <div><small>Nascimentos e crias</small><h1>Nascimentos</h1></div>
       </div>
 
-      <IndexTabs tabs={abas} value={aba} onChange={mudarAba} rotulo="Crias" />
+      <IndexTabs tabs={abas} value={aba} onChange={mudarAba} rotulo="Nascimentos" />
+      <p className="sub" style={{ marginTop: -4 }}>O lançamento do parto continua em Lançar.</p>
+
+      {aba === 'nascimentos' && <NascimentosAno dados={dados} hoje={hoje} />}
 
       {aba === 'lista' && (
         <ListaCrias

@@ -14,11 +14,12 @@ with sync_playwright() as p:
     b = p.chromium.launch(); ctx = b.new_context(viewport={'width': 390, 'height': 844}, locale='pt-BR', timezone_id='America/Sao_Paulo')
     pg = ctx.new_page(); erros = []; pg.on('pageerror', lambda e: erros.append(str(e)))
     ir = lambda n: pg.get_by_role('navigation', name='Telas (celular)').get_by_role('button', name=n).click()
+    aba_crias = lambda: pg.get_by_role('tab', name='Crias').first.click()
     pg.goto(BASE + '/'); pg.wait_for_selector('.foot-note'); pg.wait_for_timeout(5000)  # 1ª vez com internet: guarda o app
     # no campo: sem internet, abre o app de novo
     ctx.set_offline(True); pg.reload(); pg.wait_for_selector('.foot-note', timeout=20000); pg.wait_for_timeout(1000)
     passo('Sem internet agora' in pg.inner_text('body'), 'app abre sem internet')
-    ir('Parto'); vaca_lin = pg.locator('button.led-r').first; vaca = vaca_lin.locator('.b').inner_text()
+    ir('Diagnóstico'); vaca_lin = pg.locator('button.led-r').first; vaca = vaca_lin.locator('.b').inner_text()
     vaca_lin.click(); pg.get_by_role('button', name='Lançar nascimento desta vaca').click()
     pg.get_by_role('button', name='Fêmea', exact=True).click()
     pg.locator('#f-brincoBezerro').fill('7777')
@@ -27,11 +28,11 @@ with sync_playwright() as p:
     passo(True, f'nascimento da vaca {vaca} salvo sem internet')
     passo('no celular' in pg.get_by_test_id('chip-fila').first.inner_text(), 'contador "no celular" aparece')
     passo(len(nascs()) == antes, 'nada chegou na planilha ainda')
-    ir('Crias'); passo('7777' in pg.inner_text('body'), 'cria 7777 já aparece em Crias')
-    ir('Rebanho'); passo('7777' in pg.get_by_test_id(f'reb-{vaca}').inner_text(), 'parto e cria já aparecem no Rebanho')
+    ir('Nascimentos'); aba_crias(); passo('7777' in pg.inner_text('body'), 'cria 7777 já aparece em Crias')
+    ir('Rebanho'); passo('7777' in pg.get_by_test_id(f'animal-{vaca}').first.inner_text(), 'parto e cria já aparecem no Rebanho')
     # fecha e reabre o app ainda sem internet: não perde
     pg.reload(); pg.wait_for_selector('.foot-note', timeout=20000); pg.wait_for_timeout(1000)
-    ir('Rebanho'); passo('7777' in pg.get_by_test_id(f'reb-{vaca}').inner_text(), 'reabrindo sem internet, o nascimento continua lá')
+    ir('Rebanho'); passo('7777' in pg.get_by_test_id(f'animal-{vaca}').first.inner_text(), 'reabrindo sem internet, o nascimento continua lá')
     # internet volta
     ctx.set_offline(False); pg.evaluate("window.dispatchEvent(new Event('online'))")
     for _ in range(60):

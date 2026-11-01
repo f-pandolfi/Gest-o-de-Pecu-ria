@@ -1,10 +1,11 @@
-// Gestão da Pecuária · Fazenda Ibiraçu (app v10)
+// Gestão da Pecuária · Fazenda Ibiraçu (app v11)
+// v11: busca geral e ficha do animal, Rebanho com todos os animais (bois), Nascimentos, Diagnóstico, Indução e Cadastros.
 // Casca do app: menu, ano de gestão, senha do proprietário, leitura e gravação na planilha.
 // v9.5: tudo o que é lançado entra numa fila guardada no celular (fila.js) e vai para a planilha quando há internet.
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Plus, CalendarClock, List, LayoutDashboard, FileText, Lock, Unlock, Loader2, ChevronDown, Baby, CloudOff, AlertTriangle, RefreshCw, Trash2, Syringe,
+  Plus, ClipboardCheck, List, LayoutDashboard, FileText, Lock, Unlock, Loader2, ChevronDown, Baby, CloudOff, AlertTriangle, RefreshCw, Trash2, Syringe, Search, Settings,
 } from 'lucide-react';
 import {
   VERSAO_APP, VERSAO_MINIMA_SCRIPT, todayISO, anoDe, anosDisponiveis, filtrarPorAno,
@@ -28,12 +29,26 @@ import Crias from './telas/Crias.jsx';
 import Rebanho from './telas/Rebanho.jsx';
 import Painel from './telas/Painel.jsx';
 import Relatorios from './telas/Relatorios.jsx';
+import Cadastros from './telas/Cadastros.jsx';
+import { FichaProvider, useFicha } from './telas/Ficha.jsx';
+import { ModalMatriz, ModalBoi } from './telas/Rebanho.jsx';
+import { definirDadosCadastro } from './ficha.js';
 
 // Trava de conveniência (não é segurança de verdade): impede o funcionário de abrir as telas do dono sem querer.
 // (nos testes automáticos o build troca a senha por uma de mentira, via __PIN_TESTE__)
 const OWNER_PIN = typeof __PIN_TESTE__ !== 'undefined' ? __PIN_TESTE__ : '1537';
 
 const VAZIO = { matrizes: [], touros: [], eventos: [], config: {}, protocolos: [] };
+
+// Lupa do topo: abre a busca geral (todos os perfis)
+function BotaoBusca() {
+  const { buscar } = useFicha();
+  return (
+    <button className="chip fx-buscar" onClick={() => buscar('')} aria-label="Buscar animal pelo brinco" data-testid="buscar-animal">
+      <Search size={17} /><span>Buscar animal</span>
+    </button>
+  );
+}
 
 function Marca() {
   return (
@@ -97,6 +112,9 @@ function GestaoPecuaria() {
   const [descartarUid, setDescartarUid] = useState(null);
   const [sincronizando, setSincronizando] = useState(false);
   const [preset, setPreset] = useState(null);
+  const [editMatriz, setEditMatriz] = useState(null);
+  const [editBoi, setEditBoi] = useState(null);
+  const [novoProt, setNovoProt] = useState(null);
   const [atualizadoEm, setAtualizadoEm] = useState(null); // quando os dados da tela vieram da planilha
   const [doCelular, setDoCelular] = useState(false); // tela mostrando a cópia guardada no celular (sem internet)
   const versaoRef = useRef(null);
@@ -229,6 +247,15 @@ function GestaoPecuaria() {
     const d = dadosRef.current;
     commit({ ...d, config: { ...(d.config || {}), ...parcial } });
     enfileirar([{ action: 'setConfig', config: parcial }], 'metas');
+  }
+
+  // v11: cadastros (listas do app) ficam na aba Config, chave "cadastros" (precisa do script 15)
+  function salvarCadastros(json) {
+    const d = dadosRef.current;
+    commit({ ...d, config: { ...(d.config || {}), cadastros: json } });
+    if (scriptAntes(15)) return 'A planilha ainda não aceita cadastros (precisa do script 15). A mudança ficou só na tela até implantar o script novo.';
+    enfileirar([{ action: 'setConfig', config: { cadastros: json } }], 'cadastros');
+    return null;
   }
 
   const scriptAntes = (v) => !MODO_TESTE && versaoScript !== null && (versaoScript || 0) < v;
@@ -426,10 +453,10 @@ function GestaoPecuaria() {
   }
   function sairDoModoDono() {
     setOwnerMode(false);
-    if (tab === 'painel') setTab('lancar');
+    if (tab === 'painel' || tab === 'cadastros') setTab('lancar');
   }
 
-  function mudarTab(t) { setPreset(null); setTab(t); }
+  function mudarTab(t) { setPreset(null); setNovoProt(null); setTab(t); }
   function lancarDaVaca(tipo, matrizId) { setPreset({ tipo, matrizId, n: Date.now() }); setTab('lancar'); }
 
   const anos = useMemo(() => anosDisponiveis(dados.eventos, hoje), [dados.eventos, hoje]);
@@ -438,13 +465,16 @@ function GestaoPecuaria() {
     ownerMode && { id: 'painel', label: 'Painel', Icon: LayoutDashboard },
     { id: 'lancar', label: 'Lançar', Icon: Plus },
     { id: 'manejo', label: 'Manejo', Icon: Syringe },
-    { id: 'parto', label: 'Parto', Icon: CalendarClock },
-    { id: 'crias', label: 'Crias', Icon: Baby },
+    { id: 'parto', label: 'Diagnóstico', Icon: ClipboardCheck },
+    { id: 'crias', label: 'Nascimentos', Icon: Baby },
     { id: 'rebanho', label: 'Rebanho', Icon: List },
     { id: 'relatorios', label: 'Relatórios', Icon: FileText },
   ].filter(Boolean);
 
   const anoSel = <SeletorAno ano={ano} anos={anos} onChange={setAno} />;
+  const botaoCad = ownerMode ? (
+    <button className={`chip lock${tab === 'cadastros' ? ' on' : ''}`} onClick={() => mudarTab('cadastros')} aria-label="Cadastros" title="Cadastros (listas do app)" data-testid="abrir-cadastros"><Settings size={17} /></button>
+  ) : null;
   const botaoDono = ownerMode ? (
     <button className="chip on" onClick={sairDoModoDono} aria-label="Sair do modo proprietário" title="Voltar para o modo funcionário"><Unlock size={15} /> DONO</button>
   ) : (
@@ -459,7 +489,9 @@ function GestaoPecuaria() {
     );
   }
 
+  definirDadosCadastro(dados);
   return (
+    <FichaProvider dados={dados} hoje={hoje} ownerMode={ownerMode} onEditarMatriz={(m) => setEditMatriz(m)} onEditarBoi={(t) => setEditBoi(t)}>
     <div className="app">
       <style>{CSS}</style>
 
@@ -471,6 +503,8 @@ function GestaoPecuaria() {
           ))}
         </nav>
         <div className="foot">
+          <BotaoBusca />
+          {botaoCad}
           {botaoDono}
         </div>
       </aside>
@@ -487,6 +521,8 @@ function GestaoPecuaria() {
           <div className="in">
             <Marca />
             <ChipFila est={filaEst} onClick={() => setFilaAberta(true)} />
+            <BotaoBusca />
+            {botaoCad}
             {botaoDono}
           </div>
         </header>
@@ -502,9 +538,13 @@ function GestaoPecuaria() {
           />
         )}
         {tab === 'manejo' && (
-          <Manejo dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE} onGravarLote={gravarManejo} onSalvarProtocolo={salvarProtocolo} onSalvarConfig={salvarConfig} scriptAntes13={scriptAntes(13)} onDecidirLote={decidirMudancaLote} onEfetivarNotas={efetivarObservacoes} onCorrigirManejo={corrigirManejoGeral} onExcluirManejo={excluirManejo} />
+          <Manejo key={novoProt ? novoProt.n : 'm'} novoProtocolo={novoProt} dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE} onGravarLote={gravarManejo} onSalvarProtocolo={salvarProtocolo} onSalvarConfig={salvarConfig} scriptAntes13={scriptAntes(13)} onDecidirLote={decidirMudancaLote} onEfetivarNotas={efetivarObservacoes} onCorrigirManejo={corrigirManejoGeral} onExcluirManejo={excluirManejo} />
         )}
-        {tab === 'parto' && <Parto dados={dados} hoje={hoje} onLancar={lancarDaVaca} onGravarLote={gravarManejo} />}
+        {tab === 'parto' && (
+          <Parto dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE} onLancar={lancarDaVaca} onGravarLote={gravarManejo}
+            onMontarProtocolo={(ids) => { setNovoProt({ tipo: 'IATF', animais: ids, nome: '', n: Date.now() }); setTab('manejo'); }} />
+        )}
+        {tab === 'cadastros' && ownerMode && <Cadastros dados={dados} onSalvarCadastros={salvarCadastros} scriptAntigo={scriptAntes(15)} />}
         {tab === 'crias' && (
           <Crias
             dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE}
@@ -514,7 +554,7 @@ function GestaoPecuaria() {
             onCorrigirPesagem={corrigirPesagem}
           />
         )}
-        {tab === 'rebanho' && <Rebanho dados={dados} ownerMode={ownerMode} onSalvarMatriz={salvarMatriz} onSalvarTouro={salvarTouro} />}
+        {tab === 'rebanho' && <Rebanho dados={dados} hoje={hoje} ownerMode={ownerMode} onSalvarMatriz={salvarMatriz} onSalvarTouro={salvarTouro} />}
         {tab === 'painel' && ownerMode && (
           <Painel
             anoSel={anoSel} dados={dados} ano={ano} hoje={hoje} go={mudarTab} modoTeste={MODO_TESTE} sincronizando={sincronizando}
@@ -585,7 +625,12 @@ function GestaoPecuaria() {
           </form>
         </Modal>
       )}
+      {editMatriz && ownerMode && (
+        <ModalMatriz key={editMatriz.id} m={editMatriz} dados={dados} ownerMode editarDireto onSalvar={salvarMatriz} onFechar={() => setEditMatriz(null)} />
+      )}
+      {editBoi && ownerMode && <ModalBoi boi={editBoi} dados={dados} onSalvar={salvarTouro} onFechar={() => setEditBoi(null)} />}
     </div>
+    </FichaProvider>
   );
 }
 

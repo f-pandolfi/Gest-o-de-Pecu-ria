@@ -76,3 +76,13 @@
 - **Script v14** (`Code_v14.gs`): ação `excluirEventos` (só `manejo` com etapa `Geral`; outras etapas e tipos são recusados), copia a linha apagada para a aba **Excluidos** (excluidoEm, tipo, id, linha em JSON) e compacta a aba Manejos. O resto é igual à v13. **Sem o script 14 o app edita e inclui, mas Excluir avisa que precisa do script 14 e não apaga nada.** O app continua exigindo só o script 12.
 - Manejos gravados antes da 10.6 não têm `semCadastro` nos brincos sem cadastro: o formulário de edição usa `semCad()` (sem animal ligado = sem cadastro).
 - Testes: `node testes/test_manejo_geral.mjs` (27), `node testes/test_script_v14.cjs` (6), `python3 testes/test_navegador_editar.py` (13, com o servidor no script 14) e `python3 testes/test_navegador_editar_v13.py` (4, com `node testes/servidor.cjs 8766 Code_v13.gs`). O servidor de teste agora usa o `Code_v14.gs`.
+
+## App 11 (01/11/26): ficha do animal, rebanho completo, nascimentos, diagnóstico, indução e cadastros
+- **Busca e ficha** (`src/ficha.js` regras, `src/telas/Ficha.jsx` tela): lupa no topo para todos. A ficha mostra identificação, mãe/pai, reprodução (último toque, previsão, última IATF, intervalo entre partos), partos e crias clicáveis, peso com gráfico, manejos com observações, indução (novilha) e linha do tempo. Brinco repetido mostra a escolha. Alterar cadastro só com a senha (abre direto a edição).
+- **Rebanho**: resumo e abas Todos, Matrizes, Crias, Touros, Bois. Vaca mostra previsão de parto (cheia) e última cria; bezerro mostra último peso; novilha mostra "Induzida em" ou "Não induzida".
+- **Bois**: ficam na aba Touros da planilha com `tipo` "Boi" (nome "<categoria> <brinco>"). Não aparecem como reprodutor.
+- **Nascimentos** (antes Crias): nova sub-aba Nascimentos por ano (totais, gráfico por mês, faltando dados). O lançamento do parto continua em Lançar.
+- **Diagnóstico** (antes Parto): Cheias, Vazias e Toque (o Toque saiu do Manejo).
+- **Manejo > Indução**: etapas D0 · Implante, D12 · Retirada e Avaliação, gravadas como manejo com etapa "Indução · <etapa>". Na avaliação: presentes = ciclando, ausentes = não ciclou.
+- **Cadastros** (engrenagem, só dono): listas do app na aba Config, chave `cadastros` (JSON). Campos com `cadastro:` em `CAMPOS` (logica.js) usam a lista; texto vira sugestão. **Precisa do script v15** (`Code_v15.gs`: só acrescenta a chave `cadastros` na Config). Sem o v15 a mudança fica só na tela.
+- Testes: `node testes/test_script_v15.cjs` e `python3 testes/test_navegador_11.py` (servidor de teste agora simula o v15).

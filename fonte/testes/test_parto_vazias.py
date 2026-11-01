@@ -29,7 +29,7 @@ with sync_playwright() as p:
         pg = ctx.new_page(); erros = []; pg.on('pageerror', lambda e: erros.append(str(e)))
         pg.goto(BASE + '/'); pg.wait_for_selector('.foot-note'); pg.wait_for_timeout(1500)
         nm = 'Telas (celular)' if vp['width'] < 900 else 'Telas'
-        pg.get_by_role('navigation', name=nm).get_by_role('button', name='Parto').click()
+        pg.get_by_role('navigation', name=nm).get_by_role('button', name='Diagnóstico').click()
         pg.get_by_role('tab', name='Vazias').first.click()
         lin = pg.get_by_test_id('vazia-3005'); lin.scroll_into_view_if_needed()
         datas = lin.get_by_test_id('parto-datas').locator('span').all_inner_texts()

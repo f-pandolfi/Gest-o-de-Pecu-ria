@@ -4,6 +4,8 @@ import { Search } from 'lucide-react';
 import { linhasPrevisao, formatarDataBR, PERIODO_GESTACAO_DIAS, partosPorMatriz, listarCrias, rotuloSituacao, diasEntre } from '../logica.js';
 import { IndexTabs, Aviso } from '../ui.jsx';
 import { aplicacoesPorAnimal, situacaoVacinaVaca, manejoConfirmacaoVacina } from '../manejo.js';
+import { useFicha } from './Ficha.jsx';
+import Toque from './Toque.jsx';
 
 function textoDias(dias) {
   if (dias === null || dias === undefined) return { t: '—', c: 'mut' };
@@ -71,7 +73,9 @@ function PartoDetalhe({ e, c, hoje }) {
   );
 }
 
-export default function Parto({ dados, hoje, onLancar, onGravarLote }) {
+// v11: a aba Parto passou a se chamar Diagnóstico e ganhou o Toque (que antes ficava em Manejo).
+export default function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onGravarLote, onMontarProtocolo }) {
+  const { abrir } = useFicha();
   const [aba, setAba] = useState('Cheia');
   const [busca, setBusca] = useState('');
   const [aberta, setAberta] = useState(null);
@@ -102,16 +106,17 @@ export default function Parto({ dados, hoje, onLancar, onGravarLote }) {
   return (
     <div className="wrap">
       <div className="head">
-        <div><small>Livro do rebanho</small><h1>Previsão de parto</h1></div>
+        <div><small>Reprodução</small><h1>Diagnóstico</h1></div>
       </div>
 
       <IndexTabs
         rotulo="Situação"
         value={aba}
         onChange={(v) => { setAba(v); setAberta(null); }}
-        tabs={[{ id: 'Cheia', label: 'Cheias', count: todasCheias.length }, { id: 'Vazia', label: 'Vazias', count: nVazias }]}
+        tabs={[{ id: 'Cheia', label: 'Cheias', count: todasCheias.length }, { id: 'Vazia', label: 'Vazias', count: nVazias }, { id: 'Toque', label: 'Toque' }]}
       />
-      <section className="sheet">
+      {aba === 'Toque' && <Toque dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={modoTeste} onGravarLote={onGravarLote} onMontarProtocolo={onMontarProtocolo} />}
+      {aba !== 'Toque' && <section className="sheet">
         <label className="search">
           <Search />
           <input placeholder={vazias ? 'Buscar pelo brinco da vaca ou da cria' : 'Buscar pelo brinco'} aria-label="Buscar pelo brinco" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -171,6 +176,7 @@ export default function Parto({ dados, hoje, onLancar, onGravarLote }) {
                   {ps.length === 0 && !antes && <div>Nenhum parto lançado para esta vaca.</div>}
                   {ps.map((e) => <PartoDetalhe key={e.id} e={e} c={criaPorNasc.get(e.id)} hoje={hoje} />)}
                   {antes > 0 && <div className="mut" style={{ marginTop: 6 }}>Mais {antes} parto(s) antes de entrar na fazenda (sem data lançada).</div>}
+                  <div style={{ marginTop: 10 }}><button className="btn sm quiet" onClick={() => abrir(`m:${m.id}`)}>Ficha completa</button></div>
                 </div>
               )}
             </React.Fragment>
@@ -204,13 +210,14 @@ export default function Parto({ dados, hoje, onLancar, onGravarLote }) {
                     {aba === 'Cheia'
                       ? <button className="btn sm" onClick={() => onLancar('nascimento', m.id)}>Lançar nascimento desta vaca</button>
                       : null}
+                    <button className="btn sm quiet" onClick={() => abrir(`m:${m.id}`)}>Ficha completa</button>
                   </div>
                 </div>
               )}
             </React.Fragment>
           );
         })}
-      </section>
+      </section>}
       <p className="sub" style={{ marginTop: 14 }}>
         Dias negativos: a data prevista já passou. Confira se a vaca pariu e lance o nascimento. A previsão olha o histórico inteiro da vaca, não só o ano escolhido.
       </p>

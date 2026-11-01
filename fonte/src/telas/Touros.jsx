@@ -1,6 +1,7 @@
 // Touros e sêmen (aba de Rebanho). Todos consultam; o dono cadastra e altera.
 // Sêmen: central, código, partida, tipo (convencional/sexado), doses, compra, botijão e caneca, facilidade de parto, DEPs.
 // Touro vivo: brinco, nascimento, origem, registro, pais, lote, peso e exame andrológico.
+import { ehBoi } from '../ficha.js';
 import React, { useState } from 'react';
 import { Plus, Save } from 'lucide-react';
 import { formatarDataBR, idadeMesesDias, todayISO } from '../logica.js';
@@ -104,7 +105,7 @@ export default function Touros({ dados, ownerMode, onSalvarTouro }) {
   const [editando, setEditando] = useState(null);
   const [msg, setMsg] = useState('');
   const hoje = todayISO();
-  const lista = dados.touros.filter((t) => tipo === 'todos' || (tipo === 'vivo' ? t.tipo === 'Touro vivo' : t.tipo !== 'Touro vivo'))
+  const lista = dados.touros.filter((t) => !ehBoi(t)).filter((t) => tipo === 'todos' || (tipo === 'vivo' ? t.tipo === 'Touro vivo' : t.tipo !== 'Touro vivo'))
     .sort((a, b) => (a.situacao === 'Inativo') - (b.situacao === 'Inativo') || String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
   const t = aberto ? dados.touros.find((x) => x.id === aberto) : null;
   return (

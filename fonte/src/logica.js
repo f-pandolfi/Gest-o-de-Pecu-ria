@@ -2,7 +2,7 @@
 // É usado por dois lados: o app (app.jsx) e a integração por foto (lançamentos em lote feitos pelo Claude).
 // Mexeu aqui = mudou nos dois, de propósito: uma única fonte da verdade para status, previsão e relatórios.
 
-export const VERSAO_APP = '10.7 (31/10/26)';
+export const VERSAO_APP = '11.0 (01/11/26)';
 export const VERSAO_MINIMA_SCRIPT = 12; // v12 = protocolos, manejos, touros completos (v11 = não duplica reenvio; v10 = aba Mortes)
 export const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
 
@@ -34,8 +34,8 @@ export const TIPOS_EVENTO = [
 export const CAMPOS_EDICAO_MATRIZ = [
   { key: 'brinco', label: 'Brinco / ID', type: 'text', required: true },
   { key: 'categoria', label: 'Categoria', type: 'select', options: ['Novilha', 'Primípara', 'Multípara', 'Vaca'] },
-  { key: 'raca', label: 'Raça', type: 'text' },
-  { key: 'lote', label: 'Lote / piquete', type: 'text' },
+  { key: 'raca', label: 'Raça', type: 'text', cadastro: 'racas' },
+  { key: 'lote', label: 'Lote / piquete', type: 'text', cadastro: 'lotes' },
   { key: 'dataNascimento', label: 'Data de nascimento', type: 'date' },
   { key: 'partosAnteriores', label: 'Partos antes de entrar na fazenda', type: 'number' },
   { key: 'status', label: 'Status', type: 'select', options: ['Vazia', 'Cheia', 'Descarte', 'Vendida'] },
@@ -45,15 +45,15 @@ export const CAMPOS = {
   cadastro: [
     { key: 'brinco', label: 'Brinco / ID', type: 'text', required: true },
     { key: 'categoria', label: 'Categoria', type: 'select', options: ['Novilha', 'Primípara', 'Multípara', 'Vaca'] },
-    { key: 'raca', label: 'Raça', type: 'text' },
-    { key: 'lote', label: 'Lote / piquete', type: 'text' },
+    { key: 'raca', label: 'Raça', type: 'text', cadastro: 'racas' },
+    { key: 'lote', label: 'Lote / piquete', type: 'text', cadastro: 'lotes' },
     { key: 'dataNascimento', label: 'Data de nascimento', type: 'date' },
     { key: 'partosAnteriores', label: 'Partos antes de entrar na fazenda', type: 'number' },
     { key: 'statusInicial', label: 'Status inicial', type: 'select', options: ['Vazia', 'Cheia'] },
   ],
   touro: [
     { key: 'nome', label: 'Nome do touro / sêmen', type: 'text', required: true },
-    { key: 'raca', label: 'Raça', type: 'text', required: true },
+    { key: 'raca', label: 'Raça', type: 'text', required: true, cadastro: 'racas' },
     { key: 'fornecedor', label: 'Central / fornecedor', type: 'text' },
     { key: 'anoAquisicao', label: 'Ano de aquisição', type: 'number' },
     { key: 'doses', label: 'Doses adquiridas', type: 'number' },
@@ -68,7 +68,7 @@ export const CAMPOS = {
     { key: 'dataInicioProtocolo', label: 'Início do protocolo', type: 'date' },
     { key: 'touroId', label: 'Sêmen / touro', type: 'touro' },
     { key: 'touroOutro', label: 'Nome (não cadastrado)', type: 'text', showIf: (f) => f.touroId === '__outro__' },
-    { key: 'tecnico', label: 'Técnico', type: 'text' },
+    { key: 'tecnico', label: 'Técnico', type: 'text', cadastro: 'pessoas' },
     { key: 'observacoes', label: 'Observações', type: 'text' },
   ],
   diagnostico: [
@@ -77,8 +77,8 @@ export const CAMPOS = {
     { key: 'resultado', label: 'Resultado', type: 'select', options: ['Prenhe', 'Vazia', 'Descarte'], required: true },
     { key: 'metodo', label: 'Método', type: 'select', options: ['Toque retal', 'Ultrassom'] },
     { key: 'dg', label: 'DG (dias de gestação)', type: 'number' },
-    { key: 'motivo', label: 'Motivo do descarte', type: 'text', showIf: (f) => f.resultado === 'Descarte' },
-    { key: 'veterinario', label: 'Veterinário', type: 'text' },
+    { key: 'motivo', label: 'Motivo do descarte', type: 'text', cadastro: 'motivosDescarte', showIf: (f) => f.resultado === 'Descarte' },
+    { key: 'veterinario', label: 'Veterinário', type: 'text', cadastro: 'pessoas' },
     { key: 'custo', label: 'Custo (R$)', type: 'number' },
   ],
   nascimento: [
@@ -87,7 +87,7 @@ export const CAMPOS = {
     { key: 'resultadoParto', label: 'Resultado', type: 'select', options: ['Vivo', 'Natimorto'], required: true, default: 'Vivo' },
     { key: 'sexo', label: 'Sexo', type: 'select', options: ['Fêmea', 'Macho'], required: true },
     { key: 'brincoBezerro', label: 'Brinco do bezerro (sugerido automaticamente)', type: 'text', required: true },
-    { key: 'pelagem', label: 'Pelagem', type: 'text' },
+    { key: 'pelagem', label: 'Pelagem', type: 'text', cadastro: 'pelagens' },
     // Sem campo "Pai": a origem da cria (IATF ou monta) e o pai são deduzidos depois, cruzando o parto
     // com o IATF da mãe (ver origemDaCria). Sem IATF compatível, a cria é de monta natural.
     { key: 'tipoParto', label: 'Tipo de parto', type: 'select', options: ['Normal', 'Distócico (com dificuldade)'], default: 'Normal' },
@@ -121,26 +121,26 @@ export const CAMPOS = {
     { key: 'valorArroba', label: 'Valor por arroba (R$)', type: 'number' },
     { key: 'valorTotal', label: 'Valor total da venda (R$)', type: 'number', required: true },
     { key: 'frete', label: 'Frete / comissão (R$)', type: 'number' },
-    { key: 'comprador', label: 'Comprador', type: 'text' },
+    { key: 'comprador', label: 'Comprador', type: 'text', cadastro: 'compradores' },
   ],
   insumo: [
     { key: 'data', label: 'Data', type: 'date', required: true },
-    { key: 'produto', label: 'Produto', type: 'select', options: ['Sal Mineral', 'Medicamento', 'Vacina', 'Outro'] },
+    { key: 'produto', label: 'Produto', type: 'select', options: ['Sal Mineral', 'Medicamento', 'Vacina', 'Outro'], cadastro: 'produtos' },
     { key: 'quantidade', label: 'Quantidade', type: 'number' },
-    { key: 'unidade', label: 'Unidade', type: 'select', options: ['kg', 'L', 'un', 'dose'] },
+    { key: 'unidade', label: 'Unidade', type: 'select', options: ['kg', 'L', 'un', 'dose'], cadastro: 'unidades' },
     { key: 'custo', label: 'Custo (R$)', type: 'number' },
     { key: 'categoriaAnimal', label: 'Categoria de animal', type: 'text' },
   ],
   descarte: [
     { key: 'matrizId', label: 'Matriz', type: 'matriz', required: true },
     { key: 'data', label: 'Data', type: 'date', required: true },
-    { key: 'motivo', label: 'Motivo', type: 'text' },
+    { key: 'motivo', label: 'Motivo', type: 'text', cadastro: 'motivosDescarte' },
   ],
   // Morte de qualquer animal. O animal é achado pelo brinco (cria, novilha ou matriz); sem cadastro, escolhe-se o tipo (ver validarMorte).
   morte: [
     { key: 'brinco', label: 'Brinco do animal', type: 'text' },
     { key: 'data', label: 'Data da morte', type: 'date', required: true },
-    { key: 'causa', label: 'Causa', type: 'select', options: CAUSAS_MORTE, required: true },
+    { key: 'causa', label: 'Causa', type: 'select', options: CAUSAS_MORTE, required: true, cadastro: 'causasMorte' },
     { key: 'tipoAnimal', label: 'Que animal é', type: 'select', options: TIPOS_ANIMAL_MORTE },
     { key: 'observacoes', label: 'Observação', type: 'text' },
   ],

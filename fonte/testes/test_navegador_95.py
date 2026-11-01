@@ -77,14 +77,14 @@ with sync_playwright() as p:
     srv('/__reset', 'POST')
     ctx = contexto(); pg = abrir(ctx)
 
-    @teste('abre com app 10.7 e planilha v14, sem erros')
+    @teste('abre com app 11.0 e planilha v15, sem erros')
     def _():
         nota = pg.inner_text('.foot-note')
-        assert 'app 10.7' in nota and 'planilha v14' in nota, nota
+        assert 'app 11.0' in nota and 'planilha v15' in nota, nota
         assert not pg.erros, pg.erros
 
     # ------------------------------------------------------------------ Pesar: ficha rápida
-    ir(pg, 'Crias'); aba(pg, 'Pesar')
+    ir(pg, 'Nascimentos'); aba(pg, 'Pesar')
 
     @teste('Pesar: ao digitar o número mostra idade em meses, nascimento, mãe e último peso')
     def _():
@@ -153,7 +153,7 @@ with sync_playwright() as p:
     @teste('Pesar: a lista fica guardada no celular (recarregar não perde)')
     def _():
         pg.reload(); pg.wait_for_selector('.foot-note')
-        ir(pg, 'Crias'); aba(pg, 'Pesar')
+        ir(pg, 'Nascimentos'); aba(pg, 'Pesar')
         assert pg.get_by_test_id('linha-6507').count() == 1
         assert pg.locator('#pesar-data').input_value() == '2026-10-10'
         pg.get_by_role('button', name='Tirar 6507 da lista').click()
@@ -168,7 +168,7 @@ with sync_playwright() as p:
     @teste('Sem internet: pesar e gravar fica no celular (aviso e contador), nada chega na planilha')
     def _():
         ctx.set_offline(True)
-        ir(pg, 'Crias'); aba(pg, 'Pesar')
+        ir(pg, 'Nascimentos'); aba(pg, 'Pesar')
         pesar_linha(pg, '6502', 230); pesar_linha(pg, '6504', 231)
         pg.get_by_role('button', name='Gravar 2 pesagem(ns)').click()
         pg.wait_for_selector('text=ficou guardado neste celular')
@@ -182,7 +182,7 @@ with sync_playwright() as p:
         corpo = pg.inner_text('body')
         assert 'guardados no celular' in pg.inner_text('.foot-note') and 'Sem internet agora' in corpo, (pg.inner_text('.foot-note'), corpo[:600])
         expect(pg.get_by_test_id('chip-fila').first).to_contain_text('no celular')
-        ir(pg, 'Crias'); aba(pg, 'Pesar')
+        ir(pg, 'Nascimentos'); aba(pg, 'Pesar')
         pg.locator('#pesar-brinco').fill('6502')
         fr = pg.get_by_test_id('ficha-rapida').inner_text(); assert '230 kg' in fr, fr
         pg.locator('#pesar-brinco').fill('')
@@ -210,7 +210,7 @@ with sync_playwright() as p:
     def _():
         srv('/__perderResposta?n=1', 'POST')
         aba_c = None
-        ir(pg, 'Crias'); aba(pg, 'Pesar')
+        ir(pg, 'Nascimentos'); aba(pg, 'Pesar')
         pesar_linha(pg, '6510', 170)
         pg.get_by_role('button', name='Gravar 1 pesagem(ns)').click()
         pg.evaluate('window.__fila.enviar()')
@@ -299,7 +299,7 @@ with sync_playwright() as p:
         @teste(f'Passeio por todas as telas e abas sem erro ({"celular" if largura < 900 else "computador"})')
         def _():
             entrar_dono(pg)
-            for tela in ['Painel', 'Lançar', 'Parto', 'Crias', 'Rebanho', 'Relatórios']:
+            for tela in ['Painel', 'Lançar', 'Diagnóstico', 'Nascimentos', 'Rebanho', 'Relatórios']:
                 ir(pg, tela); pg.wait_for_timeout(150)
                 for t in pg.get_by_role('tab').all():
                     t.click(); pg.wait_for_timeout(80)
