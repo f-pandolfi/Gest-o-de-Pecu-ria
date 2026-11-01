@@ -1,5 +1,5 @@
 // src/app.jsx
-import React27, { useState as useState26, useEffect as useEffect11, useMemo as useMemo23, useRef as useRef9 } from "react";
+import React27, { useState as useState26, useEffect as useEffect11, useMemo as useMemo23, useRef as useRef10 } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Plus as Plus9,
@@ -2611,9 +2611,10 @@ var temCriasAoPe = (estado, lote, hoje) => !!lote && criasAoPe(estado, lote, hoj
 var OBS_SEM_CADASTRO = "N\xE3o est\xE1 no banco de dados nem em nenhum lote";
 var nDias = (n) => `${n} ${Math.abs(n) === 1 ? "dia" : "dias"}`;
 var maiusc1 = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+var normBrinco = (x) => String(x ?? "").trim().toLowerCase();
 var mesmoNumeroBrinco = (a, b) => {
-  const x = String(a ?? "").trim();
-  const y = String(b ?? "").trim();
+  const x = normBrinco(a);
+  const y = normBrinco(b);
   if (!x || !y) return false;
   return x === y || /^\d+$/.test(x) && /^\d+$/.test(y) && Number(x) === Number(y);
 };
@@ -2693,7 +2694,7 @@ function buscarAnimais(estado, lote, brinco, hoje, op) {
   const indice = o.indice || indiceBusca(estado, hoje);
   const naRel = (id) => !!(o.esperados && o.esperados.has(id));
   const acha = (porBrinco) => {
-    const exatos = porBrinco((x) => String(x ?? "").trim() === b);
+    const exatos = porBrinco((x) => normBrinco(x) === normBrinco(b));
     return exatos.length || !/^\d+$/.test(b) ? exatos : porBrinco((x) => mesmoNumeroBrinco(x, b));
   };
   const loteDe = (l) => padronizarLote(l, estado.matrizes);
@@ -4713,7 +4714,7 @@ import React8, { useEffect as useEffect4, useMemo as useMemo8, useState as useSt
 import { Save as Save5, Loader2 as Loader25, FileDown as FileDown4, Plus as Plus5, X as X2, Check as Check4, ArrowLeft as ArrowLeft3, ClipboardCheck } from "lucide-react";
 
 // src/telas/ManejoBusca.jsx
-import React7, { useMemo as useMemo7, useState as useState7 } from "react";
+import React7, { useMemo as useMemo7, useRef as useRef4, useState as useState7 } from "react";
 import { Search as Search3, Check as Check3, Plus as Plus4, AlertTriangle } from "lucide-react";
 var mesmaInclusao = (i, f) => String(i.brinco) === String(f.brinco) && (i.animal || "") === (f.animal || "");
 function Ficha({ f, marcado, incluido, lote, onMarcar, onIncluir }) {
@@ -4723,9 +4724,11 @@ function Ficha({ f, marcado, incluido, lote, onMarcar, onIncluir }) {
 function ConferirBrincos({ dados, lote, hoje, itens: itens2, marcados, onToggle, incluidos, onIncluir, indice, esperados, rotuloContador }) {
   const [q, setQ] = useState7("");
   const [msg, setMsg] = useState7(null);
+  const [letras, setLetras] = useState7(false);
+  const entrada = useRef4(null);
   const b = q.trim();
   const fichas = useMemo7(() => b ? buscarAnimais(dados, lote, b, hoje, { indice, esperados }) : [], [dados, lote, b, hoje, indice, esperados]);
-  const filtrados = useMemo7(() => b ? itens2.filter((x) => String(x.brinco).startsWith(b)) : itens2, [itens2, b]);
+  const filtrados = useMemo7(() => b ? itens2.filter((x) => String(x.brinco).toLowerCase().startsWith(b.toLowerCase())) : itens2, [itens2, b]);
   const n = itens2.filter((x) => marcados.has(x.id)).length;
   const marcadoNaFicha = (f) => marcados.has(f.animal) || incluidos.some((i) => mesmaInclusao(i, f));
   function marcar(f) {
@@ -4766,8 +4769,11 @@ function ConferirBrincos({ dados, lote, hoje, itens: itens2, marcados, onToggle,
   return /* @__PURE__ */ React7.createElement("div", null, /* @__PURE__ */ React7.createElement("div", { className: "contador", "data-testid": "contador" }, n, " de ", itens2.length, " ", rotuloContador || "conferidos"), /* @__PURE__ */ React7.createElement("label", { className: "search", style: { marginTop: 8 } }, /* @__PURE__ */ React7.createElement(Search3, null), /* @__PURE__ */ React7.createElement(
     "input",
     {
-      inputMode: "numeric",
+      ref: entrada,
+      inputMode: letras ? "text" : "numeric",
       enterKeyHint: "done",
+      autoCapitalize: "characters",
+      autoComplete: "off",
       placeholder: "Digite o brinco do animal",
       "aria-label": "Brinco para conferir",
       value: q,
@@ -4782,6 +4788,23 @@ function ConferirBrincos({ dados, lote, hoje, itens: itens2, marcados, onToggle,
         }
       }
     }
+  ), /* @__PURE__ */ React7.createElement(
+    "button",
+    {
+      type: "button",
+      className: "tec-bt",
+      "aria-label": letras ? "Usar teclado de n\xFAmeros" : "Usar teclado de letras",
+      "data-testid": "trocar-teclado",
+      onClick: () => {
+        setLetras(!letras);
+        const el = entrada.current;
+        if (el) {
+          el.blur();
+          setTimeout(() => el.focus(), 60);
+        }
+      }
+    },
+    letras ? "123" : "ABC"
   )), msg && /* @__PURE__ */ React7.createElement("div", { className: `hint ${msg.tom}`, role: "status", "data-testid": "msg-marcar", style: { margin: "6px 2px", fontSize: 13.5 } }, msg.t), fichas.map((f) => /* @__PURE__ */ React7.createElement(Ficha, { key: f.chave, f, lote, marcado: marcadoNaFicha(f), incluido: incluidos.some((i) => mesmaInclusao(i, f)), onMarcar: marcar, onIncluir: incluir })), b && fichas.length === 0 && filtrados.length === 0 && /* @__PURE__ */ React7.createElement("div", { className: "ficha-busca late", "data-testid": "ficha-sem-cadastro" }, /* @__PURE__ */ React7.createElement("div", { className: "fb-topo" }, /* @__PURE__ */ React7.createElement("b", { className: "b" }, b), /* @__PURE__ */ React7.createElement("span", { className: "fb-tit" }, /* @__PURE__ */ React7.createElement(AlertTriangle, { size: 14, style: { verticalAlign: -2 } }), " Brinco sem cadastro")), /* @__PURE__ */ React7.createElement("div", { className: "fb-lin" }, "N\xE3o est\xE1 no banco de dados (matrizes, novilhas, crias e touros) nem em nenhum lote."), /* @__PURE__ */ React7.createElement("button", { type: "button", className: "btn wide", onClick: () => incluir(fichaSemCadastro(b)), "data-testid": "incluir-sem-cadastro" }, /* @__PURE__ */ React7.createElement(Plus4, { size: 17 }), " Incluir ", b, " mesmo assim")), /* @__PURE__ */ React7.createElement("div", { className: "marcar", "data-testid": "lista-marcar", hidden: filtrados.length === 0 && !!b }, filtrados.map((x) => {
     const on = marcados.has(x.id);
     return /* @__PURE__ */ React7.createElement("div", { key: x.id, className: `marca-lin${on ? " on" : ""}` }, /* @__PURE__ */ React7.createElement("button", { type: "button", className: "marca-bt", "aria-pressed": on, "aria-label": `${on ? "Desmarcar" : "Marcar"} ${x.brinco}`, onClick: () => onToggle(x.id) }, /* @__PURE__ */ React7.createElement("span", { className: "caixa" }, on ? /* @__PURE__ */ React7.createElement(Check3, { size: 18 }) : null), /* @__PURE__ */ React7.createElement("span", { className: "b" }, x.brinco), /* @__PURE__ */ React7.createElement("span", { className: "two" }, /* @__PURE__ */ React7.createElement("b", null, x.linha1), /* @__PURE__ */ React7.createElement("span", { className: x.nivel || "mut" }, x.linha2))));
@@ -5044,6 +5067,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .marca-bt .two span.late{color:var(--late)}
 .marca-bt .two span.soon{color:var(--amber)}
 .marca-bt .two span.good{color:var(--green)}
+.tec-bt{flex:none;min-height:38px;min-width:52px;padding:0 10px;border-radius:6px;border:1px solid var(--line);background:var(--s2);color:var(--tx);font:700 13px var(--mono)}
 .ficha-busca{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;background:var(--s2);padding:10px 12px;margin:10px 0}
 .ficha-busca.good{border-left-color:var(--green)}
 .ficha-busca.soon{border-left-color:var(--amber)}
@@ -5505,7 +5529,7 @@ var fmtIdade = (dias) => dias === null || dias === void 0 ? "\u2014" : dias < 60
 var fmtGmd = (g) => g === null || g === void 0 ? "\u2014" : `${fmtNum(g, 2)} kg/dia`;
 
 // src/telas/Lancar.jsx
-import React14, { useState as useState13, useEffect as useEffect6, useMemo as useMemo11, useRef as useRef5 } from "react";
+import React14, { useState as useState13, useEffect as useEffect6, useMemo as useMemo11, useRef as useRef6 } from "react";
 import { Save as Save8, Check as Check6, Loader2 as Loader29 } from "lucide-react";
 
 // src/telas/FichaRapida.jsx
@@ -5591,7 +5615,7 @@ function LoteFoto({ dados, hoje, onGravarLote, modoTeste }) {
 }
 
 // src/telas/Morte.jsx
-import React12, { useMemo as useMemo9, useState as useState11, useRef as useRef4, useEffect as useEffect5 } from "react";
+import React12, { useMemo as useMemo9, useState as useState11, useRef as useRef5, useEffect as useEffect5 } from "react";
 import { Save as Save6, Loader2 as Loader27, Undo2 } from "lucide-react";
 var campoDef = (k) => CAMPOS.morte.find((c) => c.key === k);
 var inicial = (brinco, hoje) => ({ brinco: brinco || "", data: hoje, causa: "", tipoAnimal: "", observacoes: "" });
@@ -5601,7 +5625,7 @@ function FormMorte({ dados, hoje, brincoFixo, onRegistrar, modoTeste, aoTerminar
   const [confirmar, setConfirmar] = useState11(false);
   const [salvando, setSalvando] = useState11(false);
   const [msg, setMsg] = useState11("");
-  const timer2 = useRef4(null);
+  const timer2 = useRef5(null);
   useEffect5(() => () => clearTimeout(timer2.current), []);
   const info = useMemo9(() => infoAnimalMorte(dados, form.brinco), [dados, form.brinco]);
   const temBrinco = !!form.brinco.trim();
@@ -5789,8 +5813,8 @@ function Lancar({
   const [dup, setDup] = useState13(false);
   const [salvo, setSalvo] = useState13("");
   const [travado, setTravado] = useState13(false);
-  const timer2 = useRef5(null);
-  const timerTrava = useRef5(null);
+  const timer2 = useRef6(null);
+  const timerTrava = useRef6(null);
   useEffect6(() => () => {
     clearTimeout(timer2.current);
     clearTimeout(timerTrava.current);
@@ -5981,7 +6005,7 @@ function Parto({ dados, hoje, onLancar, onGravarLote }) {
 import React22, { useState as useState21, useMemo as useMemo19, useEffect as useEffect10 } from "react";
 
 // src/telas/CriasLista.jsx
-import React16, { useMemo as useMemo13, useState as useState15, useRef as useRef6, useEffect as useEffect7 } from "react";
+import React16, { useMemo as useMemo13, useState as useState15, useRef as useRef7, useEffect as useEffect7 } from "react";
 import { Search as Search6, Scale, ShoppingCart } from "lucide-react";
 var NO_REBANHO = ["mamando", "desmamado", "novilha"];
 var FILTROS_SIT = [
@@ -6024,7 +6048,7 @@ function CriaFicha({
   const [registrandoMorte, setRegistrandoMorte] = useState15(false);
   const [editNasc, setEditNasc] = useState15(false);
   const [editMorte, setEditMorte] = useState15(false);
-  const timer2 = useRef6(null);
+  const timer2 = useRef7(null);
   useEffect7(() => () => clearTimeout(timer2.current), []);
   function trava() {
     setTravado(true);
@@ -6153,7 +6177,7 @@ function ListaCrias({
 }
 
 // src/telas/CriasPesar.jsx
-import React18, { useMemo as useMemo15, useRef as useRef7, useState as useState17, useEffect as useEffect8 } from "react";
+import React18, { useMemo as useMemo15, useRef as useRef8, useState as useState17, useEffect as useEffect8 } from "react";
 import { Plus as Plus6, Trash2 as Trash24, Save as Save9, Loader2 as Loader210, ClipboardPaste as ClipboardPaste2, FileDown as FileDown5, Tag as TagIcon } from "lucide-react";
 
 // src/pesagemConferencia.js
@@ -6287,7 +6311,7 @@ var lerRascunho = () => {
   return r && Array.isArray(r.linhas) ? r : null;
 };
 function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorrigirPesagem }) {
-  const rascunho0 = useRef7(lerRascunho());
+  const rascunho0 = useRef8(lerRascunho());
   const [data, setData] = useState17(() => rascunho0.current && rascunho0.current.linhas.length && rascunho0.current.data || hoje);
   const [modo, setModo] = useState17(() => rascunho0.current && rascunho0.current.linhas.length && ownerMode && rascunho0.current.modo || "pesagem");
   const [brinco, setBrinco] = useState17("");
@@ -6302,9 +6326,9 @@ function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorri
   const [colar, setColar] = useState17("");
   const [semBrinco, setSemBrinco] = useState17(false);
   const [sinal, setSinal] = useState17("");
-  const brincoRef = useRef7(null);
-  const pesoRef = useRef7(null);
-  const timer2 = useRef7(null);
+  const brincoRef = useRef8(null);
+  const pesoRef = useRef8(null);
+  const timer2 = useRef8(null);
   useEffect8(() => () => clearTimeout(timer2.current), []);
   useEffect8(() => {
     if (linhas.length) gravarNoCelular(CHAVE_RASCUNHO_PESAR, { data, modo, linhas: linhas.map(({ info, ...l }) => l), guardadoEm: (/* @__PURE__ */ new Date()).toISOString() });
@@ -6610,7 +6634,7 @@ function ParaVender({ crias, dados, onSalvarConfig, onVender, modoTeste, hoje })
 }
 
 // src/telas/CriasVendas.jsx
-import React20, { useEffect as useEffect9, useMemo as useMemo17, useRef as useRef8, useState as useState19 } from "react";
+import React20, { useEffect as useEffect9, useMemo as useMemo17, useRef as useRef9, useState as useState19 } from "react";
 import { Plus as Plus7, Trash2 as Trash25, ShoppingCart as ShoppingCart3, Loader2 as Loader211, ChevronDown, ChevronUp, Scale as Scale2 } from "lucide-react";
 var contador = 0;
 var novaLinha = (extra) => ({ k: `l${Date.now()}-${++contador}`, brinco: "", tipoAnimal: "", peso: "", tipoManual: false, ...extra });
@@ -6686,7 +6710,7 @@ function Vendas({ dados, hoje, crias, preset, onVender, modoTeste }) {
   const [erroGravar, setErroGravar] = useState19("");
   const [resultado, setResultado] = useState19("");
   const [travado, setTravado] = useState19(false);
-  const timer2 = useRef8(null);
+  const timer2 = useRef9(null);
   useEffect9(() => () => clearTimeout(timer2.current), []);
   useEffect9(() => {
     if (!preset || !preset.brincos || !preset.brincos.length) return;
@@ -7204,7 +7228,7 @@ function ChipFila({ est, onClick }) {
 function GestaoPecuaria() {
   const [tab, setTab] = useState26("lancar");
   const [dados, setDados] = useState26(VAZIO);
-  const dadosRef = useRef9(VAZIO);
+  const dadosRef = useRef10(VAZIO);
   const [loading, setLoading] = useState26(true);
   const [aviso, setAviso] = useState26(null);
   const [versaoScript, setVersaoScript] = useState26(null);
@@ -7221,8 +7245,8 @@ function GestaoPecuaria() {
   const [preset, setPreset] = useState26(null);
   const [atualizadoEm, setAtualizadoEm] = useState26(null);
   const [doCelular, setDoCelular] = useState26(false);
-  const versaoRef = useRef9(null);
-  const timerCopia = useRef9(null);
+  const versaoRef = useRef10(null);
+  const timerCopia = useRef10(null);
   const pendentes = filaEst.pendentes;
   useEffect11(() => assinarFila(setFilaEst), []);
   useEffect11(() => {

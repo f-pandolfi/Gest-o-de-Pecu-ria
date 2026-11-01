@@ -43,8 +43,10 @@ export const temCriasAoPe = (estado, lote, hoje) => !!lote && criasAoPe(estado, 
 export const OBS_SEM_CADASTRO = 'Não está no banco de dados nem em nenhum lote';
 const nDias = (n) => `${n} ${Math.abs(n) === 1 ? 'dia' : 'dias'}`;
 const maiusc1 = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+// Brinco tem número e também letra e barra ("E5", "219/1413"): a comparação não liga para maiúscula e minúscula
+const normBrinco = (x) => String(x ?? '').trim().toLowerCase();
 const mesmoNumeroBrinco = (a, b) => {
-  const x = String(a ?? '').trim(); const y = String(b ?? '').trim();
+  const x = normBrinco(a); const y = normBrinco(b);
   if (!x || !y) return false;
   return x === y || (/^\d+$/.test(x) && /^\d+$/.test(y) && Number(x) === Number(y));
 };
@@ -126,7 +128,7 @@ export function buscarAnimais(estado, lote, brinco, hoje, op) {
   const indice = o.indice || indiceBusca(estado, hoje);
   const naRel = (id) => !!(o.esperados && o.esperados.has(id));
   const acha = (porBrinco) => {
-    const exatos = porBrinco((x) => String(x ?? '').trim() === b);
+    const exatos = porBrinco((x) => normBrinco(x) === normBrinco(b));
     return exatos.length || !/^\d+$/.test(b) ? exatos : porBrinco((x) => mesmoNumeroBrinco(x, b));
   };
   const loteDe = (l) => padronizarLote(l, estado.matrizes);

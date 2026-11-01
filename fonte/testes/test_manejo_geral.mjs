@@ -214,4 +214,14 @@ t('lote muda depois de incluir: animal que passa a ser do lote vira marcado, nã
   assert.strictEqual(emSolteiras.fora.length, 0); assert.deepStrictEqual(emSolteiras.marcadosExtra, [sol.id]);
 });
 
+t('busca: brinco com letra e barra ("E5", "219/1413") acha mesmo digitado em minúscula', () => {
+  const dd = base();
+  const m1 = { ...dd.matrizes[5], id: 'mE5', brinco: 'E5', lote: 'Leiteiras' }; const m2 = { ...dd.matrizes[6], id: 'mB', brinco: '219/1413', lote: 'Leiteiras' };
+  const d3 = { ...dd, matrizes: [...dd.matrizes, m1, m2] };
+  assert.deepStrictEqual(G.buscarAnimais(d3, 'Paridas', 'e5', HOJE).map((x) => x.animal), ['mE5']);
+  assert.deepStrictEqual(G.buscarAnimais(d3, 'Paridas', '219/1413', HOJE).map((x) => x.animal), ['mB']);
+  assert.strictEqual(G.buscarAnimais(d3, 'Paridas', '219', HOJE).length, 0);
+  assert.strictEqual(G.buscarAnimais(d3, 'Paridas', 'E5', HOJE)[0].mudar, 'pendente');
+});
+
 console.log(`manejo geral: ${ok} ok`);

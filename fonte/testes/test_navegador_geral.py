@@ -77,6 +77,16 @@ with sync_playwright() as p:
         expect(pg.get_by_label('Brinco para conferir')).to_have_value('')
         expect(pg.get_by_role('button', name=f"Desmarcar {m['brinco']}")).to_be_visible()
 
+    @teste('Brinco com letra: botão ABC troca o teclado e a busca ignora maiúscula/minúscula')
+    def _():
+        campo = pg.get_by_label('Brinco para conferir')
+        assert campo.get_attribute('inputmode') == 'numeric'
+        pg.get_by_test_id('trocar-teclado').click()
+        assert campo.get_attribute('inputmode') == 'text'
+        pg.get_by_test_id('trocar-teclado').click()
+        assert campo.get_attribute('inputmode') == 'numeric'
+        campo.fill('')
+
     @teste('Marca quem passou (tocando e digitando), brinco de outro lote e sem cadastro entram com observação')
     def _():
         for m in paridas[2:]: marcar(m['brinco'])

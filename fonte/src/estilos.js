@@ -60,6 +60,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .marca-bt .two span.late{color:var(--late)}
 .marca-bt .two span.soon{color:var(--amber)}
 .marca-bt .two span.good{color:var(--green)}
+.tec-bt{flex:none;min-height:38px;min-width:52px;padding:0 10px;border-radius:6px;border:1px solid var(--line);background:var(--s2);color:var(--tx);font:700 13px var(--mono)}
 .ficha-busca{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;background:var(--s2);padding:10px 12px;margin:10px 0}
 .ficha-busca.good{border-left-color:var(--green)}
 .ficha-busca.soon{border-left-color:var(--amber)}

@@ -2,7 +2,7 @@
 // Digitou o brinco: o app procura em matrizes, novilhas, crias e touros e mostra a ficha na hora (cheia, vazia, previsão de
 // parto, último parto, cria ao pé, lote). Achou e é do lote: marca. Achou em outro lote: inclui com a observação.
 // Não achou em lugar nenhum: inclui do mesmo jeito, anotado como "não está no banco de dados nem em nenhum lote".
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Search, Check, Plus, AlertTriangle } from 'lucide-react';
 import { buscarAnimais, fichaSemCadastro } from '../manejoGeral.js';
 
@@ -37,9 +37,11 @@ function Ficha({ f, marcado, incluido, lote, onMarcar, onIncluir }) {
 export default function ConferirBrincos({ dados, lote, hoje, itens, marcados, onToggle, incluidos, onIncluir, indice, esperados, rotuloContador }) {
   const [q, setQ] = useState('');
   const [msg, setMsg] = useState(null);
+  const [letras, setLetras] = useState(false); // a maioria dos brincos é número; alguns têm letra ou barra (E5, 219/1413)
+  const entrada = useRef(null);
   const b = q.trim();
   const fichas = useMemo(() => (b ? buscarAnimais(dados, lote, b, hoje, { indice, esperados }) : []), [dados, lote, b, hoje, indice, esperados]);
-  const filtrados = useMemo(() => (b ? itens.filter((x) => String(x.brinco).startsWith(b)) : itens), [itens, b]);
+  const filtrados = useMemo(() => (b ? itens.filter((x) => String(x.brinco).toLowerCase().startsWith(b.toLowerCase())) : itens), [itens, b]);
   const n = itens.filter((x) => marcados.has(x.id)).length;
   const marcadoNaFicha = (f) => marcados.has(f.animal) || incluidos.some((i) => mesmaInclusao(i, f));
 
@@ -66,10 +68,12 @@ export default function ConferirBrincos({ dados, lote, hoje, itens, marcados, on
       <label className="search" style={{ marginTop: 8 }}>
         <Search />
         <input
-          inputMode="numeric" enterKeyHint="done" placeholder="Digite o brinco do animal" aria-label="Brinco para conferir"
+          ref={entrada} inputMode={letras ? 'text' : 'numeric'} enterKeyHint="done" autoCapitalize="characters" autoComplete="off" placeholder="Digite o brinco do animal" aria-label="Brinco para conferir"
           value={q} onChange={(e) => { setQ(e.target.value); setMsg(null); }}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); enter(); } }}
         />
+        <button type="button" className="tec-bt" aria-label={letras ? 'Usar teclado de números' : 'Usar teclado de letras'} data-testid="trocar-teclado"
+          onClick={() => { setLetras(!letras); const el = entrada.current; if (el) { el.blur(); setTimeout(() => el.focus(), 60); } }}>{letras ? '123' : 'ABC'}</button>
       </label>
       {msg && <div className={`hint ${msg.tom}`} role="status" data-testid="msg-marcar" style={{ margin: '6px 2px', fontSize: 13.5 }}>{msg.t}</div>}
 
