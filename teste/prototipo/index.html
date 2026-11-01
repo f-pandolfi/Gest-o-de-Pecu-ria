@@ -148,7 +148,7 @@ svg.spark{width:100%;height:110px;display:block}
 <script type="module">
 import {
   normalizarDados, listarCrias, partosPorMatriz, previsaoPartoInfo, formatarDataBR, todayISO, idadeMesesDias, diasEntre,
-  rotuloSituacao, situacaoHistorica, infoAnimalVenda, noPlantel, CAUSAS_MORTE, TIPOS_ANIMAL_VENDA, lotesExistentes, nomeTouroEvento,
+  rotuloSituacao, situacaoHistorica, infoAnimalVenda, noPlantel, CAUSAS_MORTE, TIPOS_ANIMAL_VENDA, lotesExistentes, nomeTouroEvento, configCompleta,
 } from '../../logica.js';
 
 const URL_API = 'https://script.google.com/macros/s/AKfycbyDBTMVGJGeBj92qtiIRfrzZciWyzgP8mvDx8inCjdvVBb2Erm5laJyuuiwx8YjJQlI/exec';
@@ -169,7 +169,8 @@ const I = {
 };
 
 let E, CRIAS, CRIA_POR_ID, PARTOS, MAT_POR_ID, CRIA_DA_MATRIZ, LIDO;
-const S = { aba: 'rebanho', sub: { rebanho: 'todos', nasc: 'nascimentos', diag: 'cheias' }, filtros: { reb: 'todos', crias: 'fazenda', sexo: '', ano: HOJE.slice(0, 4), nascFalta: false, busca: '' }, dono: false, pilha: [], buscando: null, cadastros: false, lim: 60 };
+const S = { aba: 'rebanho', sub: { rebanho: 'todos', nasc: 'nascimentos', diag: 'cheias' }, filtros: { reb: 'todos', crias: 'fazenda', sexo: '', ano: HOJE.slice(0, 4), nascFalta: false, busca: '' }, dono: false, pilha: [], buscando: null, cadastros: false, lim: 60, simInd: [], ind: null };
+S.sub.manejo = 'inducao';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const br = (d) => (d ? formatarDataBR(d) : '—');
@@ -187,6 +188,22 @@ function categoriaCria(c) {
   if (m < 365) return f ? 'Bezerra desmamada' : 'Bezerro desmamado';
   return f ? 'Novilha' : 'Garrote';
 }
+
+// ------------------------------------------------------------------ indução (manejo com etapa "Indução ...")
+const ehInducao = (e) => e.tipo === 'manejo' && /indu[çc]/i.test(String(e.etapa || '') + ' ' + String(e.descricao || ''));
+function inducoesDe(id) {
+  const reais = E.eventos.filter((e) => ehInducao(e) && String(e.presentes || '').split(',').includes(id)).map((e) => ({ data: e.data, etapa: e.etapa, desc: e.descricao, res: '' }));
+  const sim = S.simInd.filter((x) => x.ids.includes(id)).map((x) => ({ data: x.data, etapa: x.etapa, desc: x.produtos.join(' + '), res: (x.res || {})[id] || '', sim: true }));
+  return [...reais, ...sim].sort((a, b) => b.data.localeCompare(a.data));
+}
+const PESO_CACHE = new Map();
+function ultimoPeso(brinco) {
+  const k = String(brinco); if (PESO_CACHE.has(k)) return PESO_CACHE.get(k);
+  const pts = (infoAnimalVenda(E, brinco, HOJE, CRIAS).pontos || []).filter((p) => p.peso > 0 && p.fonte !== 'Nascimento');
+  const u = pts.length ? pts[pts.length - 1] : null; PESO_CACHE.set(k, u); return u;
+}
+const ETAPAS_IND = ['D0 · Implante', 'D12 · Retirada + cipionato', 'Avaliação (toque)'];
+const PRODUTOS_IND = ['Implante de progesterona (reutilizado)', 'Cipionato de estradiol', 'Benzoato de estradiol', 'eCG', 'Vermífugo', 'Fortificante'];
 
 async function carregar() {
   const r = await fetch(`${URL_API}?action=getAll`);
@@ -221,16 +238,23 @@ function resumoAnimal(k) {
   const [t, id] = [k.slice(0, 1), k.slice(2)];
   if (t === 'm') {
     const m = MAT_POR_ID.get(id); const p = PARTOS.get(id) || [];
-    return { brinco: m.brinco, rot: m.categoria || 'Matriz', titulo: `${m.categoria || 'Matriz'} · ${m.lote || 'sem lote'}`, linha: `${p.length} parto${p.length === 1 ? '' : 's'}${p[0] ? ' · último ' + br(p[0].data) : ''}${m.dataNascimento ? ' · ' + anos(m.dataNascimento) : ''}`, pill: pill(m.status, corStatus(m.status)) };
+    if (m.categoria === 'Novilha') {
+      const ind = inducoesDe(m.id)[0]; const u = ultimoPeso(m.brinco); const cria = CRIA_DA_MATRIZ.get(m.id); const nasc = m.dataNascimento || (cria && cria.nascData);
+      return { brinco: m.brinco, rot: 'Novilha', titulo: ind ? `Induzida em ${br(ind.data)}` : 'Não induzida', cor: ind ? 'green' : 'amber', linha: [u ? `${u.peso} kg em ${br(u.data)}` : 'sem peso', nasc ? anos(nasc) : '', m.lote].filter(Boolean).join(' · '), pill: pill(m.status, corStatus(m.status)) };
+    }
+    const prev = m.status === 'Cheia' ? previsaoPartoInfo(m.id, E.eventos) : null;
+    const ult = p[0] ? `Últ. cria ${p[0].brincoBezerro || 's/ nº'} · ${br(p[0].data)}` : 'Sem parto registrado';
+    return { brinco: m.brinco, rot: m.categoria || 'Matriz', titulo: prev && prev.data ? `Previsão ${br(prev.data)}` : ult, cor: prev && prev.data ? 'green' : '', linha: [prev && prev.data ? ult : '', `${p.length} parto${p.length === 1 ? '' : 's'}`, m.lote].filter(Boolean).join(' · '), pill: pill(m.status, corStatus(m.status)) };
   }
   if (t === 'c') {
     const c = CRIA_POR_ID.get(id);
-    return { brinco: c.brinco || 's/ nº', rot: categoriaCria(c), titulo: `${categoriaCria(c)} · nasc. ${br(c.nascData)}`, linha: `Mãe ${c.maeBrinco || '?'} · ${c.origem ? c.origem.rotulo : ''}${c.pesoAtual ? ' · ' + c.pesoAtual + ' kg' : ''}`, pill: pill(rotuloSituacao(c), corSit(c.situacao)) };
+    const pesoOk = c.pesoAtual && c.pesoData && c.pesoData !== c.nascData;
+    return { brinco: c.brinco || 's/ nº', rot: categoriaCria(c), titulo: pesoOk ? `${c.pesoAtual} kg em ${br(c.pesoData)}` : 'Ainda não pesado', cor: pesoOk ? 'green' : '', linha: `${idadeTxt(c.nascData) || 'nasc. ' + br(c.nascData)} · mãe ${c.maeBrinco || '?'}`, pill: pill(rotuloSituacao(c), corSit(c.situacao)) };
   }
   const tt = E.touros.find((x) => x.id === id);
   return { brinco: tt.brinco || '♂', rot: 'Touro', titulo: tt.nome, linha: `${tt.tipo || 'Touro / sêmen'}${tt.raca ? ' · ' + tt.raca : ''}`, pill: pill(tt.tipo === 'Sêmen' ? 'Sêmen' : 'Touro', 'blue') };
 }
-const linhaAnimal = (k) => { const r = resumoAnimal(k); return `<button class="li" data-abrir="${k}"><div class="bb num">${esc(r.brinco)}<small>${esc(r.rot)}</small></div><div class="two"><b>${esc(r.titulo)}</b><span>${esc(r.linha)}</span></div>${r.pill}</button>`; };
+const linhaAnimal = (k) => { const r = resumoAnimal(k); return `<button class="li" data-abrir="${k}"><div class="bb num">${esc(r.brinco)}<small>${esc(r.rot)}</small></div><div class="two"><b${r.cor ? ` style="color:var(--${r.cor})"` : ''}>${esc(r.titulo)}</b><span>${esc(r.linha)}</span></div>${r.pill}</button>`; };
 const linkAnimal = (k, txt) => `<button class="link" data-abrir="${k}">${esc(txt)}</button>`;
 const kMae = (matrizId) => (matrizId && MAT_POR_ID.get(matrizId) ? 'm:' + matrizId : '');
 
@@ -284,6 +308,8 @@ function fichaMatriz(m) {
   if (m.status === 'Vazia' && ps[0]) { const d = diasEntre(ps[0].data, HOJE); if (d > 120) alertas.push([`Vazia há ${d} dias desde o último parto`, d > 365 ? 'ruim' : '']); }
   if (prev && prev.data && m.status === 'Cheia') { const d = diasEntre(HOJE, prev.data); if (d >= 0 && d <= 30) alertas.push([`Parto previsto em ${d} dias (${br(prev.data)})`, '']); if (d < 0) alertas.push([`Previsão de parto passou há ${-d} dias: conferir`, 'ruim']); }
   if (!nasc) alertas.push(['Data de nascimento não informada', '']);
+  const inds = inducoesDe(m.id);
+  if (m.categoria === 'Novilha' && !inds.length) { const u = ultimoPeso(m.brinco); const corte = configCompleta(E.config).pesoMatriz; alertas.push([u && u.peso >= corte ? `Não induzida e já com ${u.peso} kg: pronta para indução` : 'Ainda não induzida', u && u.peso >= corte ? '' : '']); }
   const ult = diags[0];
   const partosHtml = ps.length ? ps.map((p) => { const c = CRIA_POR_ID.get(p.id); const kc = c && (c.novilha ? 'm:' + c.novilha.id : 'c:' + c.id);
     return `<div class="parto"><span class="d">${br(p.data)}</span><span>${c ? linkAnimal(kc, c.brinco || 's/ nº') : esc(p.brincoBezerro || 's/ nº')} · ${esc(p.sexo || '?')}${c && c.origem ? `<br><span style="color:var(--mut);font-size:12.5px">${esc(c.origem.rotulo)}</span>` : ''}</span>${c ? pill(rotuloSituacao(c), corSit(c.situacao)) : (p.resultadoParto === 'Natimorto' ? pill('Natimorto', 'late') : '')}</div>`; }).join('') : '<div class="vazio" style="padding:10px">Nenhum parto registrado.</div>';
@@ -291,6 +317,7 @@ function fichaMatriz(m) {
     ...(nasc ? [{ data: nasc, t: 'Nasceu', s: cria ? `mãe ${cria.maeBrinco || '?'}` : '', c: 'blue' }] : []),
     ...ps.map((p) => ({ data: p.data, t: `Pariu ${p.brincoBezerro || 's/ nº'}`, s: p.sexo, c: 'green' })),
     ...iatfs.map((e) => ({ data: e.data, t: e.tipoServico || 'IATF', s: nomeTouroEvento(e, E.touros), c: 'blue' })),
+    ...S.simInd.filter((x) => x.ids.includes(m.id)).map((x) => ({ data: x.data, t: `Indução: ${x.etapa}`, s: 'simulado', c: 'amber' })),
     ...diags.map((e) => ({ data: e.data, t: `Toque: ${e.resultado}`, s: [e.dg ? e.dg + ' dias' : '', e.veterinario].filter(Boolean).join(' · '), c: e.resultado === 'Prenhe' ? 'green' : e.resultado === 'Vazia' ? 'amber' : 'late' })),
     ...evs.filter((e) => e.tipo === 'manejo').map((e) => ({ data: e.data, t: e.descricao || 'Manejo', s: e.lote, c: 'mut' })),
     ...evs.filter((e) => e.tipo === 'pesagem').map((e) => ({ data: e.data, t: `Pesagem ${e.peso} kg`, c: 'mut' })),
@@ -313,6 +340,7 @@ function fichaMatriz(m) {
       <div><small>Previsão de parto</small><b>${prev && prev.data && m.status === 'Cheia' ? br(prev.data) : '—'}</b><small>${prev && m.status === 'Cheia' ? 'pelo ' + prev.origem : ''}</small></div></div>
       <dl class="dl"><dt>Última IATF</dt><dd>${iatfs[0] ? br(iatfs[0].data) + (nomeTouroEvento(iatfs[0], E.touros) ? ' · ' + esc(nomeTouroEvento(iatfs[0], E.touros)) : '') : '—'}</dd>
       <dt>Último parto</dt><dd>${ps[0] ? br(ps[0].data) : '—'}</dd><dt>Intervalo entre partos</dt><dd>${ipp ? `${Math.round(ipp / 30.4)} meses (${ipp} d)` : '—'}</dd></dl></div>
+    ${m.categoria === 'Novilha' ? `<div class="card full"><h3>Indução <span>${inds.length ? 'induzida' : 'não induzida'}</span></h3>${inds.length ? inds.map((x) => `<div class="parto"><span class="d">${br(x.data)}</span><span>${esc(x.etapa)}${x.desc ? `<br><span style="color:var(--mut);font-size:12.5px">${esc(x.desc)}</span>` : ''}</span>${x.res ? pill(x.res, x.res === 'Ciclando' ? 'green' : 'late') : x.sim ? pill('simulado', 'gray') : ''}</div>`).join('') : '<div class="vazio" style="padding:10px">Nenhuma indução registrada. Faça pelo Manejo > Indução.</div>'}</div>` : ''}
     <div class="card full"><h3>Partos e crias <span>${ps.length}</span></h3>${partosHtml}</div>
     ${pesoCard(info.pontos)}
     ${manejosCard(evs, [m.id], m.brinco)}
@@ -481,10 +509,50 @@ function telaDiagnostico() {
   <div class="tabs">${tabs.map(([v, t, n]) => `<button class="tab ${sub === v ? 'on' : ''}" data-sub="diag:${v}">${t}${n !== undefined ? `<span class="n">${n}</span>` : ''}</button>`).join('')}</div>${corpo}`;
 }
 
+function telaManejo() {
+  const sub = S.sub.manejo;
+  const tabs = [['protocolos', 'Protocolos'], ['iatf', 'IATF'], ['geral', 'Geral'], ['vacinas', 'Vacinas'], ['inducao', 'Indução']];
+  let corpo;
+  if (sub !== 'inducao') corpo = '<div class="aviso">Continua igual ao app de hoje. Ao digitar um brinco aparece a situação do animal e o link para a ficha. Veja a aba nova <b>Indução</b>.</div>';
+  else corpo = telaInducao();
+  return `<div class="eyebrow">Manejo</div><h1>Manejo</h1><p class="sub">Protocolos, IATF, manejo geral, vacinas e indução de novilhas.</p>
+  <div class="tabs">${tabs.map(([v, t]) => `<button class="tab ${sub === v ? 'on' : ''}" data-sub="manejo:${v}">${t}${v === 'inducao' ? ' <span class="n">novo</span>' : ''}</button>`).join('')}</div>${corpo}`;
+}
+function telaInducao() {
+  const corte = configCompleta(E.config).pesoMatriz;
+  const novs = E.matrizes.filter(noPlantel).filter((m) => m.categoria === 'Novilha').map((m) => {
+    const cria = CRIA_DA_MATRIZ.get(m.id); const nasc = m.dataNascimento || (cria && cria.nascData) || '';
+    return { m, u: ultimoPeso(m.brinco), nasc, idade: nasc ? idadeMesesDias(nasc, HOJE) : null, ind: inducoesDe(m.id)[0] };
+  });
+  const naoInd = novs.filter((x) => !x.ind), prontas = naoInd.filter((x) => x.u && x.u.peso >= corte);
+  const hist = [...E.eventos.filter(ehInducao).map((e) => ({ data: e.data, etapa: e.etapa, n: String(e.presentes || '').split(',').filter(Boolean).length, desc: e.descricao })), ...S.simInd.map((x) => ({ data: x.data, etapa: x.etapa, n: x.ids.length, desc: x.produtos.join(' + '), sim: true }))].sort((a, b) => b.data.localeCompare(a.data));
+  const F = S.ind;
+  if (!F) {
+    return `<div class="resumo"><div class="kpi"><small>Novilhas no plantel</small><b>${novs.length}</b></div><div class="kpi"><small>Não induzidas</small><b style="color:var(--amber)">${naoInd.length}</b></div><div class="kpi"><small>Prontas (≥ ${corte} kg)</small><b style="color:var(--green)">${prontas.length}</b><i>não induzidas</i></div><div class="kpi"><small>Induzidas</small><b>${novs.length - naoInd.length}</b></div></div>
+    <div class="aviso" style="margin-bottom:12px"><b>Como funciona:</b> a indução é um manejo por etapas, igual ao protocolo de IATF. <b>D0</b> coloca o implante de progesterona, <b>D12</b> retira e aplica o cipionato, e na <b>avaliação</b> (toque) você marca quem está ciclando. A novilha passa a mostrar "Induzida em" no Rebanho e na ficha, e quem ciclou fica pronta para entrar no lote de IATF.</div>
+    <button class="btn" data-acao="novaInd" style="width:100%;margin-bottom:14px">+ Nova indução</button>
+    <div class="card"><h3>Induções feitas <span>${hist.length}</span></h3>${hist.length ? hist.map((h) => `<div class="parto"><span class="d">${br(h.data)}</span><span>${esc(h.etapa)}<br><span style="color:var(--mut);font-size:12.5px">${esc(h.desc || '')}</span></span>${pill(h.n + ' novilhas', h.sim ? 'gray' : 'blue')}</div>`).join('') : '<div class="vazio" style="padding:10px">Nenhuma indução registrada ainda.</div>'}</div>`;
+  }
+  if (F.filtro === 'prontas' && !prontas.length) F.filtro = 'nao';
+  let lista = novs;
+  if (F.filtro === 'nao') lista = naoInd; if (F.filtro === 'prontas') lista = prontas;
+  if (F.etapa !== ETAPAS_IND[0]) { const ult = S.simInd.filter((x) => x.etapa === ETAPAS_IND[0]).pop(); if (ult && F.filtro === 'auto') lista = novs.filter((x) => ult.ids.includes(x.m.id)); }
+  lista = lista.slice().sort((a, b) => ((b.u && b.u.peso) || 0) - ((a.u && a.u.peso) || 0));
+  const aval = F.etapa === ETAPAS_IND[2];
+  return `<div class="card" style="margin-bottom:12px"><h3>Nova indução</h3>
+    <dl class="dl" style="margin-bottom:10px"><dt>Data</dt><dd class="num">${br(F.data)}</dd></dl>
+    <div class="eyebrow" style="margin:6px 0">Etapa</div><div class="chips">${ETAPAS_IND.map((e) => `<button class="cp ${F.etapa === e ? 'on' : ''}" data-ind="etapa" data-v="${e}">${e}</button>`).join('')}</div>
+    <div class="eyebrow" style="margin:6px 0">Produtos aplicados (vêm dos Cadastros)</div><div class="chips">${PRODUTOS_IND.map((x) => `<button class="cp ${F.produtos.includes(x) ? 'on' : ''}" data-ind="prod" data-v="${x}">${x}</button>`).join('')}</div>
+    <div class="eyebrow" style="margin:6px 0">Responsável</div><div class="chips">${['Veterinário', 'Funcionário', 'Eu'].map((x) => `<button class="cp ${F.resp === x ? 'on' : ''}" data-ind="resp" data-v="${x}">${x}</button>`).join('')}</div></div>
+  <div class="chips">${[['prontas', `Prontas ≥ ${corte} kg`, prontas.length], ['nao', 'Não induzidas', naoInd.length], ['todas', 'Todas as novilhas', novs.length]].map(([v, t, n]) => `<button class="cp ${F.filtro === v ? 'on' : ''}" data-ind="filtro" data-v="${v}">${t}<b>${n}</b></button>`).join('')}</div>
+  <div class="contador" style="font:600 13px var(--mono);color:var(--amber);margin:4px 0 8px">${F.ids.length} marcada${F.ids.length === 1 ? '' : 's'}</div>
+  <div class="lista">${lista.map((x) => { const on = F.ids.includes(x.m.id); return `<button class="li" data-ind="marca" data-v="${x.m.id}" style="${on ? 'background:var(--green-bg);box-shadow:inset 4px 0 0 var(--green)' : ''}"><div class="bb num">${esc(x.m.brinco)}<small>${on ? '✓ marcada' : 'Novilha'}</small></div><div class="two"><b>${x.u ? x.u.peso + ' kg' : 'Sem peso'}${x.idade ? ' · ' + x.idade.meses + ' meses' : ''}</b><span>${x.ind ? 'Induzida em ' + br(x.ind.data) : 'Não induzida'} · ${esc(x.m.lote || '')}</span></div>${aval && on ? `<span style="display:flex;gap:4px">${['Ciclando', 'Não'].map((r) => `<span class="pill ${F.res[x.m.id] === r ? (r === 'Ciclando' ? 'p-green' : 'p-late') : 'p-gray'}" data-ind="res" data-id="${x.m.id}" data-v="${r}">${r}</span>`).join('')}</span>` : !x.u ? pill('sem peso', 'gray') : x.u.peso >= corte ? pill('pronta', 'green') : pill('leve', 'amber')}</button>`; }).join('') || '<div class="vazio">Nenhuma novilha com esse filtro.</div>'}</div>
+  <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" data-acao="gravaInd" style="flex:1">Gravar indução (${F.ids.length})</button><button class="btn sec" data-acao="cancInd">Cancelar</button></div>`;
+}
+
 function telaSimples(t) {
   const txt = {
     lancar: ['Lançamentos', 'Lançar', 'Continua igual: Nascimento, Morte, Desmama, Descarte e Insumo. Os campos de lista (produto, unidade, causa da morte) passam a vir dos Cadastros.'],
-    manejo: ['Manejo', 'Manejo', 'Continua igual: Protocolos, IATF, Geral, Vacinas. Ao digitar um brinco, aparece a situação e o link para a ficha completa.'],
     rel: ['Relatórios', 'Relatórios', 'Continua igual. Cada animal citado num relatório passa a abrir a ficha.'],
   }[t];
   return `<div class="eyebrow">${txt[0]}</div><h1>${txt[1]}</h1><div class="aviso">${txt[2]}<br><br>No protótipo esta aba não muda. Explore <b>Rebanho</b>, <b>Nascimentos</b>, <b>Diagnóstico</b>, a <b>busca</b> 🔍 e os <b>Cadastros</b> ⚙️.</div>`;
@@ -521,7 +589,7 @@ function telaCadastros() {
 
 // ------------------------------------------------------------------ montagem
 function render() {
-  const tela = { rebanho: telaRebanho, nasc: telaNascimentos, diag: telaDiagnostico }[S.aba];
+  const tela = { rebanho: telaRebanho, nasc: telaNascimentos, diag: telaDiagnostico, manejo: telaManejo }[S.aba];
   const nav = [['lancar', 'Lançar', I.lancar], ['manejo', 'Manejo', I.manejo], ['diag', 'Diagnóstico', I.diag], ['nasc', 'Nascimentos', I.nasc], ['rebanho', 'Rebanho', I.rebanho], ['rel', 'Relatórios', I.rel]];
   document.getElementById('app').innerHTML = `
   <header class="top"><div class="in">
@@ -562,8 +630,19 @@ let toastT;
 function toast(t) { let el = document.querySelector('.toast'); if (!el) { el = document.createElement('div'); el.className = 'toast'; document.body.appendChild(el); } el.textContent = t; clearTimeout(toastT); toastT = setTimeout(() => el.remove(), 2600); }
 
 document.addEventListener('click', (ev) => {
-  const b = ev.target.closest('button'); if (!b) return;
+  const b = ev.target.closest('button,[data-ind]'); if (!b) return;
   S._foco = false; S._focoBusca = false;
+  const ind = ev.target.closest('[data-ind]');
+  if (ind && S.ind) {
+    const F = S.ind, v = ind.dataset.v, t = ind.dataset.ind;
+    if (t === 'etapa') { F.etapa = v; if (v !== ETAPAS_IND[0] && S.simInd.some((x) => x.etapa === ETAPAS_IND[0])) { const u = S.simInd.filter((x) => x.etapa === ETAPAS_IND[0]).pop(); F.ids = [...u.ids]; F.filtro = 'auto'; } F.produtos = v === ETAPAS_IND[0] ? ['Implante de progesterona (reutilizado)'] : v === ETAPAS_IND[1] ? ['Cipionato de estradiol'] : []; }
+    if (t === 'prod') F.produtos = F.produtos.includes(v) ? F.produtos.filter((x) => x !== v) : [...F.produtos, v];
+    if (t === 'resp') F.resp = v;
+    if (t === 'filtro') F.filtro = v;
+    if (t === 'res') { ev.stopPropagation(); F.res[ind.dataset.id] = v; }
+    else if (t === 'marca') F.ids = F.ids.includes(v) ? F.ids.filter((x) => x !== v) : [...F.ids, v];
+    const y = scrollY; render(); scrollTo(0, y); return;
+  }
   if (b.dataset.abrir) { S._anim = true; S.pilha.push(b.dataset.abrir); S.buscando = null; render(); document.getElementById('sobre')?.scrollTo(0, 0); return; }
   if (b.dataset.aba) { S.aba = b.dataset.aba; S.cadastros = false; S.lim = 60; render(); scrollTo(0, 0); return; }
   if (b.dataset.sub) { const [a, s] = b.dataset.sub.split(':'); S.aba = a === 'nasc' ? 'nasc' : a; S.sub[a] = s; S.lim = 60; if (b.dataset.fc) S.filtros.crias = b.dataset.fc; render(); return; }
@@ -576,6 +655,9 @@ document.addEventListener('click', (ev) => {
   else if (a === 'cadastros') { S.cadastros = !S.cadastros; render(); scrollTo(0, 0); }
   else if (a === 'mais') { S.lim += 100; render(); }
   else if (a === 'proto') toast('No protótipo nada é gravado');
+  else if (a === 'novaInd') { S.ind = { data: HOJE, etapa: ETAPAS_IND[0], produtos: ['Implante de progesterona (reutilizado)'], resp: 'Veterinário', filtro: 'prontas', ids: [], res: {} }; render(); scrollTo(0, 0); }
+  else if (a === 'cancInd') { S.ind = null; render(); }
+  else if (a === 'gravaInd') { if (!S.ind.ids.length) return toast('Marque pelo menos uma novilha'); S.simInd.push({ ...S.ind }); PESO_CACHE.clear(); toast(`Simulado: ${S.ind.ids.length} novilhas. Veja no Rebanho e na ficha (some ao recarregar)`); S.ind = null; render(); scrollTo(0, 0); }
 });
 document.addEventListener('input', (ev) => {
   if (ev.target.id === 'filtroBrinco') { S.filtros.busca = ev.target.value; S._foco = true; render(); }
