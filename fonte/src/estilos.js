@@ -271,11 +271,12 @@ button.led-r:hover{background:var(--s2)}
 .led-r.cols-reb{padding-top:9px;padding-bottom:9px}
 .reb-lista{display:flex;flex-direction:column;font:500 12px/17px var(--mono);white-space:nowrap}
 .led-r .reb-lista.r{align-items:flex-end;font:600 12px/17px var(--mono)}
-.ch-partos{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:-2px;padding-left:2px;font:500 12px/18px var(--mono);white-space:nowrap}
-.ch-partos>span{white-space:nowrap}
-.ch-partos i{font-style:normal;color:var(--mut)}
-.ch-partos b{font-weight:600;color:var(--tx)}
-.ch-partos b.mut{color:var(--mut)}
+.cols-cheia{--cols:50px minmax(0,1fr) 62px 40px 74px;column-gap:8px !important}
+@media (min-width:700px){.cols-cheia{--cols:90px minmax(0,1fr) 110px 90px 110px;column-gap:14px !important}}
+.led-r.cols-cheia{padding-top:9px;padding-bottom:9px;align-items:start}
+.led-r.cols-cheia>.b,.led-r.cols-cheia>.two{align-self:center}
+.prev-col{padding-left:8px;border-left:1px solid var(--line2);display:flex;flex-direction:column;align-items:flex-end;font:600 12px/17px var(--mono)}
+.prev-col b{font:600 12.5px/17px var(--mono)}
 .reb-lista .mut{font-weight:400}
 .led-r .two span.quebra{white-space:normal;overflow:visible;text-overflow:clip}
 .parto-lin{padding:6px 0;border-bottom:1px solid var(--line2);font-size:14px}

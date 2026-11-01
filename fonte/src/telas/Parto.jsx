@@ -138,11 +138,15 @@ export default function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onG
           )}
         </div>
 
-        <div className={`led-h${vazias ? ' cols-reb' : ''}`} style={vazias ? undefined : { '--cols': cols }}>
-          <span>Brinco</span><span>Categoria</span>
-          <span>{vazias ? 'Partos' : 'Previsão'}</span>
-          <span className="r">{vazias ? 'Crias' : 'Dias'}</span>
-        </div>
+        {vazias ? (
+          <div className="led-h cols-reb">
+            <span>Brinco</span><span>Categoria</span><span>Partos</span><span className="r">Crias</span>
+          </div>
+        ) : (
+          <div className="led-h cols-cheia">
+            <span>Brinco</span><span>Categoria</span><span>Partos</span><span className="r">Crias</span><span className="r">Previsão</span>
+          </div>
+        )}
 
         {linhas.length === 0 && (
           <div className="empty">{busca ? 'Nenhuma matriz com esse brinco aqui.' : `Nenhuma matriz ${aba === 'Cheia' ? 'cheia' : 'vazia'}.`}</div>
@@ -190,23 +194,30 @@ export default function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onG
           const aberto = aberta === m.id;
           return (
             <React.Fragment key={m.id}>
-              <button className="led-r" style={{ '--cols': cols }} aria-expanded={aberto} onClick={() => setAberta(aberto ? null : m.id)}>
+              <button className="led-r cols-cheia" aria-expanded={aberto} onClick={() => setAberta(aberto ? null : m.id)} data-testid={`cheia-${m.brinco}`}>
                 <span className="b">{m.brinco}</span>
                 <span className="two"><b>{m.categoria}</b><span>{[m.raca, m.lote].filter(Boolean).join(' · ') || '—'}</span>
                   {aba === 'Cheia' && (() => { const v = vacinaDe(m); return v.pendente ? <span style={{ color: v.nivel === 'atrasada' ? 'var(--late)' : 'var(--amber)' }}>{v.reforco && v.reforco.atrasoDias ? 'Lepto atrasada' : !v.inicial ? 'vacina pendente' : 'reforço Lepto em breve'}</span> : null; })()}
                 </span>
-                <span className="m">{data ? formatarDataBR(data) : '—'}</span>
-                <span className={`r ${dd.c}`}>{dd.t}</span>
-                  {aba === 'Cheia' && (() => {
-                    const ps = partos.get(m.id) || []; const antes = parseInt(m.partosAnteriores, 10) || 0;
-                    if (!ps.length && !antes) return <span className="mut ch-partos">sem parto lançado</span>;
-                    return (
-                      <span className="ch-partos" data-testid="cheia-partos">
-                        {ps.map((e) => <span key={e.id}><i>{formatarDataBR(e.data)}</i> <b className={e.resultadoParto === 'Natimorto' || !e.brincoBezerro ? 'mut' : ''}>{e.resultadoParto === 'Natimorto' ? 'natim.' : e.brincoBezerro || 's/ nº'}</b></span>)}
-                        {antes > 0 && <span className="mut">+{antes} antes de entrar</span>}
+                {(() => {
+                  // v11.0.3: partos e crias em colunas, como nas Vazias (data e brinco na mesma altura)
+                  const ps = partos.get(m.id) || []; const antes = parseInt(m.partosAnteriores, 10) || 0;
+                  return (
+                    <>
+                      <span className="reb-lista" data-testid="cheia-datas">
+                        {ps.length === 0 && !antes && <span className="mut">—</span>}
+                        {ps.map((e) => <span key={e.id}>{formatarDataBR(e.data)}</span>)}
+                        {antes > 0 && <span className="mut" title="Partos antes de entrar na fazenda">+{antes} antes</span>}
                       </span>
-                    );
-                  })()}
+                      <span className="reb-lista r" data-testid="cheia-crias">
+                        {ps.length === 0 && !antes && <span className="mut">—</span>}
+                        {ps.map((e) => <span key={e.id} className={e.resultadoParto === 'Natimorto' || !e.brincoBezerro ? 'mut' : ''}>{e.resultadoParto === 'Natimorto' ? 'natim.' : e.brincoBezerro || 's/ nº'}</span>)}
+                        {antes > 0 && <span>&nbsp;</span>}
+                      </span>
+                    </>
+                  );
+                })()}
+                <span className="prev-col r"><b className="m">{data ? formatarDataBR(data) : '—'}</b><span className={dd.c}>{dd.t}</span></span>
               </button>
               {aberto && (
                 <div className="detalhe">
