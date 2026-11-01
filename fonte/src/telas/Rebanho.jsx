@@ -160,7 +160,7 @@ export function ModalBoi({ boi, dados, onSalvar, onFechar }) {
 
 const STATUS_MATRIZ = [['todos', 'Todas'], ['Cheia', 'Cheias'], ['Vazia', 'Vazias'], ['Descarte', 'Descarte'], ['Vendida', 'Vendidas'], ['Morta', 'Mortas']];
 
-export default function Rebanho({ dados, hoje, ownerMode, onSalvarTouro }) {
+export default function Rebanho({ dados, hoje, ownerMode, onSalvarTouro, onNovasMatrizes }) {
   const { ix, abrir } = useFicha();
   const [aba, setAba] = useState('todos');
   const [busca, setBusca] = useState('');
@@ -272,7 +272,7 @@ export default function Rebanho({ dados, hoje, ownerMode, onSalvarTouro }) {
         </div>
       )}
 
-      {aba === 'conferencia' ? <Conferencia hoje={hoje} /> : aba === 'touros' ? <Touros dados={dados} ownerMode={ownerMode} onSalvarTouro={onSalvarTouro} /> : (
+      {aba === 'conferencia' ? <Conferencia hoje={hoje} ownerMode={ownerMode} onConfirmarNovilhas={onNovasMatrizes} /> : aba === 'touros' ? <Touros dados={dados} ownerMode={ownerMode} onSalvarTouro={onSalvarTouro} /> : (
         <ListaAnimais chaves={chaves} vazio={aba === 'bois' ? (ownerMode ? 'Nenhum boi cadastrado ainda. Toque em "Cadastrar boi".' : 'Nenhum boi cadastrado ainda.') : undefined} />
       )}
 

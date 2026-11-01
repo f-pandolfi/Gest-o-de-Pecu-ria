@@ -1,7 +1,7 @@
 // Testes da Conferência do rebanho (v11.2): rodadas, quem passou no curral, suspeitas e anotações.
 import assert from 'assert';
 import { indiceRebanho } from '../src/ficha.js';
-import { analisarConferencia, resumoConferencia, rodadasConferencia, vistoNoCurral } from '../src/conferencia.js';
+import { analisarConferencia, resumoConferencia, rodadasConferencia, vistoNoCurral, confirmarNaFazenda } from '../src/conferencia.js';
 
 let ok = 0;
 const t = (nome, fn) => { fn(); ok++; console.log('  ok', nome); };
@@ -74,6 +74,26 @@ t('Duas rodadas: faltou em todas e retroativo cai na rodada da data', () => {
   assert.equal(resumoConferencia(an, 0).passaram > 0, true);
   const v = vistoNoCurral(ix, 'm:m1'); assert.ok(v.naRodada && v.rodada.n === 2);
   assert.equal(vistoNoCurral(ix, 'm:m2').naRodada, null);
+});
+
+t('Confirmar na fazenda: fêmea a confirmar vira Novilha ligada ao nascimento; macho e brinco repetido ficam de fora', () => {
+  const d = base();
+  d.eventos.push({ id: 'h3', tipo: 'nascimento', data: '2024-07-01', matrizId: 'm2', sexo: 'Fêmea', brincoBezerro: '3001', resultadoParto: 'Vivo', observacoes: 'Histórico (planilha REBANHO 2026) · situação: A CONFIRMAR' });
+  const ix = indiceRebanho(d, '2026-11-01'); const an = analisarConferencia(ix);
+  assert.equal(an.confirmadas[0].lote, 'Solteiras'); assert.equal(an.confirmadas[0].sexo, 'Fêmea');
+  const r = confirmarNaFazenda(ix, ['h1', 'h2', 'h3'], 'novilhas', '2026-11-01T20:00:00Z');
+  assert.equal(r.matrizes.length, 1);
+  const m = r.matrizes[0];
+  assert.equal(m.id, 'cria-h1'); assert.equal(m.brinco, 4033); assert.equal(m.categoria, 'Novilha'); assert.equal(m.dataNascimento, '2024-05-01');
+  assert.equal(m.lote, 'NOVILHAS', 'lote padronizado'); assert.equal(m.destino, '');
+  assert.deepEqual(r.pulados.map((p) => p.brinco).sort(), ['3001', '4040']);
+  // Depois de gravar: a cria vira novilha, sai das "a confirmar" e conta como matriz que passou no curral
+  const d2 = { ...d, matrizes: [...d.matrizes, m] };
+  const ix2 = indiceRebanho(d2, '2026-11-01'); const an2 = analisarConferencia(ix2);
+  assert.equal(ix2.criaPorId.get('h1').situacao, 'novilha');
+  assert.equal(an2.confirmadas.length, 0);
+  const l = an2.linhas.find((x) => x.k === 'm:cria-h1'); assert.ok(l && l.rodadas[0] && l.cat === 'novilhas');
+  assert.ok(!an2.semCadastro.some((s) => s.brinco === '4033'));
 });
 
 console.log(`${ok} testes de conferência ok`);

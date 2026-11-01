@@ -1,18 +1,53 @@
 // v11.2: Rebanho > Conferência. Cruza os brincos anotados nos manejos (e toques, pesagens, partos) com o rebanho ativo.
 // Rodada 1 desde 30/10/26; cada toque geral abre uma rodada nova. No fim, quem não passou no curral é avaliado para sair do rebanho.
 import React, { useMemo, useState } from 'react';
-import { Search, FileDown, Loader2 } from 'lucide-react';
+import { Search, FileDown, Loader2, CheckCircle2 } from 'lucide-react';
 import { baixarPDF } from '../pdfloader.js';
 import { formatarDataBR } from '../logica.js';
 import { useFicha } from './Ficha.jsx';
-import { analisarConferencia, resumoConferencia, CATEGORIAS_CONF } from '../conferencia.js';
+import { analisarConferencia, resumoConferencia, CATEGORIAS_CONF, confirmarNaFazenda } from '../conferencia.js';
 
 const br = (d) => (d ? formatarDataBR(d) : '');
 const ordemB = (a, b) => String(a.brinco).localeCompare(String(b.brinco), 'pt-BR', { numeric: true });
 const nomeCat = (id) => (CATEGORIAS_CONF.find((c) => c.id === id) || {}).nome || '';
 const pct = (x) => `${Math.round(x * 100)}%`;
 
-export default function Conferencia({ hoje }) {
+// Proprietário: crias "a confirmar" que passaram no curral viram Novilha no cadastro (todas marcadas, escolhe o lote)
+function ConfirmarNaFazenda({ ix, lista, onConfirmar }) {
+  const femeas = lista.filter((s) => s.sexo === 'Fêmea');
+  const [marc, setMarc] = useState(() => new Set(femeas.map((s) => s.id)));
+  const loteSug = (femeas.find((s) => s.lote) || {}).lote || 'NOVILHAS';
+  const [lote, setLote] = useState(loteSug);
+  const [msg, setMsg] = useState('');
+  const lotes = [...new Set(ix.dados.matrizes.map((m) => m.lote).filter(Boolean).concat(lista.map((s) => s.lote).filter(Boolean)))].sort();
+  if (!femeas.length) return null;
+  const alt = (id) => setMarc((m) => { const n = new Set(m); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  function confirmar() {
+    const r = confirmarNaFazenda(ix, [...marc], lote);
+    if (r.matrizes.length) onConfirmar(r.matrizes);
+    setMsg(`${r.matrizes.length} novilha(s) confirmada(s) no lote ${lote}.${r.pulados.length ? ` Ficaram de fora: ${r.pulados.map((p) => `${p.brinco} (${p.motivo})`).join(', ')}.` : ''}`);
+  }
+  return (
+    <div className="fx-card" style={{ marginTop: 10, background: 'var(--s2)' }} data-testid="confirmar-fazenda">
+      <p className="sub" style={{ marginTop: 0 }}><b>Confirmar na fazenda:</b> as marcadas viram <b>Novilha</b> no cadastro, ligadas ao nascimento (mãe, data e raça do histórico). Desmarque quem não quiser.</p>
+      <div className="fx-chips">
+        {femeas.map((s) => (
+          <label key={s.id} className={`fx-cp${marc.has(s.id) ? ' on' : ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" checked={marc.has(s.id)} onChange={() => alt(s.id)} aria-label={`Confirmar ${s.brinco}`} />{s.brinco}
+          </label>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <label className="sub" style={{ margin: 0 }}>Lote <input className="fx-cp" style={{ minWidth: 140 }} list="conf-lotes" value={lote} onChange={(e) => setLote(e.target.value)} aria-label="Lote das novilhas confirmadas" /></label>
+        <datalist id="conf-lotes">{lotes.map((x) => <option key={x} value={x} />)}</datalist>
+        <button className="btn sm" onClick={confirmar} disabled={!marc.size || !lote.trim()} data-testid="confirmar-fazenda-sim"><CheckCircle2 size={16} /> Confirmar {marc.size} na fazenda</button>
+      </div>
+      {msg && <p className="sub" style={{ color: 'var(--green)' }} data-testid="confirmar-fazenda-msg">{msg}</p>}
+    </div>
+  );
+}
+
+export default function Conferencia({ hoje, ownerMode, onConfirmarNovilhas }) {
   const { ix, abrir } = useFicha();
   const an = useMemo(() => (ix ? analisarConferencia(ix) : null), [ix]);
   const [iR, setIR] = useState(null);
@@ -176,6 +211,8 @@ export default function Conferencia({ hoje }) {
           {an.confirmadas.length > 0 && <>
             <p className="sub">Crias do histórico que estavam <b>a confirmar</b> e passaram no curral ({an.confirmadas.length}): estão na fazenda e já contam na conferência. Falta acertar a situação delas no cadastro.</p>
             <div className="fx-chips">{an.confirmadas.map((s) => <button key={s.k} className="fx-pill p-green" style={{ border: 'none', cursor: 'pointer' }} onClick={() => abrir(s.k)} title={`${s.rot} · visto em ${br(s.data)}`}>{s.brinco}</button>)}</div>
+            {ownerMode && onConfirmarNovilhas ? <ConfirmarNaFazenda key={an.confirmadas.map((s) => s.id).join()} ix={ix} lista={an.confirmadas} onConfirmar={onConfirmarNovilhas} />
+              : <p className="sub">O proprietário confirma essas novilhas aqui mesmo, com a senha.</p>}
           </>}
         </section>
       )}

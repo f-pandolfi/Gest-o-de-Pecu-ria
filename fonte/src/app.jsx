@@ -244,6 +244,14 @@ function GestaoPecuaria() {
     enfileirar([{ action: 'upsertMatriz', matriz: m }], `matriz ${m.brinco}`);
   }
 
+  // v11.2: matrizes novas de uma vez (Conferência > Confirmar na fazenda)
+  function salvarNovasMatrizes(lista) {
+    const d = dadosRef.current;
+    const ids = new Set(lista.map((m) => m.id));
+    commit({ ...d, matrizes: [...d.matrizes.filter((x) => !ids.has(x.id)), ...lista] });
+    enfileirar(lista.map((m) => ({ action: 'upsertMatriz', matriz: m })), `${lista.length} novilha(s) confirmada(s)`);
+  }
+
   // Metas e peso de corte da novilha (aba Config da planilha)
   function salvarConfig(parcial) {
     const d = dadosRef.current;
@@ -559,7 +567,7 @@ function GestaoPecuaria() {
             onCorrigirPesagem={corrigirPesagem}
           />
         )}
-        {tab === 'rebanho' && <Rebanho dados={dados} hoje={hoje} ownerMode={ownerMode} onSalvarMatriz={salvarMatriz} onSalvarTouro={salvarTouro} />}
+        {tab === 'rebanho' && <Rebanho dados={dados} hoje={hoje} ownerMode={ownerMode} onSalvarMatriz={salvarMatriz} onSalvarTouro={salvarTouro} onNovasMatrizes={salvarNovasMatrizes} />}
         {tab === 'painel' && ownerMode && (
           <Painel
             anoSel={anoSel} dados={dados} ano={ano} hoje={hoje} go={mudarTab} modoTeste={MODO_TESTE} sincronizando={sincronizando}

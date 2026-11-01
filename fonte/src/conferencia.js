@@ -3,9 +3,9 @@
 // Conta como "visto": qualquer manejo (geral, indução, protocolo), toque, IATF, pesagem, desmama e parto (a mãe pariu, a cria nasceu).
 // No fim da rodada, quem não apareceu em nada vira suspeito (pode ter morrido, sumido ou saído sem lançar).
 // Só regras (sem tela). Chaves de animal iguais às da ficha: "m:<matriz>", "c:<nascimento>", "t:<touro/boi>".
-import { formatarDataBR } from './logica.js';
+import { formatarDataBR, idNovilha, padronizarLote } from './logica.js';
 import { analisarMatrizes } from './produtividade.js';
-import { ehBoi, boiAtivo, categoriaCria } from './ficha.js';
+import { ehBoi, boiAtivo, categoriaCria, racaDoHistorico } from './ficha.js';
 
 export const INICIO_CONFERENCIA = '2026-10-30';
 const MIN_TOQUE_GERAL = 10; // diagnósticos num mesmo toque para ele contar como toque geral (abre rodada)
@@ -125,7 +125,8 @@ export function analisarConferencia(ix, opcoes) {
     const rot = categoriaCria(c);
     const a = { k: `c:${c.id}`, brinco: c.brinco ? String(c.brinco) : 's/ nº', cat: rot === 'Novilha' ? 'novilhas' : rot === 'Garrote' ? 'bois' : 'bezerros', rot, lote: '', status: 'A confirmar', cria: c, mae: c.maeBrinco || '', confirmada: true };
     ativos.push(a);
-    confirmadas.push({ k: a.k, brinco: a.brinco, rot, data: v[0].data, manejo: v[0].fonte, mae: a.mae, nasc: c.nascData || '' });
+    const ev = (ix.dados.eventos || []).find((e) => e.id === v[0].id);
+    confirmadas.push({ k: a.k, id: c.id, brinco: a.brinco, rot, sexo: c.sexo || '', data: v[0].data, manejo: v[0].fonte, lote: (ev && ev.lote) || '', mae: a.mae, nasc: c.nascData || '' });
   });
   const aConfirmar = ix.crias.filter((c) => !c.novilha && c.situacao === 'confirmar').length - confirmadas.length;
   const ativosK = new Set(ativos.map((a) => a.k));
@@ -199,4 +200,29 @@ export function vistoNoCurral(ix, k) {
   if (!c) { const rods = rodadasConferencia(ix.dados); c = { vistos: avistamentos(ix).vistos, rod: rods[rods.length - 1] }; cacheVistos.set(ix, c); }
   const l = c.vistos.get(k) || [];
   return { ultimo: l[0] || null, naRodada: l.find((x) => naRodada(x.data, c.rod)) || null, rodada: c.rod };
+}
+
+// "Confirmar na fazenda": cria do histórico "a confirmar" (fêmea) que passou no curral vira Novilha no cadastro, ligada ao
+// nascimento dela (id cria-<nascimento>, como na desmama), com mãe, data de nascimento e raça do histórico.
+// Machos não viram matriz (cadastrar como boi/garrote). Brinco que já é de outra matriz ativa fica de fora.
+// Volta { matrizes: [novas], pulados: [{ brinco, motivo }] }
+export function confirmarNaFazenda(ix, idsNasc, lote, agora) {
+  const d = ix.dados;
+  const now = agora || new Date().toISOString();
+  const out = { matrizes: [], pulados: [] };
+  const loteOk = padronizarLote(String(lote || '').trim(), d.matrizes);
+  (idsNasc || []).forEach((id) => {
+    const c = ix.criaPorId.get(id);
+    if (!c) return;
+    const brinco = String(c.brinco || '').trim();
+    if (c.novilha || c.situacao !== 'confirmar') { out.pulados.push({ brinco, motivo: 'já confirmada' }); return; }
+    if (c.sexo !== 'Fêmea') { out.pulados.push({ brinco, motivo: 'macho: cadastre em Rebanho > Bois' }); return; }
+    if (!brinco) { out.pulados.push({ brinco: 's/ nº', motivo: 'sem número' }); return; }
+    if (d.matrizes.some((m) => m.id === idNovilha(id) || (String(m.brinco).trim() === brinco && m.status !== 'Vendida' && m.status !== 'Morta'))) { out.pulados.push({ brinco, motivo: 'já existe matriz com esse brinco' }); return; }
+    out.matrizes.push({
+      id: idNovilha(id), brinco: /^\d+$/.test(brinco) ? Number(brinco) : brinco, categoria: 'Novilha', raca: racaDoHistorico(c.nasc) || '', lote: loteOk,
+      dataNascimento: c.nascData || '', partosAnteriores: 0, status: 'Vazia', destino: '', dataBaixa: '', motivoBaixa: '', createdAt: now,
+    });
+  });
+  return out;
 }

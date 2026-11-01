@@ -47,7 +47,8 @@ vaca = next(m for m in est['matrizes'] if m['brinco'] == '3005')
 outra = next(m for m in est['matrizes'] if m['brinco'] != '3005' and m['status'] not in ('Vendida', 'Morta'))
 srv('/exec', 'POST', {'action': 'appendEventos', 'itens': [
     {'tipo': 'manejo', 'evento': {'id': 'mjc1', 'tipo': 'manejo', 'etapa': 'Geral', 'data': '2026-10-31', 'lote': 'Teste', 'descricao': 'Vermífugo teste',
-     'presentes': vaca['id'], 'ausentes': outra['id'], 'foraDoLote': json.dumps([{'animal': '', 'brinco': '8888', 'semCadastro': True, 'nota': 'brinco novo'}])}},
+     'presentes': vaca['id'], 'ausentes': outra['id'], 'foraDoLote': json.dumps([{'animal': '', 'brinco': '8888', 'semCadastro': True, 'nota': 'brinco novo'}, {'animal': '', 'brinco': '4501', 'semCadastro': True}])}},
+    {'tipo': 'nascimento', 'evento': {'id': 'hc1', 'tipo': 'nascimento', 'data': '2024-08-10', 'matrizId': outra['id'], 'sexo': 'Fêmea', 'brincoBezerro': '4501', 'resultadoParto': 'Vivo', 'observacoes': 'Histórico (planilha REBANHO 2026) · situação: A CONFIRMAR · raça Nelore'}},
 ]})
 
 with sync_playwright() as p:
@@ -85,6 +86,18 @@ with sync_playwright() as p:
         assert os.path.getsize(caminho) > 2000
         with pg.expect_download() as d2: pg.get_by_test_id('conf-pdf-lista').click()
         assert d2.value.suggested_filename.startswith('conferencia-faltam')
+
+    @teste('Proprietário confirma na fazenda a novilha a confirmar que passou no curral')
+    def _():
+        expect(pg.get_by_test_id('conf-anotacoes')).to_contain_text('a confirmar')
+        assert pg.get_by_test_id('confirmar-fazenda').count() == 0, 'funcionário não vê o botão'
+        entrar_dono(pg); nav(pg, 'Rebanho'); aba(pg, 'Conferência')
+        box = pg.get_by_test_id('confirmar-fazenda'); expect(box).to_contain_text('4501')
+        box.get_by_label('Lote das novilhas confirmadas').fill('NOVILHAS')
+        pg.get_by_test_id('confirmar-fazenda-sim').click()
+        esperar(lambda: any(str(m['brinco']) == '4501' and m['id'] == 'cria-hc1' and m['categoria'] == 'Novilha' and m['lote'] == 'NOVILHAS' for m in estado()['matrizes']), pg)
+        expect(pg.get_by_test_id('confirmar-fazenda')).to_have_count(0)
+        pg.get_by_test_id('f-passaram').click(); expect(pg.get_by_test_id('conf-4501')).to_contain_text('Novilha')
 
     @teste('Celular sem rolagem lateral; sem erros de tela')
     def _():
