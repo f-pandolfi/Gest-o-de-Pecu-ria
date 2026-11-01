@@ -222,7 +222,7 @@ export function SecaoRelatorio({ secao }) {
                     {secao.colunas.map((c) => (
                       <td
                         key={c.k}
-                        className={`${c.align === 'right' ? 'r ' : ''}${c.mono ? 'mono ' : ''}${c.k === 'brincos' ? 'wrapt' : ''}`}
+                        className={`${c.align === 'right' ? 'r ' : ''}${c.mono ? 'mono ' : ''}${c.k === 'brincos' || c.quebra ? 'wrapt' : ''}`}
                         style={total ? { fontWeight: 700, color: 'var(--amber)' } : undefined}
                       >
                         {vazioTxt(l[c.k])}

@@ -2990,7 +2990,7 @@ function relatorioConferencia(estado, manejoId) {
       { titulo: "Sem cadastro (n\xE3o est\xE3o no banco de dados nem em nenhum lote)", colunas: [{ k: "brinco", label: "Brinco", mono: true }, { k: "obs", label: "Observa\xE7\xE3o" }], linhas: c.semCadastro },
       {
         titulo: "Observa\xE7\xF5es por brinco",
-        colunas: [{ k: "brinco", label: "Brinco", mono: true }, { k: "animalSit", label: "Animal e situa\xE7\xE3o" }, { k: "nota", label: "Observa\xE7\xE3o" }, { k: "efet", label: "Efetivada" }],
+        colunas: [{ k: "brinco", label: "Brinco", mono: true }, { k: "nota", label: "Observa\xE7\xE3o", quebra: true }, { k: "animalSit", label: "Animal e situa\xE7\xE3o", quebra: true }, { k: "efet", label: "Efetivada" }],
         linhas: c.notas.map((f) => ({ ...f, animalSit: f.semCadastro || !f.animal ? "Sem cadastro" : [NOME_TIPO[f.tipo] || "", f.sit].filter(Boolean).join(" \xB7 "), efet: f.notaOk ? `sim, ${formatarDataBR(f.notaOk)}` : "pendente" }))
       },
       { titulo: "Conferidos", colunas: [{ k: "brinco", label: "Brinco", mono: true }, { k: "tipo", label: "Animal" }], linhas: c.conferidos }
@@ -3998,7 +3998,7 @@ function SecaoRelatorio({ secao }) {
       "td",
       {
         key: c.k,
-        className: `${c.align === "right" ? "r " : ""}${c.mono ? "mono " : ""}${c.k === "brincos" ? "wrapt" : ""}`,
+        className: `${c.align === "right" ? "r " : ""}${c.mono ? "mono " : ""}${c.k === "brincos" || c.quebra ? "wrapt" : ""}`,
         style: total ? { fontWeight: 700, color: "var(--amber)" } : void 0
       },
       vazioTxt(l[c.k])

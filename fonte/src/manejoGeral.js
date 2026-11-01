@@ -443,7 +443,7 @@ export function relatorioConferencia(estado, manejoId) {
       { titulo: 'Sem cadastro (não estão no banco de dados nem em nenhum lote)', colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'obs', label: 'Observação' }], linhas: c.semCadastro },
       {
         titulo: 'Observações por brinco',
-        colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'animalSit', label: 'Animal e situação' }, { k: 'nota', label: 'Observação' }, { k: 'efet', label: 'Efetivada' }],
+        colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'nota', label: 'Observação', quebra: true }, { k: 'animalSit', label: 'Animal e situação', quebra: true }, { k: 'efet', label: 'Efetivada' }],
         linhas: c.notas.map((f) => ({ ...f, animalSit: f.semCadastro || !f.animal ? 'Sem cadastro' : [NOME_TIPO[f.tipo] || '', f.sit].filter(Boolean).join(' · '), efet: f.notaOk ? `sim, ${formatarDataBR(f.notaOk)}` : 'pendente' })),
       },
       { titulo: 'Conferidos', colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'tipo', label: 'Animal' }], linhas: c.conferidos },
