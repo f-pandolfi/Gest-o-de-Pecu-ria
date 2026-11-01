@@ -123,8 +123,11 @@ with sync_playwright() as p:
     def _():
         nav(pg, 'Manejo'); aba(pg, 'Indução')
         pg.get_by_test_id('nova-inducao').click()
-        pg.get_by_role('button', name='Todas', exact=False).last.click()
-        pg.get_by_test_id(f"ind-{nov['brinco']}").click()
+        pg.get_by_test_id('ind-brinco').fill('3005')
+        expect(pg.get_by_test_id('inducao-form')).to_contain_text('não entra na indução')
+        pg.get_by_test_id('ind-brinco').fill(str(nov['brinco'])); pg.get_by_test_id('ind-brinco').press('Enter')
+        expect(pg.get_by_test_id('inducao-form')).to_contain_text('1 marcada(s)')
+        expect(pg.get_by_test_id('ind-brinco')).to_have_value('')
         pg.get_by_test_id('gravar-inducao').click()
         expect(pg.get_by_test_id('inducao')).to_contain_text('Indução gravada')
         esperar(lambda: any(e['tipo'] == 'manejo' and str(e.get('etapa', '')).startswith('Indução · D0') and nov['id'] in str(e.get('presentes', '')) for e in estado()['eventos']), pg)

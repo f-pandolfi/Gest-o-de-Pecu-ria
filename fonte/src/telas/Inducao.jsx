@@ -2,7 +2,7 @@
 // D0 (implante de progesterona), D12 (retirada + cipionato) e Avaliação (toque: ciclando ou não).
 // Cada etapa é gravada como um manejo com etapa "Indução · <etapa>". Na avaliação: presentes = ciclando, ausentes = não ciclou.
 import React, { useMemo, useState } from 'react';
-import { Plus, Save, Loader2 } from 'lucide-react';
+import { Plus, Save, Loader2, Search } from 'lucide-react';
 import { formatarDataBR, configCompleta, idadeMesesDias, novoId, noPlantel } from '../logica.js';
 import { Aviso } from '../ui.jsx';
 import { useFicha } from './Ficha.jsx';
@@ -18,6 +18,8 @@ export default function Inducao({ dados, hoje, ownerMode, modoTeste, onGravarLot
   const [form, setForm] = useState(null);
   const [msg, setMsg] = useState(null);
   const [salvando, setSalvando] = useState(false);
+  const [q, setQ] = useState('');
+  const [aviso, setAviso] = useState('');
   const corte = configCompleta(dados.config).pesoMatriz;
 
   const novs = useMemo(() => dados.matrizes.filter(noPlantel).filter((m) => m.categoria === 'Novilha').map((m) => {
@@ -103,7 +105,25 @@ export default function Inducao({ dados, hoje, ownerMode, modoTeste, onGravarLot
   }
 
   const aval = form.etapa === ETAPAS_INDUCAO[2];
+  // brinco digitado: procura em todas as novilhas (ignora o filtro); Enter marca quando só uma bate
+  const qq = q.trim();
+  const achadas = qq ? novs.filter((x) => String(x.m.brinco).startsWith(qq)) : [];
+  function digitar(v) {
+    setQ(v); setAviso('');
+    const t = v.trim(); if (!t) return;
+    if (!novs.some((x) => String(x.m.brinco).startsWith(t))) {
+      const m = dados.matrizes.find((x) => String(x.brinco) === t);
+      setAviso(m ? `O brinco ${t} é ${m.categoria === 'Novilha' ? 'novilha fora do plantel' : `${String(m.categoria || 'matriz').toLowerCase()} (${m.status})`}, não entra na indução.` : `Nenhuma novilha com o brinco ${t}.`);
+    }
+  }
+  function marcarDigitado() {
+    const exata = achadas.find((x) => String(x.m.brinco) === qq) || (achadas.length === 1 ? achadas[0] : null);
+    if (!exata) return;
+    if (!form.marcadas.includes(exata.m.id)) marcar(exata.m.id);
+    setAviso(`${exata.m.brinco} marcada.`); setQ('');
+  }
   let lista = form.filtro === 'prontas' ? prontas : form.filtro === 'nao' ? naoInd : form.filtro === 'continuar' ? novs.filter((x) => form.marcadas.includes(x.m.id)) : novs;
+  if (qq) lista = achadas;
   lista = lista.slice().sort((a, b) => ((b.u && b.u.peso) || 0) - ((a.u && a.u.peso) || 0) || String(a.m.brinco).localeCompare(String(b.m.brinco), 'pt-BR', { numeric: true }));
   const produtos = opcoesAtuais('produtos', '');
   const pessoas = opcoesAtuais('pessoas', '');
@@ -125,7 +145,13 @@ export default function Inducao({ dados, hoje, ownerMode, modoTeste, onGravarLot
         <Chip on={form.filtro === 'nao'} onClick={() => set('filtro', 'nao')}>Não induzidas<b>{naoInd.length}</b></Chip>
         <Chip on={form.filtro === 'todas'} onClick={() => set('filtro', 'todas')}>Todas<b>{novs.length}</b></Chip>
       </div>
-      <div className="contador">{form.marcadas.length} marcada(s)</div>
+      <label className="search fx-search" style={{ marginTop: 4 }}>
+        <Search />
+        <input inputMode="numeric" autoComplete="off" placeholder="Digite o brinco e toque para marcar (Enter marca)" aria-label="Brinco da novilha" data-testid="ind-brinco"
+          value={q} onChange={(e) => digitar(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); marcarDigitado(); } }} />
+      </label>
+      {aviso && <p className="sub" style={{ margin: '0 2px 8px', color: /marcada/.test(aviso) ? 'var(--green)' : 'var(--amber)' }} role="status">{aviso}</p>}
+      <div className="contador">{form.marcadas.length} marcada(s){qq ? ` · mostrando ${achadas.length} com "${qq}"` : ''}</div>
       <div className="fx-lista" style={{ marginTop: 8 }}>
         {!lista.length && <div className="empty">Nenhuma novilha com esse filtro.</div>}
         {lista.map((x) => {
