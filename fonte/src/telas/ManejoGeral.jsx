@@ -2,12 +2,15 @@
 // Cabeçalho: data, lote, manejo (o que está sendo feito), responsável, produtos. Embaixo, os animais do lote DESMARCADOS:
 // marca quem passou. O brinco digitado é procurado em tudo (matrizes, novilhas, crias, touros) e mostra a situação do animal.
 // Brinco de outro lote entra com a observação; brinco que não existe entra como "sem cadastro". Mudança de lote: só o proprietário confirma.
+// 10.7: manejo já gravado reabre no mesmo formulário. Qualquer usuário inclui mais brincos e escreve ou corrige observações;
+// só o proprietário muda cabeçalho, tira brincos e exclui o manejo.
 import React, { useEffect, useMemo, useState } from 'react';
-import { Save, Loader2, FileDown, Plus, X, Check, ArrowLeft, ClipboardCheck } from 'lucide-react';
-import { formatarDataBR, padronizarLote } from '../logica.js';
+import { Save, Loader2, FileDown, Plus, X, Check, ArrowLeft, ClipboardCheck, Pencil, Trash2 } from 'lucide-react';
+import { formatarDataBR, padronizarLote, mesmoLote } from '../logica.js';
 import {
   MANEJOS_RAPIDOS, lotesParaManejo, animaisDoLote, temCriasAoPe, aplicarManejoGeral, pendenciasLote,
   listarManejosGerais, relatorioConferencia, faltasRepetidas, indiceBusca, resolverInclusoes, pendenciasNotas, chaveNota,
+  formDoManejo, idsDoManejo, editarManejoGeral, resumoExclusao,
 } from '../manejoGeral.js';
 import { Aviso, Kpis, SecaoRelatorio } from '../ui.jsx';
 import { AplicacoesEditor, Rotulo } from './ManejoComum.jsx';
@@ -25,11 +28,15 @@ const migrarRascunho = (r) => {
   const { fora, ...resto } = r; return resto;
 };
 
-function Conferencia({ dados, manejoId, msg, onVoltar }) {
+function Conferencia({ dados, manejoId, msg, onVoltar, ownerMode, onAbrir, onExcluir }) {
   const rel = useMemo(() => relatorioConferencia(dados, manejoId), [dados, manejoId]);
   const e = dados.eventos.find((x) => x.id === manejoId);
   const rep = useMemo(() => (e ? faltasRepetidas(dados, e.lote) : []), [dados, e]);
+  const resumo = useMemo(() => resumoExclusao(dados, manejoId), [dados, manejoId]);
   const [pdf, setPdf] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [erroExcluir, setErroExcluir] = useState('');
+  const excluir = async () => { const r = await onExcluir(manejoId); if (r && !r.ok) { setErroExcluir(r.msg); } };
   return (
     <section className="sheet pad" data-testid="conferencia">
       <button className="btn quiet sm" onClick={onVoltar} style={{ marginBottom: 10 }}><ArrowLeft size={15} /> Voltar</button>
@@ -42,7 +49,31 @@ function Conferencia({ dados, manejoId, msg, onVoltar }) {
         <button className="btn ghost sm" disabled={pdf} onClick={async () => { setPdf(true); try { await baixarPDF(rel); } catch (err) { console.error(err); } setPdf(false); }}>
           {pdf ? <Loader2 size={15} className="spin" /> : <FileDown size={15} />} PDF da conferência
         </button>
+        {onAbrir && (
+          <button className="btn sm" onClick={() => onAbrir(manejoId)} data-testid="abrir-manejo">
+            <Pencil size={15} /> {ownerMode ? 'Editar manejo' : 'Incluir brincos e observações'}
+          </button>
+        )}
+        {ownerMode && onExcluir && <button className="btn quiet sm" onClick={() => { setErroExcluir(''); setConfirmando(true); }} data-testid="excluir-manejo"><Trash2 size={15} /> Excluir manejo</button>}
       </div>
+      {confirmando && resumo && (
+        <Aviso>
+          <div data-testid="confirmar-exclusao">
+            <b>Excluir este manejo?</b> {formatarDataBR(resumo.data)} · lote {resumo.lote} · {resumo.descricao}.
+            <div style={{ margin: '6px 0' }}>
+              Ele some do app e da planilha (a planilha guarda uma cópia na aba Excluidos).
+              {resumo.pendentes ? ` ${resumo.pendentes} pedido(s) de mudança de lote que ainda esperam você somem junto.` : ''}
+              {resumo.notasPendentes ? ` ${resumo.notasPendentes} observação(ões) ainda não efetivada(s) somem junto.` : ''}
+              {resumo.aprovadas ? ` ${resumo.aprovadas} mudança(s) de lote já confirmada(s) NÃO voltam: o animal continua no lote novo.` : ''}
+            </div>
+            {erroExcluir && <div className="late" role="alert" style={{ margin: '4px 0' }}>{erroExcluir}</div>}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn sm" onClick={excluir} data-testid="confirmar-exclusao-sim"><Trash2 size={15} /> Sim, excluir</button>
+              <button className="btn quiet sm" onClick={() => setConfirmando(false)}>Não, manter</button>
+            </div>
+          </div>
+        </Aviso>
+      )}
       {rel.secoes.filter((s) => s.linhas.length).map((s) => <SecaoRelatorio key={s.titulo} secao={s} />)}
     </section>
   );
@@ -115,14 +146,18 @@ function PendenciasNotas({ dados, onEfetivarNotas, onAbrir }) {
   );
 }
 
-export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, onGravarLote, onDecidirLote, onEfetivarNotas }) {
+export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, onGravarLote, onDecidirLote, onEfetivarNotas, onCorrigirManejo, onExcluirManejo }) {
   const [f, setF] = useState(() => ({ ...vazio(hoje), ...(migrarRascunho(lerLocal(CHAVE, null)) || {}) }));
   const [tela, setTela] = useState(() => (lerLocal(CHAVE, null) ? 'form' : 'inicio'));
   const [ver, setVer] = useState(null); // { id, msg }
   const [erro, setErro] = useState('');
   const [gravando, setGravando] = useState(false);
+  const [avisoInicio, setAvisoInicio] = useState('');
+  const editando = tela === 'form' && !!f.editId;
+  const eventoEdicao = editando ? dados.eventos.find((x) => x.id === f.editId) : null;
+  const soAcrescenta = editando && !ownerMode; // funcionário reabrindo manejo: só inclui brincos e observações
 
-  useEffect(() => { if (tela === 'form') gravarNoCelular(CHAVE, f); }, [f, tela]);
+  useEffect(() => { if (tela === 'form' && !f.editId) gravarNoCelular(CHAVE, f); }, [f, tela]);
   const set = (k, v) => { setErro(''); setF((x) => ({ ...x, [k]: v })); };
 
   const lotes = useMemo(() => lotesParaManejo(dados), [dados]);
@@ -130,7 +165,10 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
   const comCrias = useMemo(() => !!lote && temCriasAoPe(dados, lote, hoje), [dados, lote, hoje]);
   const incluirCrias = f.incluirCrias === null ? comCrias : f.incluirCrias && comCrias;
   const indice = useMemo(() => indiceBusca(dados, hoje), [dados, hoje]);
-  const itens = useMemo(() => animaisDoLote(dados, lote, { hoje, incluirCrias, indice }), [dados, lote, hoje, incluirCrias, indice]);
+  const mesmoLoteGravado = !!eventoEdicao && mesmoLote(lote, eventoEdicao.lote);
+  const extras = useMemo(() => (eventoEdicao && mesmoLoteGravado ? idsDoManejo(eventoEdicao) : undefined), [eventoEdicao, mesmoLoteGravado]);
+  const jaGravados = useMemo(() => new Set(eventoEdicao ? String(eventoEdicao.presentes || '').split(',').filter(Boolean) : []), [eventoEdicao]);
+  const itens = useMemo(() => animaisDoLote(dados, lote, { hoje, incluirCrias, indice, extras }), [dados, lote, hoje, incluirCrias, indice, extras]);
   const esperados = useMemo(() => new Set(itens.map((x) => x.id)), [itens]);
   // brincos incluídos na mão: de outro lote ou sem cadastro (se o lote mudou e o animal já é dele, passa a contar como marcado)
   const incl = useMemo(() => resolverInclusoes(dados, lote, f.incluidos, hoje, { indice, esperados }), [dados, lote, f.incluidos, hoje, indice, esperados]);
@@ -139,11 +177,29 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
   const marcados = useMemo(() => new Set(marcadosTodos), [marcadosTodos]);
   const feitos = useMemo(() => listarManejosGerais(dados), [dados]);
 
-  if (ver) return <Conferencia dados={dados} manejoId={ver.id} msg={ver.msg} onVoltar={() => setVer(null)} />;
+  // manejo já gravado volta para o formulário (proprietário muda tudo; funcionário só acrescenta brincos e observações)
+  const abrirEdicao = (id) => {
+    const e = dados.eventos.find((x) => x.id === id);
+    if (!e) return;
+    const base = formDoManejo(dados, e);
+    const existe = lotes.find((l) => mesmoLote(l.lote, base.lote));
+    setErro(''); setAvisoInicio('');
+    setF({ ...vazio(hoje), ...base, lote: existe ? existe.lote : OUTRO, loteDigitado: existe ? '' : base.lote });
+    setVer(null); setTela('form');
+  };
+  const sairDaEdicao = () => { const id = f.editId; setErro(''); setF(vazio(hoje)); setTela('inicio'); setVer(id ? { id } : null); };
+  const excluirManejo = async (id) => {
+    const r = await onExcluirManejo(id);
+    if (r && r.ok) { setVer(null); setAvisoInicio(r.msg); }
+    return r;
+  };
+
+  if (ver) return <Conferencia dados={dados} manejoId={ver.id} msg={ver.msg} onVoltar={() => setVer(null)} ownerMode={ownerMode} onAbrir={abrirEdicao} onExcluir={onExcluirManejo ? excluirManejo : null} />;
 
   if (tela === 'inicio') {
     return (
       <>
+        {avisoInicio && <Aviso tipo="ok" onClose={() => setAvisoInicio('')}>{avisoInicio}</Aviso>}
         {ownerMode && <PendenciasLote dados={dados} onDecidirLote={onDecidirLote} />}
         {ownerMode && onEfetivarNotas && <PendenciasNotas dados={dados} onEfetivarNotas={onEfetivarNotas} onAbrir={(id) => setVer({ id })} />}
         <section className="sheet pad" data-testid="geral-inicio">
@@ -167,7 +223,10 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
     );
   }
 
-  function toggle(id) { set('marcados', marcados.has(id) ? f.marcados.filter((x) => x !== id) : [...f.marcados.filter((x) => esperados.has(x)), id]); }
+  function toggle(id) {
+    if (soAcrescenta && jaGravados.has(id)) { setErro('Quem já foi marcado neste manejo só o proprietário pode desmarcar.'); return; }
+    set('marcados', marcados.has(id) ? f.marcados.filter((x) => x !== id) : [...f.marcados.filter((x) => esperados.has(x)), id]);
+  }
 
   // ficha vinda da busca por brinco (de outro lote ou sem cadastro)
   function incluir(ficha) {
@@ -195,7 +254,34 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
     setF((x) => ({ ...x, descricao: desc, aplicacoes: aps }));
   }
 
+  async function gravarEdicao() {
+    if (gravando) return;
+    const r = editarManejoGeral(dados, f.editId, {
+      data: f.data, lote, descricao: f.descricao, responsavel: f.responsavel, aplicacoes: f.aplicacoes,
+      esperados: itens.map((x) => x.id), marcados: marcadosTodos, fora, observacoes: f.obs, incluirCrias, aprovar: f.aprovar, notas: f.notas,
+    }, { dono: !!ownerMode, hoje });
+    if (r.erros && r.erros.length) { setErro(r.erros.join(' ')); return; }
+    setGravando(true);
+    const res = await onCorrigirManejo(r.mudancas, `edição de manejo ${f.descricao}`);
+    setGravando(false);
+    if (!res || !res.ok) { setErro((res && res.msg) || 'Não consegui gravar.'); return; }
+    const e = r.evento;
+    const itensFora = JSON.parse(e.foraDoLote);
+    const pend = itensFora.filter((x) => x.mudar === 'pendente').length;
+    const nNotas = itensFora.filter((x) => x.nota).length;
+    const msg = [
+      ownerMode ? 'Manejo alterado.' : 'Brincos e observações incluídos no manejo.',
+      nNotas ? `${nNotas} observação(ões) por brinco no manejo.` : '',
+      r.mudancas.matrizes.length ? `${r.mudancas.matrizes.length} animal(is) mudado(s) para o lote ${e.lote}.` : '',
+      pend ? `${pend} mudança(s) de lote esperando o proprietário confirmar.` : '',
+      res.offline ? 'Sem internet: ficou no celular e vai para a planilha quando a internet voltar.' : '',
+      modoTeste ? '(modo teste: só na tela)' : '',
+    ].filter(Boolean).join(' ');
+    setF(vazio(hoje)); setTela('inicio'); setVer({ id: e.id, msg });
+  }
+
   async function gravar() {
+    if (editando) return gravarEdicao();
     if (gravando) return;
     const r = aplicarManejoGeral(dados, {
       data: f.data, lote, descricao: f.descricao, responsavel: f.responsavel, aplicacoes: f.aplicacoes,
@@ -231,9 +317,16 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
   const semCadastro = fora.filter((x) => x.semCadastro);
   return (
     <section className="sheet pad" data-testid="geral-form">
-      <button className="btn quiet sm" onClick={() => setTela('inicio')} style={{ marginBottom: 10 }}><ArrowLeft size={15} /> Voltar (o rascunho fica guardado)</button>
-      <h2 className="h2" style={{ marginTop: 0 }}>Novo manejo</h2>
+      <button className="btn quiet sm" onClick={() => (editando ? sairDaEdicao() : setTela('inicio'))} style={{ marginBottom: 10 }}><ArrowLeft size={15} /> {editando ? 'Voltar sem salvar' : 'Voltar (o rascunho fica guardado)'}</button>
+      <h2 className="h2" style={{ marginTop: 0 }}>{!editando ? 'Novo manejo' : ownerMode ? 'Editar manejo' : 'Incluir brincos e observações'}</h2>
       {scriptDesatualizado && <Aviso>A planilha ainda não aceita o manejo geral (precisa do script 13).</Aviso>}
+      {soAcrescenta ? (
+        <div className="sub" data-testid="cabecalho-travado" style={{ marginTop: 0 }}>
+          <b>{formatarDataBR(f.data)} · lote {lote} · {f.descricao}</b>{f.responsavel ? ` · ${f.responsavel}` : ''}
+          <div style={{ fontSize: 13, marginTop: 4 }}>Aqui você inclui mais brincos e escreve ou corrige observações. O que já foi gravado fica como está: só o proprietário muda o manejo ou tira brincos.</div>
+        </div>
+      ) : (
+        <>
       <div className="grid2">
         <div className="fld"><label htmlFor="mg-data">Data</label><input id="mg-data" type="date" value={f.data} onChange={(e) => set('data', e.target.value)} /></div>
         <div className="fld">
@@ -257,6 +350,8 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
       </div>
       <div className="fld"><label htmlFor="mg-resp">Responsável</label><input id="mg-resp" value={f.responsavel} onChange={(e) => set('responsavel', e.target.value)} /></div>
       <AplicacoesEditor valor={f.aplicacoes} onChange={(a) => set('aplicacoes', a)} />
+        </>
+      )}
 
       {!lote && <p className="sub" data-testid="geral-sem-lote">{f.lote === OUTRO ? 'Digite o nome do lote novo para começar a conferir os brincos.' : 'Escolha o lote (ou "Outro lote") para conferir os brincos.'}</p>}
       {lote && (
@@ -279,7 +374,7 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
                   <div className="fora-top">
                     <b className="b">{x.brinco}</b>
                     <span className="late">{x.obs}</span>
-                    <button type="button" className="x-peq" aria-label={`Tirar ${x.brinco}`} onClick={() => tirar(x)}><X size={16} /></button>
+                    {!(soAcrescenta && x.manter) && <button type="button" className="x-peq" aria-label={`Tirar ${x.brinco}`} onClick={() => tirar(x)}><X size={16} /></button>}
                   </div>
                   {x.sit && <div className="sub fora-sit" style={{ margin: '2px 0 0', fontSize: 13 }}>{x.sit}</div>}
                   <CampoNota brinco={x.brinco} valor={(f.notas || {})[chaveNota(x)]} onChange={(t) => anotar(chaveNota(x), t)} />
@@ -298,7 +393,7 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
                   <div className="fora-top">
                     <b className="b">{x.brinco}</b>
                     <span className="late">{x.obs}</span>
-                    <button type="button" className="x-peq" aria-label={`Tirar ${x.brinco}`} onClick={() => tirar(x)}><X size={16} /></button>
+                    {!(soAcrescenta && x.manter) && <button type="button" className="x-peq" aria-label={`Tirar ${x.brinco}`} onClick={() => tirar(x)}><X size={16} /></button>}
                   </div>
                   <CampoNota brinco={x.brinco} valor={(f.notas || {})[chaveNota(x)]} onChange={(t) => anotar(chaveNota(x), t)} />
                 </div>
@@ -308,10 +403,10 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
         </>
       )}
 
-      <div className="fld" style={{ marginTop: 12 }}><label htmlFor="mg-obs">Observação</label><input id="mg-obs" value={f.obs} onChange={(e) => set('obs', e.target.value)} /></div>
+      {!soAcrescenta && <div className="fld" style={{ marginTop: 12 }}><label htmlFor="mg-obs">Observação</label><input id="mg-obs" value={f.obs} onChange={(e) => set('obs', e.target.value)} /></div>}
       {erro && <Aviso>{erro}</Aviso>}
       <button className="btn wide" style={{ marginTop: 8 }} onClick={gravar} disabled={gravando || total === 0 || scriptDesatualizado}>
-        {gravando ? <Loader2 size={18} className="spin" /> : <Save size={18} />} Gravar manejo ({nMarc} de {itens.length}{fora.length ? ` + ${fora.length} de fora${nSemCad ? `, ${nSemCad} sem cadastro` : ''}` : ''})
+        {gravando ? <Loader2 size={18} className="spin" /> : <Save size={18} />} {editando ? 'Salvar alterações' : 'Gravar manejo'} ({nMarc} de {itens.length}{fora.length ? ` + ${fora.length} de fora${nSemCad ? `, ${nSemCad} sem cadastro` : ''}` : ''})
       </button>
       {total === 0 && !scriptDesatualizado && <p className="sub" data-testid="dica-gravar" style={{ textAlign: 'center', marginTop: 8 }}>Para gravar: marque quem passou ou digite um brinco.</p>}
       {lote && itens.length > nMarc && nMarc > 0 && <p className="sub" style={{ textAlign: 'center' }}><ClipboardCheck size={14} style={{ verticalAlign: -2 }} /> {itens.length - nMarc} ainda não marcado(s): ao gravar, entram como faltando.</p>}

@@ -8,6 +8,8 @@
 // 10.6: observação por brinco. Cada brinco (do lote, de fora ou sem cadastro) pode levar uma observação, gravada junto no manejo
 // (dentro da coluna foraDoLote: nota, e notaOk quando o proprietário efetiva). Animal do lote com observação entra com doLote: true
 // e não conta como "de fora". O proprietário vê a lista em "Observações para efetivar" e marca como efetivada.
+// 10.7: o proprietário edita (editarManejoGeral, usa atualizarCampos) e exclui (excluirManejoGeral, ação excluirEventos do
+// script v14, que guarda a cópia da linha na aba Excluidos) manejos gerais já gravados.
 // Só regras (sem tela). A tela fica em telas/ManejoGeral.jsx.
 import {
   todayISO, formatarDataBR, novoId, listarCrias, padronizarLote, mesmoLote, lotesExistentes, diasEntre,
@@ -119,7 +121,17 @@ export function animaisDoLote(estado, lote, opcoes) {
   const crias = op.incluirCrias ? criasAoPe(estado, lote, hoje).map((c) => ({
     id: `c:${c.id}`, brinco: c.brinco || 's/ nº', tipo: 'cria', linha1: c.sexo === 'Fêmea' ? 'Bezerra ao pé' : 'Bezerro ao pé', linha2: `mãe ${c.maeBrinco || '?'}`, nivel: 'mut',
   })) : [];
-  return [...matrizes, ...touros, ...crias].sort((a, b) => ordemBrinco(a.brinco, b.brinco));
+  const todos = [...matrizes, ...touros, ...crias];
+  // edição de manejo antigo: quem foi anotado naquele dia continua na lista, mesmo que hoje já não seja do lote
+  if (op.extras && op.extras.length) {
+    const tem = new Set(todos.map((x) => x.id));
+    const nomes = nomesDosAnimais(estado);
+    op.extras.filter((id) => !tem.has(id)).forEach((id) => {
+      const n = nomes.get(id); if (!n) return;
+      todos.push({ id, brinco: n.brinco, tipo: id.startsWith('c:') ? 'cria' : id.startsWith('t:') ? 'touro' : 'matriz', linha1: n.tipo, linha2: 'anotado neste manejo (hoje não está na lista do lote)', nivel: 'mut' });
+    });
+  }
+  return todos.sort((a, b) => ordemBrinco(a.brinco, b.brinco));
 }
 
 // ---------------------------------------------------------------- busca do brinco (matrizes, novilhas, crias, touros)
@@ -228,6 +240,11 @@ export function resolverInclusoes(estado, lote, incluidos, hoje, op) {
   (incluidos || []).forEach((inc) => {
     const b = String(inc.brinco ?? '').trim();
     if (!b) return;
+    if (inc.fixo) { // item que já estava gravado no manejo (edição): fica como está, com a decisão de lote que já tinha
+      fora.push({ ...inc.fixo, manter: true });
+      if (inc.fixo.animal && o.esperados && o.esperados.has(inc.fixo.animal)) marcadosExtra.push(inc.fixo.animal);
+      return;
+    }
     const f = inc.animal ? buscarAnimais(estado, lote, b, hoje, { indice, esperados: o.esperados }).find((x) => x.animal === inc.animal) : null;
     const ficha = f || fichaSemCadastro(b);
     fichas.push(ficha);
@@ -258,27 +275,39 @@ export function aplicarManejoGeral(estado, form, opcoes) {
 
   const aprovar = new Set(form.dono ? form.aprovar || [] : []);
   const notas = form.notas || {};
+  const anterior = form.anterior || []; // edição: itens que já estavam gravados (para manter a data de efetivação da observação)
+  const efetivadaAntes = (chave, nota) => { const p = anterior.find((a) => a.nota && a.notaOk && chaveNota(a) === chave); return p && p.nota === nota ? p.notaOk : ''; };
+  const aprovadasAgora = new Set(); // só as mudanças de lote decididas nesta gravação mexem no lote da matriz
   const foraFinal = fora.map((f) => {
-    const x = { animal: f.animal || '', brinco: String(f.brinco), tipo: f.tipo || '', loteAtual: f.loteAtual || '', obs: f.obs || '', mudar: f.mudar || '' };
-    if (f.sit) x.sit = String(f.sit); // situação do animal no dia do manejo (cheia, vazia, previsão de parto...)
-    if (f.semCadastro || !f.animal) { x.semCadastro = true; if (!x.obs) x.obs = OBS_SEM_CADASTRO; }
-    const nota = String(notas[chaveNota(x)] || '').trim();
-    if (nota) x.nota = nota;
+    let x;
+    if (f.manter) { const { manter, nota: _n, notaOk: _o, ...resto } = f; x = resto; } // edição: o que já estava gravado fica como estava
+    else {
+      x = { animal: f.animal || '', brinco: String(f.brinco), tipo: f.tipo || '', loteAtual: f.loteAtual || '', obs: f.obs || '', mudar: f.mudar || '' };
+      if (f.sit) x.sit = String(f.sit); // situação do animal no dia do manejo (cheia, vazia, previsão de parto...)
+      if (f.semCadastro || !f.animal) { x.semCadastro = true; if (!x.obs) x.obs = OBS_SEM_CADASTRO; }
+    }
+    const chave = chaveNota(x);
+    const nota = String(notas[chave] || '').trim();
+    if (nota) { x.nota = nota; const ok = efetivadaAntes(chave, nota); if (ok) x.notaOk = ok; }
     if (x.mudar === 'pendente' && form.dono) {
+      if (f.manter && !aprovar.has(x.animal)) return x; // pedido antigo que o proprietário não decidiu agora continua pendente
       x.mudar = aprovar.has(x.animal) ? 'aprovada' : 'recusada';
       x.decididoEm = now.slice(0, 10);
+      if (x.mudar === 'aprovada') aprovadasAgora.add(x.animal);
     }
     return x;
   });
   // animal do lote que ganhou observação (passou ou não): entra na lista com doLote: true (não conta como "de fora")
   const nomes = nomesDosAnimais(estado);
   const hojeRef = op.hoje || todayISO();
-  const comNota = esperados.filter((id) => String(notas[id] || '').trim()).map((id) => {
+  const jaNaLista = new Set(foraFinal.map((f) => f.animal).filter(Boolean)); // a observação desses já está no próprio item "de fora"
+  const comNota = esperados.filter((id) => !jaNaLista.has(id) && String(notas[id] || '').trim()).map((id) => {
     const n = nomes.get(id) || { brinco: '?' };
     const m = estado.matrizes.find((x) => x.id === id);
     const x = { animal: id, brinco: String(n.brinco), tipo: id.startsWith('c:') ? 'cria' : id.startsWith('t:') ? 'touro' : 'matriz', loteAtual: lote, obs: '', mudar: '', doLote: true };
     if (m) x.sit = situacaoMatriz(estado, m, hojeRef).texto;
     x.nota = String(notas[id]).trim();
+    const ok = efetivadaAntes(id, x.nota); if (ok) x.notaOk = ok;
     return x;
   });
   const presentes = [...new Set([...marcados, ...foraFinal.map((f) => f.animal).filter(Boolean)])];
@@ -291,13 +320,106 @@ export function aplicarManejoGeral(estado, form, opcoes) {
     presentes: presentes.join(','), ausentes: ausentes.join(','), observacoes: String(form.observacoes || '').trim(), createdAt: now,
     lote, foraDoLote: JSON.stringify([...foraFinal, ...comNota]),
   };
-  const matrizesAlteradas = foraFinal.filter((f) => f.mudar === 'aprovada')
+  const matrizesAlteradas = foraFinal.filter((f) => f.mudar === 'aprovada' && aprovadasAgora.has(f.animal))
     .map((f) => estado.matrizes.find((m) => m.id === f.animal)).filter(Boolean)
     .map((m) => ({ ...m, lote }));
   const porId = new Map(matrizesAlteradas.map((m) => [m.id, m]));
   return {
     estado: { ...estado, eventos: [...estado.eventos, manejo], matrizes: estado.matrizes.map((m) => porId.get(m.id) || m) },
     eventosNovos: [manejo], matrizesAlteradas, erros: [],
+  };
+}
+
+// ---------------------------------------------------------------- editar e excluir manejo já gravado (só o proprietário)
+// Estado do formulário a partir de um manejo gravado. Os brincos de fora entram como "fixos": ficam como foram gravados
+// (inclusive a decisão sobre mudar de lote) até o proprietário tirar. lote vem como foi gravado; a tela acerta o seletor.
+export function formDoManejo(estado, e) {
+  const anterior = foraDoLoteDe(e);
+  const notas = {};
+  anterior.forEach((f) => { if (f.nota) notas[chaveNota(f)] = f.nota; });
+  return {
+    editId: e.id, data: String(e.data || '').slice(0, 10), lote: e.lote || '', descricao: e.descricao || '', responsavel: e.responsavel || '',
+    aplicacoes: json(e.aplicacoes, []), incluirCrias: String(e.manejoRef || '').includes('crias ao pé'),
+    marcados: lista(e.presentes), incluidos: anterior.filter((f) => !f.doLote).map((f) => ({ brinco: String(f.brinco), animal: f.animal || '', fixo: f })),
+    aprovar: [], notas, obs: e.observacoes || '',
+  };
+}
+// Ids de animais anotados no manejo (presentes e ausentes que não são os "de fora"): a lista da edição precisa deles
+export const idsDoManejo = (e) => {
+  const deFora = new Set(foraDoLoteDe(e).filter((f) => !f.doLote && f.animal).map((f) => f.animal));
+  return [...new Set([...lista(e && e.presentes), ...lista(e && e.ausentes)])].filter((id) => !deFora.has(id));
+};
+
+const canon = (v) => (Array.isArray(v) ? `[${v.map(canon).join(',')}]` : v && typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => `${k}:${canon(v[k])}`).join(',')}}` : JSON.stringify(v ?? ''));
+const CAMPOS_MANEJO = ['data', 'lote', 'descricao', 'responsavel', 'aplicacoes', 'presentes', 'ausentes', 'observacoes', 'manejoRef', 'foraDoLote'];
+const mesmoCampo = (k, a, b) => {
+  if (k === 'presentes' || k === 'ausentes') return lista(a).sort().join(',') === lista(b).sort().join(',');
+  if (k === 'aplicacoes' || k === 'foraDoLote') return canon(json(a, [])) === canon(json(b, []));
+  if (k === 'data') return String(a || '').slice(0, 10) === String(b || '').slice(0, 10);
+  return String(a ?? '') === String(b ?? '');
+};
+
+// Grava as alterações de um manejo geral (mesmo form do aplicarManejoGeral).
+// opcoes.dono (proprietário): muda tudo (data, lote, manejo, produtos, quem passou, brincos de fora, observações) e decide mudança de lote.
+// Sem dono (funcionário): só ACRESCENTA: marca mais animais, inclui mais brincos (de fora e sem cadastro) e escreve ou corrige
+// observações. O resto fica como estava gravado e nada do que já foi gravado sai.
+// Volta { erros } ou { erros: [], estado, evento, mudancas: { eventos: [{tipo:'manejo', id, campos}], matrizes }, mudou: [campos] }
+export function editarManejoGeral(estado, id, form, opcoes) {
+  const e = estado.eventos.find((x) => x.id === id && ehManejoGeral(x));
+  if (!e) return { erros: ['Não achei esse manejo.'] };
+  const dono = !!(opcoes && opcoes.dono);
+  const sem = { ...estado, eventos: estado.eventos.filter((x) => x.id !== id) };
+  const gravados = foraDoLoteDe(e);
+  let f2 = { ...form, dono, anterior: gravados };
+  if (!dono) {
+    const mesmo = (a, b) => String(a.brinco) === String(b.brinco) && (a.animal || '') === (b.animal || '');
+    const esperados = new Set(form.esperados || []);
+    const forasGravados = gravados.filter((f) => !f.doLote).map((f) => ({ ...f, manter: true }));
+    f2 = {
+      ...f2, data: e.data, lote: e.lote, descricao: e.descricao, responsavel: e.responsavel, aplicacoes: json(e.aplicacoes, []), observacoes: e.observacoes || '',
+      incluirCrias: String(e.manejoRef || '').includes('crias ao pé'), aprovar: [],
+      marcados: [...new Set([...(form.marcados || []), ...lista(e.presentes).filter((x) => esperados.has(x))])],
+      fora: [...forasGravados, ...(form.fora || []).filter((x) => !x.manter && !forasGravados.some((g) => mesmo(g, x)))],
+    };
+  }
+  const r = aplicarManejoGeral(sem, f2, { ...(opcoes || {}), id });
+  if (r.erros && r.erros.length) return { erros: r.erros };
+  const novo = { ...e, ...r.eventosNovos[0], id: e.id, createdAt: e.createdAt, tipo: 'manejo', etapa: ETAPA_GERAL, protocoloId: e.protocoloId || '' };
+  if (!dono) novo.lote = e.lote; // o nome do lote não é refeito por quem só acrescenta
+  const mudou = CAMPOS_MANEJO.filter((k) => !mesmoCampo(k, novo[k], e[k]));
+  if (!mudou.length && !r.matrizesAlteradas.length) return { erros: ['Nada foi alterado.'] };
+  const campos = {}; mudou.forEach((k) => { campos[k] = novo[k]; });
+  const porId = new Map(r.matrizesAlteradas.map((m) => [m.id, m]));
+  return {
+    erros: [], evento: novo, mudou,
+    estado: { ...estado, eventos: estado.eventos.map((x) => (x.id === id ? novo : x)), matrizes: estado.matrizes.map((m) => porId.get(m.id) || m) },
+    mudancas: { eventos: mudou.length ? [{ tipo: 'manejo', id, campos }] : [], matrizes: r.matrizesAlteradas, excluir: [] },
+  };
+}
+
+// O que acontece se este manejo for excluído (para o aviso antes de confirmar)
+export function resumoExclusao(estado, id) {
+  const e = estado.eventos.find((x) => x.id === id && ehManejoGeral(x));
+  if (!e) return null;
+  const itens = foraDoLoteDe(e);
+  return {
+    data: e.data, lote: e.lote || '', descricao: e.descricao || '', responsavel: e.responsavel || '',
+    animais: idsDoManejo(e).length + itens.filter((f) => !f.doLote && !f.animal).length,
+    aprovadas: itens.filter((f) => f.mudar === 'aprovada').length,
+    pendentes: itens.filter((f) => f.mudar === 'pendente').length,
+    notasPendentes: itens.filter((f) => f.nota && !f.notaOk).length,
+  };
+}
+
+// Exclui o manejo (some da lista e da planilha; o script v14 guarda uma cópia na aba Excluidos). Só o proprietário.
+// Mudança de lote que já foi confirmada NÃO volta: a matriz continua no lote novo.
+export function excluirManejoGeral(estado, id) {
+  const resumo = resumoExclusao(estado, id);
+  if (!resumo) return { erro: 'Não achei esse manejo.' };
+  return {
+    resumo,
+    estado: { ...estado, eventos: estado.eventos.filter((x) => x.id !== id) },
+    mudancas: { eventos: [], matrizes: [], excluir: [{ tipo: 'manejo', id }] },
   };
 }
 

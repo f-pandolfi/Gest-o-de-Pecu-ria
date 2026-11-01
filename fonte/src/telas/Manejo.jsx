@@ -8,7 +8,7 @@ import ManejoGeral from './ManejoGeral.jsx';
 import { pendenciasLote, pendenciasNotas } from '../manejoGeral.js';
 import { pendenciasVacinas } from '../manejo.js';
 
-export default function Manejo({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarProtocolo, onSalvarConfig, scriptAntes13, onDecidirLote, onEfetivarNotas }) {
+export default function Manejo({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarProtocolo, onSalvarConfig, scriptAntes13, onDecidirLote, onEfetivarNotas, onCorrigirManejo, onExcluirManejo }) {
   const [aba, setAba] = useState('protocolos');
   const [novo, setNovo] = useState(null);
   const [volta, setVolta] = useState(0); // tocar de novo na aba volta para o começo dela
@@ -29,7 +29,7 @@ export default function Manejo({ dados, hoje, ownerMode, modoTeste, onGravarLote
         <Toque key={`t${volta}`} dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={modoTeste} onGravarLote={onGravarLote}
           onMontarProtocolo={(ids) => { setNovo({ tipo: 'IATF', animais: ids, nome: '' }); setAba('protocolos'); setVolta((n) => n + 1); }} />
       )}
-      {aba === 'geral' && <ManejoGeral key={`g${volta}`} dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={modoTeste} scriptDesatualizado={!!scriptAntes13} onGravarLote={onGravarLote} onDecidirLote={onDecidirLote} onEfetivarNotas={onEfetivarNotas} />}
+      {aba === 'geral' && <ManejoGeral key={`g${volta}`} dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={modoTeste} scriptDesatualizado={!!scriptAntes13} onGravarLote={onGravarLote} onDecidirLote={onDecidirLote} onEfetivarNotas={onEfetivarNotas} onCorrigirManejo={onCorrigirManejo} onExcluirManejo={onExcluirManejo} />}
       {aba === 'vacinas' && <Vacinas key={`v${volta}`} dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={modoTeste} onGravarLote={onGravarLote} onSalvarConfig={onSalvarConfig} />}
     </div>
   );

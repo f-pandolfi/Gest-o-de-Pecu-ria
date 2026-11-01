@@ -321,4 +321,168 @@ t('observação por brinco: manejos antigos (sem nota) seguem iguais', () => {
   const c = G.conferencia(est, e); assert.strictEqual(c.fora.length, 1); assert.strictEqual(c.notas.length, 0);
 });
 
+
+// ------------------------------------------------------------------ editar e excluir manejo já gravado (app 10.7)
+// Monta o que a tela monta ao salvar a edição (mesma ordem de ManejoGeral.jsx)
+const formDaEdicao = (est, id, ajustar) => {
+  const e = est.eventos.find((x) => x.id === id); const f = G.formDoManejo(est, e);
+  if (ajustar) ajustar(f);
+  const lote = f.lote;
+  const itens = G.animaisDoLote(est, lote, { hoje: HOJE, incluirCrias: f.incluirCrias, extras: G.idsDoManejo(e) });
+  const esperados = new Set(itens.map((x) => x.id));
+  const incl = G.resolverInclusoes(est, lote, f.incluidos, HOJE, { esperados });
+  const marcados = [...new Set([...f.marcados.filter((x) => esperados.has(x)), ...incl.marcadosExtra])];
+  return { f, itens, form: { data: f.data, lote, descricao: f.descricao, responsavel: f.responsavel, aplicacoes: f.aplicacoes, esperados: itens.map((x) => x.id), marcados, fora: incl.fora, observacoes: f.obs, incluirCrias: f.incluirCrias, aprovar: f.aprovar, notas: f.notas } };
+};
+const manejoParaEditar = () => {
+  const dd = base();
+  const doLote = G.animaisDoLote(dd, 'Paridas', { hoje: HOJE });
+  const [a, b, c] = doLote;
+  const sols = dd.matrizes.filter((m) => m.lote === 'Solteiras').slice(0, 2);
+  const fora = sols.map((m) => G.itemFora(G.buscarAnimais(dd, 'Paridas', m.brinco, HOJE)[0])).concat([G.itemFora(G.fichaSemCadastro('77777'))]);
+  const r = G.aplicarManejoGeral(dd, {
+    data: HOJE, lote: 'Paridas', descricao: 'Pour-on', responsavel: 'João', aplicacoes: [{ tipo: 'Pour-on', produto: 'Maximo' }], esperados: doLote.map((x) => x.id), marcados: [a.id, b.id], fora, dono: false, aprovar: [],
+    notas: { [a.id]: 'cadastrar a cria', [sols[0].id]: 'trocar de lote', 'b:77777': 'brinco perdido' },
+  }, { id: 'ed1', now: '2026-10-20T10:00:00Z' });
+  // proprietário já efetivou a nota do brinco 77777
+  const ef = G.efetivarNotas(r.estado, [{ manejoId: 'ed1', idx: G.pendenciasNotas(r.estado).find((p) => p.brinco === '77777').idx, feito: true }], { now: '2026-10-25T10:00:00Z' });
+  const est = G.aplicarMudancas ? null : { ...r.estado, eventos: r.estado.eventos.map((e) => (e.id === 'ed1' ? { ...e, foraDoLote: ef.mudancas.eventos[0].campos.foraDoLote } : e)) };
+  return { dd, est, doLote, a, b, c, sols };
+};
+
+t('editar: abrir e salvar sem mexer em nada diz "Nada foi alterado" (mesmo com a ordem dos campos diferente)', () => {
+  const { est } = manejoParaEditar();
+  const { form } = formDaEdicao(est, 'ed1');
+  const r = G.editarManejoGeral(est, 'ed1', form, { now: '2026-11-01T10:00:00Z', dono: true });
+  assert.deepStrictEqual(r.erros, ['Nada foi alterado.']);
+});
+
+t('editar: muda texto, desmarca um, marca outro, tira o sem cadastro e troca uma observação; mantém id, data de criação, pedido de lote pendente e nota já efetivada', () => {
+  const { est, a, b, c, sols } = manejoParaEditar();
+  const { form, f } = formDaEdicao(est, 'ed1', (f2) => {
+    f2.descricao = 'Pour-on e vermífugo'; f2.marcados = f2.marcados.filter((x) => x !== b.id).concat([c.id]);
+    f2.incluidos = f2.incluidos.filter((i) => i.brinco !== '77777'); delete f2.notas['b:77777'];
+    f2.notas[a.id] = 'cadastrar a cria, tem bezerro sem brinco'; f2.notas[c.id] = 'não tem brinco auricular';
+  });
+  const r = G.editarManejoGeral(est, 'ed1', form, { now: '2026-11-01T10:00:00Z', dono: true });
+  assert.deepStrictEqual(r.erros, []);
+  const ev = r.evento;
+  assert.strictEqual(ev.id, 'ed1'); assert.strictEqual(ev.createdAt, '2026-10-20T10:00:00Z'); assert.strictEqual(ev.etapa, 'Geral'); assert.strictEqual(ev.descricao, 'Pour-on e vermífugo');
+  assert.ok(r.mudou.includes('descricao') && r.mudou.includes('presentes') && r.mudou.includes('foraDoLote') && r.mudou.includes('ausentes'));
+  assert.ok(!r.mudou.includes('data') && !r.mudou.includes('lote') && !r.mudou.includes('responsavel'));
+  assert.ok(ev.presentes.split(',').includes(c.id) && !ev.presentes.split(',').includes(b.id) && ev.ausentes.split(',').includes(b.id));
+  const lista2 = JSON.parse(ev.foraDoLote);
+  assert.ok(!lista2.some((x) => x.brinco === '77777'), 'sem cadastro saiu');
+  assert.strictEqual(lista2.find((x) => x.animal === sols[0].id).mudar, 'pendente', 'pedido de lote continua pendente');
+  assert.strictEqual(lista2.find((x) => x.animal === sols[0].id).nota, 'trocar de lote');
+  assert.strictEqual(lista2.find((x) => x.animal === a.id).nota, 'cadastrar a cria, tem bezerro sem brinco'); assert.ok(!lista2.find((x) => x.animal === a.id).notaOk);
+  assert.strictEqual(lista2.find((x) => x.animal === c.id).nota, 'não tem brinco auricular');
+  assert.deepStrictEqual(r.mudancas.matrizes, []); assert.strictEqual(r.mudancas.eventos.length, 1);
+  assert.deepStrictEqual(Object.keys(r.mudancas.eventos[0].campos).sort(), r.mudou.slice().sort());
+  assert.strictEqual(r.estado.matrizes.find((m) => m.id === sols[0].id).lote, 'Solteiras');
+  assert.strictEqual(r.estado.eventos.filter((x) => x.id === 'ed1').length, 1);
+  // a nota que já estava efetivada continua efetivada quando o texto não muda
+  const { form: form2 } = formDaEdicao(est, 'ed1', (f3) => { f3.descricao = 'Outro texto'; });
+  const r2 = G.editarManejoGeral(est, 'ed1', form2, { dono: true });
+  assert.strictEqual(JSON.parse(r2.evento.foraDoLote).find((x) => x.brinco === '77777').notaOk, '2026-10-25');
+  // trocar o texto da nota efetivada volta para "pendente"
+  const { form: form3 } = formDaEdicao(est, 'ed1', (f3) => { f3.notas['b:77777'] = 'brinco perdido, achei a vaca'; });
+  const r3 = G.editarManejoGeral(est, 'ed1', form3, { dono: true });
+  assert.ok(!JSON.parse(r3.evento.foraDoLote).find((x) => x.brinco === '77777').notaOk);
+});
+
+t('editar: proprietário aprova na edição um pedido que estava pendente; pedido já aprovado antes não mexe de novo no lote', () => {
+  const { est, sols } = manejoParaEditar();
+  const { form } = formDaEdicao(est, 'ed1', (f2) => { f2.aprovar = [sols[0].id]; });
+  const r = G.editarManejoGeral(est, 'ed1', form, { now: '2026-11-01T10:00:00Z', dono: true });
+  assert.deepStrictEqual(r.erros, []);
+  assert.deepStrictEqual(r.mudancas.matrizes.map((m) => [m.id, m.lote]), [[sols[0].id, 'Paridas']]);
+  const it = JSON.parse(r.evento.foraDoLote).find((x) => x.animal === sols[0].id); assert.strictEqual(it.mudar, 'aprovada'); assert.strictEqual(it.decididoEm, '2026-11-01');
+  // depois a matriz foi para outro lote; editar o texto do manejo não traz ela de volta
+  const est2 = { ...r.estado, matrizes: r.estado.matrizes.map((m) => (m.id === sols[0].id ? { ...m, lote: 'Leiteiras' } : m)) };
+  const { form: form2 } = formDaEdicao(est2, 'ed1', (f3) => { f3.descricao = 'Texto novo'; });
+  const r2 = G.editarManejoGeral(est2, 'ed1', form2, { dono: true });
+  assert.deepStrictEqual(r2.erros, []); assert.deepStrictEqual(r2.mudancas.matrizes, []);
+  assert.strictEqual(JSON.parse(r2.evento.foraDoLote).find((x) => x.animal === sols[0].id).mudar, 'aprovada');
+});
+
+t('editar: acrescenta brincos novos (de outro lote e sem cadastro) e muda o lote do manejo; quem foi anotado e hoje saiu do lote continua na lista', () => {
+  const { est, a, sols, dd } = manejoParaEditar();
+  // a matriz "a" foi vendida depois do manejo: continua na lista da edição
+  const est2 = { ...est, matrizes: est.matrizes.map((m) => (m.id === a.id ? { ...m, lote: 'Leiteiras' } : m)) };
+  const itens = G.animaisDoLote(est2, 'Paridas', { hoje: HOJE, extras: G.idsDoManejo(est2.eventos.find((x) => x.id === 'ed1')) });
+  assert.ok(itens.some((x) => x.id === a.id), 'a continua listada'); assert.ok(/anotado neste manejo/.test(itens.find((x) => x.id === a.id).linha2));
+  const { form } = formDaEdicao(est2, 'ed1', (f2) => { f2.incluidos = f2.incluidos.concat([{ brinco: '88888', animal: '' }]); f2.notas['b:88888'] = 'achado no curral'; });
+  const r = G.editarManejoGeral(est2, 'ed1', form, { dono: true });
+  assert.deepStrictEqual(r.erros, []);
+  assert.ok(r.evento.presentes.split(',').includes(a.id), 'continua presente');
+  assert.strictEqual(JSON.parse(r.evento.foraDoLote).find((x) => x.brinco === '88888').semCadastro, true);
+  // trocar o lote: a lista passa a ser a do lote novo
+  const outro = G.animaisDoLote(est2, 'Leiteiras', { hoje: HOJE });
+  const rl = G.editarManejoGeral(est2, 'ed1', { ...form, lote: 'Leiteiras', esperados: outro.map((x) => x.id), marcados: [outro[0].id], fora: [] }, { dono: true });
+  assert.deepStrictEqual(rl.erros, []); assert.strictEqual(rl.evento.lote, 'Leiteiras'); assert.ok(rl.mudou.includes('lote'));
+  // validações: sem nenhum animal, não salva; manejo que não existe ou não é geral
+  assert.ok(G.editarManejoGeral(est2, 'ed1', { ...form, marcados: [], fora: [] }, { dono: true }).erros.length > 0);
+  assert.deepStrictEqual(G.editarManejoGeral(est2, 'nao-existe', form, { dono: true }).erros, ['Não achei esse manejo.']);
+});
+
+t('funcionário reabre o manejo: inclui mais brincos e observações e corrige observações gravadas, mas não muda o cabeçalho nem tira nada do que já foi gravado', () => {
+  const { est, a, b, c, sols } = manejoParaEditar();
+  const { form } = formDaEdicao(est, 'ed1', (f2) => {
+    f2.marcados = f2.marcados.concat([c.id]); // marca mais um animal do lote
+    f2.incluidos = f2.incluidos.concat([{ brinco: '55555', animal: '' }]); f2.notas['b:55555'] = 'outro brinco do curral';
+    f2.notas[a.id] = 'cadastrar a cria (corrigido)'; f2.notas['b:77777'] = 'brinco perdido, mais um dado';
+    f2.notas[c.id] = 'sem brinco auricular';
+  });
+  // tenta, por baixo dos panos, mexer no que não pode: mudar descrição, desmarcar, tirar brinco gravado, aprovar lote
+  const sujo = { ...form, descricao: 'Mudei', lote: 'Leiteiras', data: '2020-01-01', marcados: form.marcados.filter((x) => x !== b.id), fora: form.fora.filter((x) => x.brinco !== '77777' && x.brinco !== sols[1].brinco), aprovar: [sols[0].id] };
+  const r = G.editarManejoGeral(est, 'ed1', sujo, { now: '2026-11-01T10:00:00Z', dono: false });
+  assert.deepStrictEqual(r.erros, []);
+  const ev = r.evento; const antes = est.eventos.find((x) => x.id === 'ed1');
+  assert.strictEqual(ev.descricao, 'Pour-on'); assert.strictEqual(ev.lote, 'Paridas'); assert.strictEqual(ev.data, antes.data); assert.strictEqual(ev.responsavel, 'João');
+  assert.ok(ev.presentes.split(',').includes(b.id), 'quem já tinha passado continua'); assert.ok(ev.presentes.split(',').includes(c.id), 'o novo entrou');
+  const lista2 = JSON.parse(ev.foraDoLote);
+  assert.strictEqual(lista2.find((x) => x.brinco === '55555').semCadastro, true); assert.strictEqual(lista2.find((x) => x.brinco === '55555').nota, 'outro brinco do curral');
+  assert.ok(lista2.some((x) => x.brinco === '77777'), 'brinco gravado não sai'); assert.ok(lista2.some((x) => x.animal === sols[1].id), 'brinco de fora gravado não sai');
+  assert.strictEqual(lista2.find((x) => x.animal === sols[0].id).mudar, 'pendente', 'funcionário não decide mudança de lote');
+  assert.strictEqual(r.mudancas.matrizes.length, 0);
+  assert.strictEqual(lista2.find((x) => x.animal === a.id).nota, 'cadastrar a cria (corrigido)');
+  const sc = lista2.find((x) => x.brinco === '77777'); assert.strictEqual(sc.nota, 'brinco perdido, mais um dado'); assert.ok(!sc.notaOk, 'nota mudou: volta para o proprietário efetivar');
+  assert.deepStrictEqual(r.mudou.filter((k) => ['data', 'lote', 'descricao', 'responsavel', 'aplicacoes', 'observacoes', 'manejoRef'].includes(k)), []);
+  // sem nenhuma novidade, "Nada foi alterado"
+  const { form: igual } = formDaEdicao(est, 'ed1');
+  assert.deepStrictEqual(G.editarManejoGeral(est, 'ed1', igual, { dono: false }).erros, ['Nada foi alterado.']);
+  // funcionário apaga uma observação: sai só a observação
+  const { form: semNota } = formDaEdicao(est, 'ed1', (f2) => { delete f2.notas[a.id]; });
+  const r2 = G.editarManejoGeral(est, 'ed1', semNota, { dono: false });
+  assert.ok(!JSON.parse(r2.evento.foraDoLote).some((x) => x.animal === a.id));
+  assert.ok(r2.evento.presentes.split(',').includes(a.id));
+});
+
+t('excluir: tira o manejo, avisa o que se perde e gera a ação excluirEventos; manejo que não é geral não sai', () => {
+  const { est, sols } = manejoParaEditar();
+  const res = G.resumoExclusao(est, 'ed1');
+  assert.strictEqual(res.pendentes, 2); assert.strictEqual(res.aprovadas, 0); assert.strictEqual(res.notasPendentes, 2); assert.strictEqual(res.lote, 'Paridas');
+  const r = G.excluirManejoGeral(est, 'ed1');
+  assert.ok(!r.estado.eventos.some((x) => x.id === 'ed1')); assert.deepStrictEqual(r.mudancas.excluir, [{ tipo: 'manejo', id: 'ed1' }]);
+  assert.deepStrictEqual(L.postsDeMudancas(r.mudancas), [{ action: 'excluirEventos', tipo: 'manejo', ids: ['ed1'] }]);
+  const novo = L.aplicarMudancasNoEstado(est, r.mudancas);
+  assert.ok(!novo.eventos.some((x) => x.id === 'ed1')); assert.strictEqual(novo.eventos.length, est.eventos.length - 1); assert.strictEqual(novo.matrizes.length, est.matrizes.length);
+  assert.strictEqual(G.pendenciasLote(novo).length, 0); assert.strictEqual(G.pendenciasNotas(novo).length, 0); assert.strictEqual(G.listarManejosGerais(novo).length, 0);
+  assert.strictEqual(novo.matrizes.find((m) => m.id === sols[0].id).lote, 'Solteiras');
+  assert.strictEqual(G.excluirManejoGeral(est, 'nao-existe').erro, 'Não achei esse manejo.');
+  const prot = { id: 'pr1', tipo: 'manejo', etapa: 'D0', data: HOJE, presentes: 'm1' };
+  assert.strictEqual(G.excluirManejoGeral({ ...est, eventos: [...est.eventos, prot] }, 'pr1').erro, 'Não achei esse manejo.');
+  // mudanças só de edição continuam gerando só atualizarCampos
+  assert.deepStrictEqual(L.postsDeMudancas({ eventos: [{ tipo: 'manejo', id: 'x', campos: { descricao: 'a' } }], matrizes: [] }).map((p) => p.action), ['atualizarCampos']);
+});
+
+t('excluir: avisa quantas mudanças de lote já confirmadas não voltam', () => {
+  const { est, sols } = manejoParaEditar();
+  const { form } = formDaEdicao(est, 'ed1', (f2) => { f2.aprovar = [sols[0].id]; });
+  const r = G.editarManejoGeral(est, 'ed1', form, { now: '2026-11-01T10:00:00Z', dono: true });
+  const res = G.resumoExclusao(r.estado, 'ed1');
+  assert.strictEqual(res.aprovadas, 1); assert.strictEqual(res.pendentes, 1);
+});
+
 console.log(`manejo geral: ${ok} ok`);

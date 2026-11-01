@@ -9,10 +9,10 @@ import {
 import {
   VERSAO_APP, VERSAO_MINIMA_SCRIPT, todayISO, anoDe, anosDisponiveis, filtrarPorAno,
   aplicarLancamento, aplicarVenda, calcularKPIs, buildResumoRows, validarMorte, listarCrias,
-  editarNascimento, editarMorte, anularMorte, postsDeMudancas, aplicarMudancasNoEstado,
+  editarNascimento, editarMorte, anularMorte, postsDeMudancas, aplicarMudancasNoEstado, formatarDataBR,
 } from './logica.js';
 import { normalizarTudo, aplicarPendentesTudo, protocoloParaPlanilha } from './manejo.js';
-import { decidirLote, efetivarNotas } from './manejoGeral.js';
+import { decidirLote, efetivarNotas, excluirManejoGeral } from './manejoGeral.js';
 import Manejo from './telas/Manejo.jsx';
 import { CSS } from './estilos.js';
 import { MODO_TESTE, lerTudo, postar as postarDireto } from './api.js';
@@ -234,6 +234,7 @@ function GestaoPecuaria() {
   const scriptAntes = (v) => !MODO_TESTE && versaoScript !== null && (versaoScript || 0) < v;
   const MSG_SCRIPT_12 = 'O script da planilha está desatualizado e não aceita protocolos, manejos e touros. Avise o responsável pelo sistema.';
   const MSG_SCRIPT_13 = 'A planilha ainda não aceita o manejo geral (precisa do script 13). Avise o proprietário.';
+  const MSG_SCRIPT_14 = 'Para excluir manejo a planilha precisa do script 14. Implante a versão nova do script e tente de novo.';
 
   // Protocolo (IATF ou monta): grava ou atualiza pelo id
   function salvarProtocolo(p) {
@@ -277,6 +278,24 @@ function GestaoPecuaria() {
     gravarCorrecao(r, 'observações efetivadas');
     const feitas = (decisoes || []).filter((d) => d.feito).length;
     return (feitas ? `${r.n} observação(ões) marcada(s) como efetivada(s).` : `${r.n} observação(ões) voltou(aram) para a lista.`) + notaFila();
+  }
+
+  // Manejo geral já gravado: edição (proprietário muda tudo; funcionário só acrescenta). As mudanças vêm de editarManejoGeral
+  function corrigirManejoGeral(mudancas, rotulo) {
+    if (scriptAntes(13)) return { ok: false, msg: MSG_SCRIPT_13 };
+    if (!mudancas || (!mudancas.eventos.length && !mudancas.matrizes.length)) return { ok: false, msg: 'Nada foi alterado.' };
+    gravarCorrecao({ mudancas }, rotulo || 'edição de manejo');
+    return { ok: true, offline: semInternet(), msg: '' };
+  }
+
+  // Exclusão de manejo geral (só proprietário): some do app e da planilha; o script 14 guarda uma cópia na aba Excluidos
+  async function excluirManejo(id) {
+    if (!ownerMode) return { ok: false, msg: 'Só o proprietário exclui manejo.' };
+    if (scriptAntes(14)) return { ok: false, msg: MSG_SCRIPT_14 };
+    const r = excluirManejoGeral(dadosRef.current, id);
+    if (r.erro) return { ok: false, msg: r.erro };
+    gravarCorrecao(r, 'manejo excluído');
+    return { ok: true, msg: `Manejo excluído (${formatarDataBR(r.resumo.data)}, lote ${r.resumo.lote}, ${r.resumo.descricao}).${MODO_TESTE ? ' (modo teste: só na tela)' : ' A planilha guarda uma cópia na aba Excluidos.'}${notaFila()}` };
   }
 
   // eventos em pacotes de 40, depois as matrizes e os touros
@@ -483,7 +502,7 @@ function GestaoPecuaria() {
           />
         )}
         {tab === 'manejo' && (
-          <Manejo dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE} onGravarLote={gravarManejo} onSalvarProtocolo={salvarProtocolo} onSalvarConfig={salvarConfig} scriptAntes13={scriptAntes(13)} onDecidirLote={decidirMudancaLote} onEfetivarNotas={efetivarObservacoes} />
+          <Manejo dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE} onGravarLote={gravarManejo} onSalvarProtocolo={salvarProtocolo} onSalvarConfig={salvarConfig} scriptAntes13={scriptAntes(13)} onDecidirLote={decidirMudancaLote} onEfetivarNotas={efetivarObservacoes} onCorrigirManejo={corrigirManejoGeral} onExcluirManejo={excluirManejo} />
         )}
         {tab === 'parto' && <Parto dados={dados} hoje={hoje} onLancar={lancarDaVaca} onGravarLote={gravarManejo} />}
         {tab === 'crias' && (

@@ -1,4 +1,4 @@
-// Servidor dos testes de navegador: entrega o site (testes/saida/site) e simula a planilha (Code_v11.gs no simulador).
+// Servidor dos testes de navegador: entrega o site (testes/saida/site) e simula a planilha (Code_v14.gs no simulador).
 // Controles para os testes: GET /__estado (o que está na planilha), POST /__reset, POST /__perderResposta (a próxima
 // gravação chega na planilha mas a resposta "se perde", como internet caindo no meio), POST /__erroProximo (a planilha recusa).
 const http = require('http');
@@ -9,7 +9,7 @@ const { dadosExemplo } = require('./dados_exemplo.cjs');
 
 const PORTA = Number(process.argv[2] || 8765);
 const SITE = path.join(__dirname, 'saida', 'site');
-const GS = path.join(__dirname, '..', process.argv[3] || 'Code_v13.gs');
+const GS = path.join(__dirname, '..', process.argv[3] || 'Code_v14.gs');
 let gs; let perder = 0; let erroProximo = 0; let posts = [];
 function reset() {
   gs = carregarScript(GS);
