@@ -84,9 +84,9 @@ export default function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onG
   const nVazias = dados.matrizes.filter((m) => m.status === 'Vazia').length;
   // Vazias: todos os partos de cada vaca, com a cria de cada parto. A busca acha pelo brinco da vaca ou da cria.
   const partos = useMemo(() => partosPorMatriz(dados.eventos), [dados.eventos]);
-  const criaPorNasc = useMemo(() => (aba === 'Vazia' ? new Map(listarCrias(dados, hoje).map((c) => [c.id, c])) : new Map()), [dados, hoje, aba]);
+  const criaPorNasc = useMemo(() => (aba !== 'Toque' ? new Map(listarCrias(dados, hoje).map((c) => [c.id, c])) : new Map()), [dados, hoje, aba]);
   const linhas = useMemo(() => {
-    if (aba !== 'Vazia') return linhasPrevisao(dados.matrizes, dados.eventos, aba, hoje, busca);
+    // v11.0.2: nas Cheias a busca também acha pelo brinco da cria (como nas Vazias)
     const q = busca.trim().toLowerCase();
     return linhasPrevisao(dados.matrizes, dados.eventos, aba, hoje, '').filter((l) => !q || String(l.matriz.brinco).toLowerCase().includes(q)
       || (partos.get(l.matriz.id) || []).some((e) => String(e.brincoBezerro || '').toLowerCase().includes(q)));
@@ -119,7 +119,7 @@ export default function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onG
       {aba !== 'Toque' && <section className="sheet">
         <label className="search">
           <Search />
-          <input placeholder={vazias ? 'Buscar pelo brinco da vaca ou da cria' : 'Buscar pelo brinco'} aria-label="Buscar pelo brinco" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <input placeholder="Buscar pelo brinco da vaca ou da cria" aria-label="Buscar pelo brinco" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </label>
 
         <div className="bar-sum">
@@ -197,11 +197,22 @@ export default function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onG
                 </span>
                 <span className="m">{data ? formatarDataBR(data) : '—'}</span>
                 <span className={`r ${dd.c}`}>{dd.t}</span>
+                  {aba === 'Cheia' && (() => {
+                    const ps = partos.get(m.id) || []; const antes = parseInt(m.partosAnteriores, 10) || 0;
+                    if (!ps.length && !antes) return <span className="mut ch-partos">sem parto lançado</span>;
+                    return (
+                      <span className="ch-partos" data-testid="cheia-partos">
+                        {ps.map((e) => <span key={e.id}><i>{formatarDataBR(e.data)}</i> <b className={e.resultadoParto === 'Natimorto' || !e.brincoBezerro ? 'mut' : ''}>{e.resultadoParto === 'Natimorto' ? 'natim.' : e.brincoBezerro || 's/ nº'}</b></span>)}
+                        {antes > 0 && <span className="mut">+{antes} antes de entrar</span>}
+                      </span>
+                    );
+                  })()}
               </button>
               {aberto && (
                 <div className="detalhe">
                   {aba === 'Cheia' && <div><Calculo info={l.info} /></div>}
                   {aba === 'Cheia' && <VacinaCheia key={m.id} m={m} sit={vacinaDe(m)} hoje={hoje} dados={dados} onGravarLote={onGravarLote} />}
+                  {aba === 'Cheia' && (partos.get(m.id) || []).map((e) => <PartoDetalhe key={e.id} e={e} c={criaPorNasc.get(e.id)} hoje={hoje} />)}
                   {l.ultimoParto
                     ? <div>Último parto: <b>{formatarDataBR(l.ultimoParto)}</b>{l.numeroCria ? ` (cria ${l.numeroCria})` : ''}</div>
                     : <div>Nenhum parto lançado para esta vaca.</div>}
