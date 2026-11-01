@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { Search, Lock, Save } from 'lucide-react';
 import {
-  CAMPOS_EDICAO_MATRIZ, formatarDataBR, ultimoPartoDe, numeroCriaUltimoParto, padronizarLote,
+  CAMPOS_EDICAO_MATRIZ, formatarDataBR, ultimoPartoDe, numeroCriaUltimoParto, padronizarLote, partosPorMatriz,
 } from '../logica.js';
 import { IndexTabs, Modal, Tag, Campo, Lead, Aviso } from '../ui.jsx';
 import { descreverEvento } from '../util.js';
@@ -120,16 +120,7 @@ export default function Rebanho({ dados, ownerMode, onSalvarMatriz, onSalvarTour
   }, [dados.matrizes, filtro, busca]);
 
   // todos os partos de cada vaca, do mais recente para o mais antigo (a cria de cada parto fica na mesma linha)
-  const partosPorVaca = useMemo(() => {
-    const mapa = new Map();
-    dados.eventos.forEach((e) => {
-      if (e.tipo !== 'nascimento' || !e.matrizId || !e.data) return;
-      if (!mapa.has(e.matrizId)) mapa.set(e.matrizId, []);
-      mapa.get(e.matrizId).push(e);
-    });
-    mapa.forEach((l) => l.sort((a, b) => b.data.localeCompare(a.data) || String(a.brincoBezerro || '').localeCompare(String(b.brincoBezerro || ''), 'pt-BR', { numeric: true })));
-    return mapa;
-  }, [dados.eventos]);
+  const partosPorVaca = useMemo(() => partosPorMatriz(dados.eventos), [dados.eventos]);
 
   const aberto = aberta ? dados.matrizes.find((m) => m.id === aberta) : null;
   const contar = (s) => dados.matrizes.filter((m) => m.status === s).length;

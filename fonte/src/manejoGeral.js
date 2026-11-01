@@ -1,10 +1,14 @@
-// manejoGeral.js (app 10.3): manejo geral do curral com conferência do lote.
+// manejoGeral.js (app 10.5): manejo geral do curral com conferência do lote.
 // Pour-on no lombo, brinco mosquicida, vermífugo, carrapaticida, vacina ou só conferência: data, lote, o que foi feito,
 // e a relação de animais do lote (começa DESMARCADA; marca quem passou). Animal que não é do lote entra mesmo assim,
 // com uma observação. Mudar o lote desse animal só acontece quando o PROPRIETÁRIO confirma.
+// 10.5: o brinco digitado é procurado em TUDO (matrizes, novilhas, crias, touros) e mostra a situação do animal na hora
+// (cheia, vazia, previsão de parto, último parto, cria ao pé). Brinco que não existe entra do mesmo jeito, anotado como
+// "não está no banco de dados nem em nenhum lote". Lote novo (sem animais ainda) também grava.
 // Só regras (sem tela). A tela fica em telas/ManejoGeral.jsx.
 import {
-  todayISO, formatarDataBR, novoId, listarCrias, acharMatrizPorBrinco, padronizarLote, mesmoLote, lotesExistentes, diasEntre,
+  todayISO, formatarDataBR, novoId, listarCrias, padronizarLote, mesmoLote, lotesExistentes, diasEntre,
+  previsaoPartoInfo, ultimoPartoDe, numeroCriaUltimoParto, rotuloSituacao,
 } from './logica.js';
 
 export const ETAPA_GERAL = 'Geral';
@@ -35,49 +39,194 @@ function criasAoPe(estado, lote, hoje) {
 }
 export const temCriasAoPe = (estado, lote, hoje) => !!lote && criasAoPe(estado, lote, hoje).length > 0;
 
-// Relação de animais do lote. Matriz: id da matriz; cria: "c:<id do nascimento>" (o mesmo das vacinas).
+// ---------------------------------------------------------------- situação do animal (cheia, vazia, previsão de parto)
+export const OBS_SEM_CADASTRO = 'Não está no banco de dados nem em nenhum lote';
+const nDias = (n) => `${n} ${Math.abs(n) === 1 ? 'dia' : 'dias'}`;
+const maiusc1 = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+const mesmoNumeroBrinco = (a, b) => {
+  const x = String(a ?? '').trim(); const y = String(b ?? '').trim();
+  if (!x || !y) return false;
+  return x === y || (/^\d+$/.test(x) && /^\d+$/.test(y) && Number(x) === Number(y));
+};
+
+// Índice para a busca (monta uma vez por mudança nos dados): crias com a mãe, crias mamando por mãe
+export function indiceBusca(estado, hoje) {
+  const crias = listarCrias(estado, hoje || todayISO());
+  const mamandoPorMae = new Map();
+  crias.filter((c) => c.situacao === 'mamando' && c.matrizId).forEach((c) => {
+    if (!mamandoPorMae.has(c.matrizId)) mamandoPorMae.set(c.matrizId, []);
+    mamandoPorMae.get(c.matrizId).push(c);
+  });
+  return { crias, mamandoPorMae };
+}
+
+// Situação de uma matriz no dia do manejo.
+// Volta { texto (frase completa), curto (linha da lista), nivel: 'good'|'soon'|'late'|'mut', previsao, dias, ultimoParto, diasDesdeParto }
+export function situacaoMatriz(estado, m, hoje, indice) {
+  hoje = hoje || todayISO();
+  const st = String(m.status || '');
+  const ult = ultimoPartoDe(m.id, estado.eventos);
+  const base = { status: st, previsao: '', dias: null, ultimoParto: ult, diasDesdeParto: ult ? diasEntre(ult, hoje) : null };
+  const cria = indice && (indice.mamandoPorMae.get(m.id) || [])[0];
+  const comCria = cria ? ` · cria ${cria.brinco || 's/ nº'}` : '';
+  const recria = m.destino && m.status !== 'Vendida' && m.status !== 'Morta' ? ` (recria: ${m.destino === 'Matriz' ? 'virar matriz' : m.destino.toLowerCase()})` : '';
+  if (st === 'Vendida' || st === 'Morta') {
+    const t = st === 'Morta' ? 'MORTA' : 'VENDIDA';
+    return { ...base, texto: `${t} (consta assim no cadastro)`, curto: t.toLowerCase(), nivel: 'late' };
+  }
+  if (st === 'Cheia') {
+    const info = previsaoPartoInfo(m.id, estado.eventos);
+    if (info && info.data) {
+      const dias = diasEntre(hoje, info.data);
+      const dt = formatarDataBR(info.data);
+      const r = { ...base, previsao: info.data, dias };
+      if (dias < 0) return { ...r, texto: `Cheia${recria}, parto previsto para ${dt}: já passou há ${nDias(-dias)}`, curto: `cheia · parto atrasado ${-dias} d (${dt})${comCria}`, nivel: 'late' };
+      if (dias === 0) return { ...r, texto: `Cheia${recria}, parto previsto para HOJE (${dt})`, curto: `cheia · parto previsto hoje${comCria}`, nivel: 'late' };
+      return { ...r, texto: `Cheia${recria}, parto previsto para ${dt} (em ${nDias(dias)})`, curto: `cheia · parto ${dt} (em ${dias} d)${comCria}`, nivel: dias <= 15 ? 'soon' : 'good' };
+    }
+    if (info && info.origem === 'toque-sem-dg') return { ...base, texto: `Cheia${recria}: toque de ${formatarDataBR(info.base)} sem os dias de gestação, então não tem data de parto`, curto: `cheia · sem data de parto${comCria}`, nivel: 'soon' };
+    return { ...base, texto: `Cheia${recria}, sem previsão de parto (nenhum toque nem IATF depois do último parto)`, curto: `cheia · sem previsão de parto${comCria}`, nivel: 'soon' };
+  }
+  if (st === 'Vazia') {
+    if (ult) return { ...base, texto: `Vazia${recria}, último parto em ${formatarDataBR(ult)} (há ${nDias(base.diasDesdeParto)})`, curto: `vazia · últ. parto ${formatarDataBR(ult)}${comCria}`, nivel: 'mut' };
+    return { ...base, texto: `Vazia${recria}, sem parto lançado`, curto: `vazia · sem parto lançado${comCria}`, nivel: 'mut' };
+  }
+  if (st === 'Descarte') return { ...base, texto: 'Descarte', curto: 'descarte', nivel: 'late' };
+  return { ...base, texto: maiusc1(st || 'Sem situação no cadastro') + recria, curto: (st || 'sem situação').toLowerCase(), nivel: 'mut' };
+}
+
+// Relação de animais do lote. Matriz: id da matriz; cria: "c:<id do nascimento>" (o mesmo das vacinas); touro: "t:<id>".
 export function animaisDoLote(estado, lote, opcoes) {
   const op = opcoes || {};
   if (!lote) return [];
   const hoje = op.hoje || todayISO();
-  const matrizes = estado.matrizes.filter((m) => ativa(m) && mesmoLote(m.lote, lote)).map((m) => ({
-    id: m.id, brinco: String(m.brinco), tipo: 'matriz', linha1: m.categoria || 'Matriz', linha2: [String(m.status || '').toLowerCase(), m.raca].filter(Boolean).join(' · '),
+  const indice = op.indice || indiceBusca(estado, hoje);
+  const matrizes = estado.matrizes.filter((m) => ativa(m) && mesmoLote(m.lote, lote)).map((m) => {
+    const s = situacaoMatriz(estado, m, hoje, indice);
+    return { id: m.id, brinco: String(m.brinco), tipo: 'matriz', linha1: m.categoria || 'Matriz', linha2: [s.curto, m.raca].filter(Boolean).join(' · '), nivel: s.nivel };
+  });
+  const touros = (estado.touros || []).filter((t) => t.tipo === 'Touro vivo' && t.situacao !== 'Inativo' && String(t.brinco || '').trim() && mesmoLote(t.lote, lote)).map((t) => ({
+    id: `t:${t.id}`, brinco: String(t.brinco).trim(), tipo: 'touro', linha1: 'Touro', linha2: [t.nome, t.raca].filter(Boolean).join(' · '), nivel: 'mut',
   }));
   const crias = op.incluirCrias ? criasAoPe(estado, lote, hoje).map((c) => ({
-    id: `c:${c.id}`, brinco: c.brinco || 's/ nº', tipo: 'cria', linha1: c.sexo === 'Fêmea' ? 'Bezerra ao pé' : 'Bezerro ao pé', linha2: `mãe ${c.maeBrinco || '?'}`,
+    id: `c:${c.id}`, brinco: c.brinco || 's/ nº', tipo: 'cria', linha1: c.sexo === 'Fêmea' ? 'Bezerra ao pé' : 'Bezerro ao pé', linha2: `mãe ${c.maeBrinco || '?'}`, nivel: 'mut',
   })) : [];
-  return [...matrizes, ...crias].sort((a, b) => ordemBrinco(a.brinco, b.brinco));
+  return [...matrizes, ...touros, ...crias].sort((a, b) => ordemBrinco(a.brinco, b.brinco));
 }
 
-// Brinco digitado que não está na relação do lote: entra com a observação do porquê.
-// Volta { animal, brinco, tipo, loteAtual, obs, mudar } — mudar = 'pendente' quando dá para trocar o lote da matriz.
+// ---------------------------------------------------------------- busca do brinco (matrizes, novilhas, crias, touros)
+// Uma "ficha" por animal que tem aquele brinco. Cada ficha já diz como ele se encaixa no lote do manejo:
+//   naLista = está na relação do lote (é só marcar); obs = o que anotar quando entra de fora; mudar = 'pendente' quando dá para trocar o lote.
+// op: { indice (de indiceBusca), esperados: Set com os ids da relação do lote }
+export function buscarAnimais(estado, lote, brinco, hoje, op) {
+  const b = String(brinco ?? '').trim();
+  if (!b) return [];
+  hoje = hoje || todayISO();
+  const o = op || {};
+  const indice = o.indice || indiceBusca(estado, hoje);
+  const naRel = (id) => !!(o.esperados && o.esperados.has(id));
+  const acha = (porBrinco) => {
+    const exatos = porBrinco((x) => String(x ?? '').trim() === b);
+    return exatos.length || !/^\d+$/.test(b) ? exatos : porBrinco((x) => mesmoNumeroBrinco(x, b));
+  };
+  const loteDe = (l) => padronizarLote(l, estado.matrizes);
+  const fichas = [];
+
+  acha((ok) => estado.matrizes.filter((m) => ok(m.brinco))).forEach((m) => {
+    const sit = situacaoMatriz(estado, m, hoje, indice);
+    const atual = loteDe(m.lote);
+    const ult = sit.ultimoParto ? `Último parto: ${formatarDataBR(sit.ultimoParto)}${numeroCriaUltimoParto(m.id, estado.eventos) ? ` (cria ${numeroCriaUltimoParto(m.id, estado.eventos)})` : ''}` : '';
+    const cria = (indice.mamandoPorMae.get(m.id) || [])[0];
+    const linhas = [
+      ult && m.status === 'Cheia' ? ult : '',
+      cria ? `Cria ao pé: ${cria.brinco || 's/ nº'} (${cria.sexo === 'Fêmea' ? 'fêmea' : 'macho'}, nasceu em ${formatarDataBR(cria.nascData)})` : '',
+      m.raca ? `Raça ${m.raca}` : '',
+    ].filter(Boolean);
+    const f = { chave: `m:${m.id}`, animal: m.id, brinco: String(m.brinco), tipo: 'matriz', titulo: m.categoria || 'Matriz', ativo: ativa(m), situacao: sit, loteAtual: atual, linhas, naLista: naRel(m.id), obs: '', mudar: '' };
+    if (!ativa(m)) f.obs = `Consta como ${m.status === 'Morta' ? 'MORTA' : 'VENDIDA'} no cadastro`;
+    else if (!f.naLista) {
+      if (mesmoLote(m.lote, lote)) { f.naLista = true; } // do lote, mas fora da relação (não deveria acontecer)
+      else { f.obs = `Não é do lote ${lote} (${atual ? `está em ${atual}` : 'sem lote no cadastro'})`; f.mudar = 'pendente'; }
+    }
+    fichas.push(f);
+  });
+
+  acha((ok) => indice.crias.filter((c) => c.brinco && ok(c.brinco) && !c.novilha)).forEach((c) => {
+    const mae = estado.matrizes.find((m) => m.id === c.matrizId);
+    const loteMae = mae ? loteDe(mae.lote) : '';
+    const rot = rotuloSituacao(c);
+    const sit = { texto: `${rot}${c.nascData ? `, nasceu em ${formatarDataBR(c.nascData)}` : ''}`, curto: rot.toLowerCase(), nivel: c.ativa ? 'good' : 'late', status: rot };
+    const linhas = [
+      `Mãe: ${c.maeBrinco || '?'}${loteMae ? ` (lote ${loteMae})` : ''}${c.orfa ? ' · órfã (a mãe morreu)' : ''}`,
+      c.pesoAtual ? `Último peso: ${String(c.pesoAtual).replace('.', ',')} kg em ${formatarDataBR(c.pesoData)}` : '',
+    ].filter(Boolean);
+    const f = { chave: `c:${c.id}`, animal: `c:${c.id}`, brinco: c.brinco, tipo: 'cria', titulo: c.sexo === 'Fêmea' ? 'Bezerra' : 'Bezerro', ativo: c.ativa, situacao: sit, loteAtual: loteMae, linhas, naLista: naRel(`c:${c.id}`), obs: '', mudar: '' };
+    if (!c.ativa) f.obs = `Consta como ${c.situacao === 'morto' ? (c.sexo === 'Fêmea' ? 'MORTA' : 'MORTO') : (c.sexo === 'Fêmea' ? 'VENDIDA' : 'VENDIDO')} no cadastro`;
+    else if (!f.naLista) {
+      if (c.situacao === 'mamando' && mae && mesmoLote(mae.lote, lote)) f.obs = `Cria ao pé deste lote (mãe ${c.maeBrinco || '?'})`;
+      else if (c.situacao === 'mamando') f.obs = `Cria de outro lote (mãe ${c.maeBrinco || '?'}${loteMae ? ` em ${loteMae}` : ''})`;
+      else f.obs = `${rot} (cria da mãe ${c.maeBrinco || '?'}), sem lote no cadastro`;
+    }
+    fichas.push(f);
+  });
+
+  acha((ok) => (estado.touros || []).filter((t) => t.tipo === 'Touro vivo' && ok(t.brinco))).forEach((t) => {
+    const inativo = t.situacao === 'Inativo';
+    const atual = loteDe(t.lote);
+    const sit = { texto: inativo ? 'Touro inativo' : 'Touro vivo', curto: 'touro', nivel: inativo ? 'late' : 'mut', status: 'Touro' };
+    const f = { chave: `t:${t.id}`, animal: `t:${t.id}`, brinco: String(t.brinco).trim(), tipo: 'touro', titulo: `Touro ${t.nome || ''}`.trim(), ativo: !inativo, situacao: sit, loteAtual: atual, linhas: [t.raca ? `Raça ${t.raca}` : ''].filter(Boolean), naLista: naRel(`t:${t.id}`), obs: '', mudar: '' };
+    if (inativo) f.obs = 'Touro marcado como inativo no cadastro';
+    else if (!f.naLista) f.obs = mesmoLote(t.lote, lote) ? `Touro do lote ${lote}` : `Touro de outro lote (${atual ? `está em ${atual}` : 'sem lote no cadastro'})`;
+    fichas.push(f);
+  });
+
+  // ativos primeiro, depois os que constam como vendidos/mortos
+  return fichas.sort((a, z) => Number(z.ativo) - Number(a.ativo));
+}
+
+// Brinco que não existe em lugar nenhum: entra do mesmo jeito, anotado como "sem cadastro"
+export function fichaSemCadastro(brinco) {
+  const b = String(brinco ?? '').trim();
+  return { chave: `x:${b}`, animal: '', brinco: b, tipo: '', titulo: 'Sem cadastro', ativo: true, situacao: { texto: 'Sem cadastro', curto: 'sem cadastro', nivel: 'late', status: 'Sem cadastro' }, loteAtual: '', linhas: [], naLista: false, obs: OBS_SEM_CADASTRO, mudar: '', semCadastro: true };
+}
+
+// Ficha -> item da lista "de fora" (é isso que vai gravado no manejo)
+export function itemFora(ficha) {
+  const x = { animal: ficha.animal || '', brinco: ficha.brinco, tipo: ficha.tipo || '', loteAtual: ficha.loteAtual || '', obs: ficha.obs || '', mudar: ficha.mudar || '' };
+  if (ficha.semCadastro) x.semCadastro = true;
+  else if (ficha.situacao && ficha.situacao.texto) x.sit = ficha.situacao.texto;
+  return x;
+}
+
+// Brinco digitado que não está na relação do lote: entra com a observação do porquê (primeiro animal achado).
+// Volta { animal, brinco, tipo, loteAtual, obs, mudar, sit? } — mudar = 'pendente' quando dá para trocar o lote da matriz.
 export function animalForaDoLote(estado, lote, brinco, hoje) {
   const b = String(brinco ?? '').trim();
   if (!b) return null;
-  const r = acharMatrizPorBrinco(estado.matrizes, b);
-  if (r.matriz) {
-    const m = r.matriz;
-    const atual = padronizarLote(m.lote, estado.matrizes);
-    if (!ativa(m)) {
-      return { animal: m.id, brinco: String(m.brinco), tipo: 'matriz', loteAtual: atual, obs: `Consta como ${m.status === 'Morta' ? 'MORTA' : 'VENDIDA'} no cadastro`, mudar: '' };
-    }
-    if (mesmoLote(m.lote, lote)) return { animal: m.id, brinco: String(m.brinco), tipo: 'matriz', loteAtual: atual, obs: '', mudar: '', doLote: true };
-    return {
-      animal: m.id, brinco: String(m.brinco), tipo: 'matriz', loteAtual: atual,
-      obs: `Não é do lote ${lote} (${atual ? `está em ${atual}` : 'sem lote no cadastro'})`, mudar: 'pendente',
-    };
-  }
-  const c = listarCrias(estado, hoje || todayISO()).find((x) => x.ativa && x.brinco && (x.brinco === b || (/^\d+$/.test(b) && /^\d+$/.test(x.brinco) && Number(x.brinco) === Number(b))));
-  if (c) {
-    const mae = estado.matrizes.find((m) => m.id === c.matrizId);
-    const loteMae = mae ? padronizarLote(mae.lote, estado.matrizes) : '';
-    if (mae && mesmoLote(mae.lote, lote)) return { animal: `c:${c.id}`, brinco: c.brinco, tipo: 'cria', loteAtual: loteMae, obs: `Cria ao pé deste lote (mãe ${c.maeBrinco || '?'})`, mudar: '' };
-    return {
-      animal: `c:${c.id}`, brinco: c.brinco, tipo: 'cria', loteAtual: loteMae,
-      obs: `Cria de outro lote (mãe ${c.maeBrinco || '?'}${loteMae ? ` em ${loteMae}` : ''})`, mudar: '',
-    };
-  }
-  return { animal: '', brinco: b, tipo: '', loteAtual: '', obs: 'Brinco não cadastrado', mudar: '' };
+  const f = buscarAnimais(estado, lote, b, hoje || todayISO())[0];
+  if (!f) return itemFora(fichaSemCadastro(b));
+  const x = itemFora(f);
+  if (f.naLista) { x.doLote = true; x.obs = ''; x.mudar = ''; }
+  return x;
+}
+
+// Os brincos que o usuário incluiu na mão (incluidos: [{ brinco, animal }]) viram itens "de fora" já conferidos com o lote
+// de agora. Se o lote mudou e o animal já é dele, ele deixa de ser "de fora" e passa a contar como marcado.
+// Volta { fora: [itens], marcadosExtra: [ids], fichas: [ficha por inclusão] }
+export function resolverInclusoes(estado, lote, incluidos, hoje, op) {
+  const o = op || {};
+  const indice = o.indice || indiceBusca(estado, hoje);
+  const fora = []; const marcadosExtra = []; const fichas = [];
+  (incluidos || []).forEach((inc) => {
+    const b = String(inc.brinco ?? '').trim();
+    if (!b) return;
+    const f = inc.animal ? buscarAnimais(estado, lote, b, hoje, { indice, esperados: o.esperados }).find((x) => x.animal === inc.animal) : null;
+    const ficha = f || fichaSemCadastro(b);
+    fichas.push(ficha);
+    if (ficha.naLista && ficha.animal) { marcadosExtra.push(ficha.animal); return; }
+    fora.push(itemFora(ficha));
+  });
+  return { fora, marcadosExtra, fichas };
 }
 
 // Grava o manejo geral.
@@ -101,6 +250,8 @@ export function aplicarManejoGeral(estado, form, opcoes) {
   const aprovar = new Set(form.dono ? form.aprovar || [] : []);
   const foraFinal = fora.map((f) => {
     const x = { animal: f.animal || '', brinco: String(f.brinco), tipo: f.tipo || '', loteAtual: f.loteAtual || '', obs: f.obs || '', mudar: f.mudar || '' };
+    if (f.sit) x.sit = String(f.sit); // situação do animal no dia do manejo (cheia, vazia, previsão de parto...)
+    if (f.semCadastro || !f.animal) { x.semCadastro = true; if (!x.obs) x.obs = OBS_SEM_CADASTRO; }
     if (x.mudar === 'pendente' && form.dono) {
       x.mudar = aprovar.has(x.animal) ? 'aprovada' : 'recusada';
       x.decididoEm = now.slice(0, 10);
@@ -189,6 +340,7 @@ export function conferencia(estado, e) {
     esperados: conferidos.length + ausentes.length, conferidos: conferidos.map((id) => ({ id, ...nome(id) })).sort((a, b) => ordemBrinco(a.brinco, b.brinco)),
     faltando: ausentes.map((id) => ({ id, ...nome(id) })).sort((a, b) => ordemBrinco(a.brinco, b.brinco)),
     fora: fora.slice().sort((a, b) => ordemBrinco(a.brinco, b.brinco)),
+    semCadastro: fora.filter(semCad).sort((a, b) => ordemBrinco(a.brinco, b.brinco)),
   };
 }
 
@@ -197,9 +349,13 @@ function nomesDosAnimais(estado) {
   estado.eventos.filter((e) => e.tipo === 'nascimento').forEach((n) => {
     mapa.set(`c:${n.id}`, { brinco: String(n.brincoBezerro ?? '').trim() || 's/ nº', tipo: n.sexo === 'Fêmea' ? 'Bezerra' : 'Bezerro' });
   });
+  (estado.touros || []).forEach((t) => { mapa.set(`t:${t.id}`, { brinco: String(t.brinco ?? '').trim() || '?', tipo: 'Touro' }); });
   return mapa;
 }
 
+// Sem cadastro = brinco que não está no banco (os manejos antigos guardavam isso como animal vazio)
+export const semCad = (f) => !!f.semCadastro || !f.animal;
+const NOME_TIPO = { matriz: 'Matriz', cria: 'Cria', touro: 'Touro', '': 'Sem cadastro' };
 const textoMudar = (f) => (f.mudar === 'pendente' ? 'mudar de lote: esperando o proprietário' : f.mudar === 'aprovada' ? 'lote trocado (confirmado)' : f.mudar === 'recusada' ? 'continua no lote dela' : '');
 
 // Relatório (PDF) da conferência de um manejo
@@ -215,11 +371,17 @@ export function relatorioConferencia(estado, manejoId) {
       { rotulo: 'Esperados no lote', valor: c.esperados },
       { rotulo: 'Conferidos', valor: c.conferidos.length },
       { rotulo: 'Faltando', valor: c.faltando.length },
-      { rotulo: 'De outro lote ou sem cadastro', valor: c.fora.length },
+      { rotulo: 'De outro lote', valor: c.fora.length - c.semCadastro.length },
+      { rotulo: 'Sem cadastro', valor: c.semCadastro.length },
     ],
     secoes: [
       { titulo: 'Faltando (não passaram no curral)', colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'tipo', label: 'Animal' }], linhas: c.faltando },
-      { titulo: 'De outro lote ou sem cadastro', colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'obs', label: 'Observação' }, { k: 'sit', label: 'Lote' }], linhas: c.fora.map((f) => ({ ...f, sit: textoMudar(f) })) },
+      {
+        titulo: 'De outro lote (passaram no curral)',
+        colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'animalSit', label: 'Animal e situação' }, { k: 'obs', label: 'Observação' }, { k: 'sit', label: 'Lote' }],
+        linhas: c.fora.filter((f) => !semCad(f)).map((f) => ({ ...f, animalSit: [NOME_TIPO[f.tipo] || '', f.sit].filter(Boolean).join(' · '), sit: textoMudar(f) })),
+      },
+      { titulo: 'Sem cadastro (não estão no banco de dados nem em nenhum lote)', colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'obs', label: 'Observação' }], linhas: c.semCadastro },
       { titulo: 'Conferidos', colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'tipo', label: 'Animal' }], linhas: c.conferidos },
     ],
   };

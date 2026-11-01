@@ -1,7 +1,7 @@
-// Tela "Parto": previsão de parto das cheias e situação das vazias, em formato de livro-caixa.
+// Tela "Parto": previsão de parto das cheias e, nas vazias, todos os partos de cada vaca com as crias (livro-caixa).
 import React, { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import { linhasPrevisao, formatarDataBR, PERIODO_GESTACAO_DIAS } from '../logica.js';
+import { linhasPrevisao, formatarDataBR, PERIODO_GESTACAO_DIAS, partosPorMatriz, listarCrias, rotuloSituacao, diasEntre } from '../logica.js';
 import { IndexTabs, Aviso } from '../ui.jsx';
 import { aplicacoesPorAnimal, situacaoVacinaVaca, manejoConfirmacaoVacina } from '../manejo.js';
 
@@ -49,6 +49,28 @@ function VacinaCheia({ m, sit, hoje, dados, onGravarLote }) {
   );
 }
 
+// Uma linha por parto: data, há quantos dias e tudo que se sabe da cria (brinco, sexo, situação, pai, pesos)
+function PartoDetalhe({ e, c, hoje }) {
+  const natimorto = e.resultadoParto === 'Natimorto';
+  const sexo = e.sexo === 'Fêmea' ? 'fêmea' : e.sexo === 'Macho' ? 'macho' : '';
+  const pesoNascer = String(e.pesoNascer ?? '').trim();
+  const partes = [];
+  if (natimorto) partes.push(<b key="n" className="late">natimorto</b>);
+  else partes.push(<span key="b">cria <b>{e.brincoBezerro || 's/ nº'}</b></span>);
+  if (sexo) partes.push(<span key="s">{sexo}</span>);
+  if (c && !natimorto) partes.push(<span key="st" data-testid="parto-cria-situacao">{rotuloSituacao(c).toLowerCase()}{c.orfa ? ' (órfã)' : ''}</span>);
+  if (c && c.origem && c.origem.rotulo && c.origem.origem !== 'Sem mãe') partes.push(<span key="o">{c.origem.rotulo}</span>);
+  if (pesoNascer) partes.push(<span key="pn">nasceu com {pesoNascer.replace('.', ',')} kg</span>);
+  if (c && c.pesoAtual && c.pesoData !== e.data) partes.push(<span key="pa">último peso {String(c.pesoAtual).replace('.', ',')} kg ({formatarDataBR(c.pesoData)})</span>);
+  if (e.tipoParto && e.tipoParto !== 'Normal') partes.push(<span key="tp">parto {String(e.tipoParto).toLowerCase()}</span>);
+  return (
+    <div className="parto-lin" data-testid="parto-lin">
+      <b className="m">{formatarDataBR(e.data)}</b> <span className="mut">(há {diasEntre(e.data, hoje)} dias)</span>
+      <div className="parto-cria">{partes.map((x, i) => <React.Fragment key={i}>{i ? ' · ' : ''}{x}</React.Fragment>)}</div>
+    </div>
+  );
+}
+
 export default function Parto({ dados, hoje, onLancar, onGravarLote }) {
   const [aba, setAba] = useState('Cheia');
   const [busca, setBusca] = useState('');
@@ -56,7 +78,15 @@ export default function Parto({ dados, hoje, onLancar, onGravarLote }) {
 
   const todasCheias = useMemo(() => linhasPrevisao(dados.matrizes, dados.eventos, 'Cheia', hoje, ''), [dados, hoje]);
   const nVazias = dados.matrizes.filter((m) => m.status === 'Vazia').length;
-  const linhas = useMemo(() => linhasPrevisao(dados.matrizes, dados.eventos, aba, hoje, busca), [dados, aba, hoje, busca]);
+  // Vazias: todos os partos de cada vaca, com a cria de cada parto. A busca acha pelo brinco da vaca ou da cria.
+  const partos = useMemo(() => partosPorMatriz(dados.eventos), [dados.eventos]);
+  const criaPorNasc = useMemo(() => (aba === 'Vazia' ? new Map(listarCrias(dados, hoje).map((c) => [c.id, c])) : new Map()), [dados, hoje, aba]);
+  const linhas = useMemo(() => {
+    if (aba !== 'Vazia') return linhasPrevisao(dados.matrizes, dados.eventos, aba, hoje, busca);
+    const q = busca.trim().toLowerCase();
+    return linhasPrevisao(dados.matrizes, dados.eventos, aba, hoje, '').filter((l) => !q || String(l.matriz.brinco).toLowerCase().includes(q)
+      || (partos.get(l.matriz.id) || []).some((e) => String(e.brincoBezerro || '').toLowerCase().includes(q)));
+  }, [dados, aba, hoje, busca, partos]);
 
   const atrasadas = todasCheias.filter((l) => l.dias !== null && l.dias < 0).length;
   const porVir = todasCheias.filter((l) => l.dias !== null && l.dias >= 0).length;
@@ -64,6 +94,7 @@ export default function Parto({ dados, hoje, onLancar, onGravarLote }) {
   const vaziasSemParto = useMemo(() => linhasPrevisao(dados.matrizes, dados.eventos, 'Vazia', hoje, '').filter((l) => !l.ultimoParto).length, [dados, hoje]);
 
   const cols = '84px minmax(0,1fr) 78px 54px';
+  const vazias = aba === 'Vazia';
   const cacheVac = useMemo(() => aplicacoesPorAnimal(dados), [dados]);
   const vacinaDe = (m) => situacaoVacinaVaca(dados, m, hoje, cacheVac);
   const pendVac = aba === 'Cheia' ? todasCheias.filter((l) => vacinaDe(l.matriz).pendente).length : 0;
@@ -83,7 +114,7 @@ export default function Parto({ dados, hoje, onLancar, onGravarLote }) {
       <section className="sheet">
         <label className="search">
           <Search />
-          <input placeholder="Buscar pelo brinco" aria-label="Buscar pelo brinco" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <input placeholder={vazias ? 'Buscar pelo brinco da vaca ou da cria' : 'Buscar pelo brinco'} aria-label="Buscar pelo brinco" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </label>
 
         <div className="bar-sum">
@@ -102,17 +133,51 @@ export default function Parto({ dados, hoje, onLancar, onGravarLote }) {
           )}
         </div>
 
-        <div className="led-h" style={{ '--cols': cols }}>
+        <div className={`led-h${vazias ? ' cols-reb' : ''}`} style={vazias ? undefined : { '--cols': cols }}>
           <span>Brinco</span><span>Categoria</span>
-          <span>{aba === 'Cheia' ? 'Previsão' : 'Últ. parto'}</span>
-          <span className="r">{aba === 'Cheia' ? 'Dias' : 'Há (d)'}</span>
+          <span>{vazias ? 'Partos' : 'Previsão'}</span>
+          <span className="r">{vazias ? 'Crias' : 'Dias'}</span>
         </div>
 
         {linhas.length === 0 && (
           <div className="empty">{busca ? 'Nenhuma matriz com esse brinco aqui.' : `Nenhuma matriz ${aba === 'Cheia' ? 'cheia' : 'vazia'}.`}</div>
         )}
 
-        {linhas.map((l) => {
+        {vazias && linhas.map((l) => {
+          const m = l.matriz;
+          const ps = partos.get(m.id) || [];
+          const antes = parseInt(m.partosAnteriores, 10) || 0;
+          const aberto = aberta === m.id;
+          return (
+            <React.Fragment key={m.id}>
+              <button className="led-r cols-reb" aria-expanded={aberto} onClick={() => setAberta(aberto ? null : m.id)} data-testid={`vazia-${m.brinco}`}>
+                <span className="b">{m.brinco}</span>
+                <span className="two"><b>{m.categoria}</b><span>{[m.raca, m.lote].filter(Boolean).join(' · ') || '—'}</span>
+                  <span className="quebra">{l.diasDesdeParto === null ? 'sem parto lançado' : `último parto há ${l.diasDesdeParto} dias`}</span>
+                </span>
+                <span className="reb-lista" data-testid="parto-datas">
+                  {ps.length === 0 && !antes && <span className="mut">—</span>}
+                  {ps.map((e) => <span key={e.id}>{formatarDataBR(e.data)}</span>)}
+                  {antes > 0 && <span className="mut" title="Partos antes de entrar na fazenda">+{antes} antes</span>}
+                </span>
+                <span className="reb-lista r" data-testid="parto-crias">
+                  {ps.length === 0 && !antes && <span className="mut">—</span>}
+                  {ps.map((e) => <span key={e.id} className={e.resultadoParto === 'Natimorto' || !e.brincoBezerro ? 'mut' : ''}>{e.resultadoParto === 'Natimorto' ? 'natim.' : e.brincoBezerro || 's/ nº'}</span>)}
+                  {antes > 0 && <span>&nbsp;</span>}
+                </span>
+              </button>
+              {aberto && (
+                <div className="detalhe" data-testid="vazia-detalhe">
+                  {ps.length === 0 && !antes && <div>Nenhum parto lançado para esta vaca.</div>}
+                  {ps.map((e) => <PartoDetalhe key={e.id} e={e} c={criaPorNasc.get(e.id)} hoje={hoje} />)}
+                  {antes > 0 && <div className="mut" style={{ marginTop: 6 }}>Mais {antes} parto(s) antes de entrar na fazenda (sem data lançada).</div>}
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+
+        {!vazias && linhas.map((l) => {
           const m = l.matriz;
           const dd = aba === 'Cheia' ? textoDias(l.dias) : { t: l.diasDesdeParto === null ? '—' : String(l.diasDesdeParto), c: 'mut' };
           const data = aba === 'Cheia' ? l.previsao : l.ultimoParto;

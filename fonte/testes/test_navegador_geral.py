@@ -1,4 +1,4 @@
-# Manejo > Geral (app 10.3) no navegador: funcionário faz o manejo no celular (lote, manejo, crias ao pé, marca quem passou,
+# Manejo > Geral (app 10.5) no navegador: funcionário faz o manejo no celular (lote, manejo, crias ao pé, marca quem passou,
 # brinco de fora entra com observação), rascunho não se perde, conferência + PDF, pedido de mudança de lote vai para o
 # proprietário confirmar; proprietário gravando confirma na hora; sem internet; ficha da vaca e relatório.
 import os, json, sys, urllib.request, datetime
@@ -37,7 +37,7 @@ with sync_playwright() as p:
     ir = lambda n: pg.get_by_role('navigation', name='Telas (celular)').get_by_role('button', name=n).click()
     aba = lambda n: pg.get_by_role('tab', name=n).first.click()
     def marcar(brinco):
-        pg.get_by_label('Brinco para marcar').fill(str(brinco)); pg.get_by_label('Brinco para marcar').press('Enter')
+        pg.get_by_label('Brinco para conferir').fill(str(brinco)); pg.get_by_label('Brinco para conferir').press('Enter')
     pg.goto(BASE + '/'); pg.wait_for_selector('.foot-note'); pg.wait_for_timeout(3000)
     e0 = estado()
     paridas = sorted([m for m in e0['matrizes'] if m['lote'] == 'Paridas'], key=lambda m: int(m['brinco']))
@@ -57,22 +57,43 @@ with sync_playwright() as p:
         assert 'ao pé' in txt and 'mãe' in txt, txt[:300]
         expect(pg.get_by_test_id('contador')).to_contain_text('0 de')
 
+    @teste('Lista do lote mostra a situação de cada animal (cheia, vazia, previsão de parto)')
+    def _():
+        txt = pg.get_by_test_id('lista-marcar').inner_text().lower()
+        assert 'vazia · últ. parto' in txt, txt[:400]
+        assert 'cheia · parto' in txt and ('em ' in txt), txt[:400]
+
+    @teste('Digitar o brinco mostra a ficha na hora (sem Enter) e o botão marca o animal')
+    def _():
+        m = paridas[1]
+        pg.get_by_label('Brinco para conferir').fill(str(m['brinco']))
+        ficha = pg.get_by_test_id(f"ficha-m:{m['id']}"); ficha.wait_for()
+        t = ficha.inner_text()
+        assert str(m['brinco']) in t and 'Lote atual: Paridas' in t and 'Está na lista do lote Paridas' in t, t
+        assert m['status'] in pg.get_by_test_id('ficha-situacao').inner_text()
+        pg.screenshot(path=os.path.join(SAIDA, 'geral_ficha.png'))
+        ficha.get_by_test_id('ficha-acao').click()
+        expect(pg.get_by_test_id('msg-marcar')).to_contain_text(f"{m['brinco']} marcada")
+        expect(pg.get_by_label('Brinco para conferir')).to_have_value('')
+        expect(pg.get_by_role('button', name=f"Desmarcar {m['brinco']}")).to_be_visible()
+
     @teste('Marca quem passou (tocando e digitando), brinco de outro lote e sem cadastro entram com observação')
     def _():
         for m in paridas[2:]: marcar(m['brinco'])
-        pg.get_by_role('button', name=f"Marcar {paridas[1]['brinco']}").click()
         marcar(solteira['brinco'])
         expect(pg.get_by_test_id('msg-marcar')).to_contain_text('Não é do lote Paridas (está em Solteiras)')
         marcar('99999')
+        expect(pg.get_by_test_id('msg-marcar')).to_contain_text('Não está no banco de dados nem em nenhum lote')
         fora = pg.get_by_test_id('fora-lote').inner_text()
-        assert 'Brinco não cadastrado' in fora and solteira['brinco'] in fora and 'proprietário confirmar' in fora, fora
+        assert 'sem cadastro' in fora.lower() and 'nem em nenhum lote' in fora and solteira['brinco'] in fora and 'proprietário confirmar' in fora, fora
+        assert solteira['status'] in pg.get_by_test_id(f"fora-{solteira['brinco']}").inner_text(), fora
 
     @teste('Rascunho: recarregar a página não perde nada')
     def _():
         pg.reload(); pg.wait_for_selector('.foot-note'); ir('Manejo'); aba('Geral')
         pg.get_by_test_id('geral-form').wait_for()
         assert pg.locator('#mg-desc').input_value() == 'Brinco mosquicida'
-        assert 'Brinco não cadastrado' in pg.get_by_test_id('fora-lote').inner_text()
+        assert 'nem em nenhum lote' in pg.get_by_test_id('fora-lote').inner_text()
         pg.screenshot(path=os.path.join(SAIDA, 'geral_form.png'), full_page=False)
 
     @teste('Gravar: conferência mostra esperados, conferidos, faltando e de fora; lote NÃO muda sem o proprietário')
@@ -87,7 +108,8 @@ with sync_playwright() as p:
         assert g['lote'] == 'Paridas' and g['descricao'] == 'Brinco mosquicida' and g['responsavel'] == 'João'
         fora = json.loads(g['foraDoLote'])
         assert [f['mudar'] for f in fora if f['animal'] == solteira['id']] == ['pendente'], fora
-        assert any(f['obs'] == 'Brinco não cadastrado' for f in fora)
+        assert any(f['obs'] == 'Não está no banco de dados nem em nenhum lote' and f.get('semCadastro') for f in fora)
+        assert any(f['animal'] == solteira['id'] and f.get('sit') for f in fora), fora
         assert matriz(estado(), solteira['brinco'])['lote'] == 'Solteiras'
         pg.screenshot(path=os.path.join(SAIDA, 'geral_conferencia.png'))
         with pg.expect_download() as d: pg.get_by_role('button', name='PDF da conferência').click()
@@ -155,6 +177,43 @@ with sync_playwright() as p:
         pg.get_by_role('tab', name='Manejos').first.click()
         t = pg.inner_text('body')
         assert 'Manejos gerais' in t and 'Brinco mosquicida' in t and 'Pasto da Grota' in t, t[:800]
+
+    @teste('Lote novo sem nenhum animal: brinco de outro lote e brinco sem cadastro entram, e o Gravar funciona')
+    def _():
+        outra = next(m for m in estado()['matrizes'] if m['lote'] == 'Solteiras')
+        antes = len(gerais(estado()))
+        ir('Manejo'); aba('Geral')
+        pg.get_by_role('button', name='Novo manejo').click()
+        pg.locator('#mg-lote').select_option('__outro__'); pg.locator('#mg-lote-novo').fill('Piquete Novo')
+        expect(pg.get_by_test_id('lote-sem-animais')).to_be_visible()
+        pg.get_by_role('button', name='Conferência', exact=True).click()
+        expect(pg.get_by_role('button', name='Gravar manejo')).to_be_disabled()
+        expect(pg.get_by_test_id('dica-gravar')).to_be_visible()
+        # brinco que existe em outro lote: a ficha mostra a situação e o botão inclui (sem precisar de Enter)
+        pg.get_by_label('Brinco para conferir').fill(str(outra['brinco']))
+        f1 = pg.get_by_test_id(f"ficha-m:{outra['id']}"); f1.wait_for()
+        assert 'Não é do lote Piquete Novo (está em Solteiras)' in f1.inner_text(), f1.inner_text()
+        f1.get_by_test_id('ficha-acao').click()
+        # brinco que não existe em lugar nenhum: aparece o aviso e o botão inclui
+        pg.get_by_label('Brinco para conferir').fill('88888')
+        sc = pg.get_by_test_id('ficha-sem-cadastro'); sc.wait_for()
+        assert 'nem em nenhum lote' in sc.inner_text()
+        pg.screenshot(path=os.path.join(SAIDA, 'geral_sem_cadastro.png'))
+        pg.get_by_test_id('incluir-sem-cadastro').click()
+        fora = pg.get_by_test_id('fora-lote').inner_text()
+        assert 'sem cadastro (1)' in fora.lower() and '88888' in fora and str(outra['brinco']) in fora, fora
+        expect(pg.get_by_role('button', name='Gravar manejo')).to_be_enabled()
+        pg.get_by_role('button', name='Gravar manejo').click()
+        conf = pg.get_by_test_id('conferencia'); conf.wait_for()
+        t = conf.inner_text()
+        assert 'Manejo gravado' in t and '1 brinco(s) sem cadastro' in t and '88888' in t and 'Piquete Novo' in t, t[:600]
+        esperar(lambda: len(gerais(estado())) == antes + 1, pg)
+        g = sorted(gerais(estado()), key=lambda x: x['createdAt'])[-1]
+        fo = json.loads(g['foraDoLote'])
+        assert g['lote'] == 'Piquete Novo' and len(fo) == 2, g
+        assert [x for x in fo if x['brinco'] == '88888'][0]['semCadastro'] is True
+        assert [x for x in fo if x['animal'] == outra['id']][0]['mudar'] == 'pendente'
+        pg.screenshot(path=os.path.join(SAIDA, 'geral_conferencia_nova.png'))
 
     @teste('Computador: tela Geral abre sem rolagem lateral e sem erros')
     def _():

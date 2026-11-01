@@ -1,4 +1,4 @@
-// Regras do manejo geral (app 10.3): lote padronizado, relação do lote com crias ao pé, animal de fora com observação,
+// Regras do manejo geral (app 10.5): lote padronizado, relação do lote com crias ao pé, animal de fora com observação,
 // mudança de lote só com o proprietário, conferência, relatórios, vacinas na ficha.
 import assert from 'assert';
 import { createRequire } from 'module';
@@ -49,7 +49,8 @@ t('brinco que não é do lote: entra com observação (outro lote, cria de outro
   const f = G.animalForaDoLote(d, loteP, outra.brinco, HOJE);
   assert.strictEqual(f.animal, outra.id); assert.strictEqual(f.mudar, 'pendente');
   assert.strictEqual(f.obs, 'Não é do lote Paridas (está em Solteiras)');
-  assert.strictEqual(G.animalForaDoLote(d, loteP, '99999', HOJE).obs, 'Brinco não cadastrado');
+  const sc = G.animalForaDoLote(d, loteP, '99999', HOJE);
+  assert.strictEqual(sc.obs, 'Não está no banco de dados nem em nenhum lote'); assert.strictEqual(sc.semCadastro, true); assert.strictEqual(sc.animal, '');
   const nascS = d.eventos.find((e) => e.tipo === 'nascimento' && e.brincoBezerro && d.matrizes.find((m) => m.id === e.matrizId && m.lote === 'Solteiras'));
   if (nascS) {
     const c = G.animalForaDoLote(d, loteP, nascS.brincoBezerro, HOJE);
@@ -81,7 +82,7 @@ t('funcionário grava: conferência com faltando e de fora; a mudança de lote f
   d = r.estado;
   assert.strictEqual(d.matrizes.find((m) => m.id === outra.id).lote, 'Solteiras');
   const c = G.conferencia(d, e);
-  assert.strictEqual(c.esperados, lista.length); assert.strictEqual(c.conferidos.length, lista.length - 2); assert.strictEqual(c.faltando.length, 2); assert.strictEqual(c.fora.length, 2);
+  assert.strictEqual(c.esperados, lista.length); assert.strictEqual(c.conferidos.length, lista.length - 2); assert.strictEqual(c.faltando.length, 2); assert.strictEqual(c.fora.length, 2); assert.strictEqual(c.semCadastro.length, 1);
   // o produto aparece nas aplicações do animal (ficha) — inclusive no de fora
   assert.ok((M.aplicacoesPorAnimal(d).get(outra.id) || []).some((a) => a.tipo === 'Brinco mosquicida'));
 });
@@ -115,8 +116,9 @@ t('lista de manejos, relatório da conferência (PDF) e relatório do ano', () =
   assert.strictEqual(l.length, 1); assert.strictEqual(l[0].lote, 'Paridas');
   const rel = G.relatorioConferencia(d, idFunc);
   assert.ok(rel.titulo.includes('20/10/26') && rel.titulo.includes('Paridas'), rel.titulo);
-  assert.deepStrictEqual(rel.resumo.map((x) => x.valor), [l[0].esperados, l[0].conferidos.length, 2, 2]);
-  assert.ok(rel.secoes[1].linhas.some((x) => x.obs === 'Brinco não cadastrado'));
+  assert.deepStrictEqual(rel.resumo.map((x) => x.valor), [l[0].esperados, l[0].conferidos.length, 2, 1, 1]);
+  assert.ok(rel.secoes[2].linhas.some((x) => x.obs === 'Não está no banco de dados nem em nenhum lote'));
+  assert.ok(rel.secoes[1].linhas.some((x) => /Matriz/.test(x.animalSit)));
   const ano = M.montarRelatorioApp('manejos', d, 2026, HOJE, { dono: false });
   assert.strictEqual(ano.secoes[0].linhas.length, 1); assert.strictEqual(ano.secoes[0].linhas[0].falt, 2);
   assert.ok(M.RELATORIOS_APP.find((x) => x.id === 'manejos').todos);
@@ -127,6 +129,89 @@ t('falta repetida: animal que faltou nos dois últimos manejos do lote', () => {
   const r = G.aplicarManejoGeral(d, { data: '2026-10-25', lote: loteP, descricao: 'Pour-on no lombo', esperados: lista.map((x) => x.id), marcados: lista.slice(1).map((x) => x.id) }, { id: 'g3' });
   const rep = G.faltasRepetidas(r.estado, loteP);
   assert.deepStrictEqual(rep.map((x) => x.id), [lista[0].id]);
+});
+
+// ---------------------------------------------------------------- 10.5: busca do brinco com a situação do animal
+t('busca: cheia mostra a previsão de parto com data e dias; vazia mostra o último parto; baixa avisa', () => {
+  const dd = base();
+  const cheia = dd.matrizes.find((m) => m.status === 'Cheia' && m.lote === 'Solteiras');
+  const [f] = G.buscarAnimais(dd, 'Paridas', cheia.brinco, HOJE);
+  assert.strictEqual(f.tipo, 'matriz'); assert.strictEqual(f.situacao.status, 'Cheia');
+  // toque de 09/05/2026 com 120 dias => concepção 09/01 => parto 21/10/2026 (285 dias): amanhã, em relação a 20/10
+  assert.strictEqual(f.situacao.previsao, '2026-10-21'); assert.strictEqual(f.situacao.dias, 1);
+  assert.ok(/Cheia, parto previsto para 21\/10\/26 \(em 1 dia\)/.test(f.situacao.texto), f.situacao.texto);
+  assert.strictEqual(f.situacao.nivel, 'soon');
+  assert.strictEqual(f.mudar, 'pendente'); assert.ok(/Não é do lote Paridas \(está em Solteiras\)/.test(f.obs));
+  const [g] = G.buscarAnimais(dd, 'Paridas', cheia.brinco, '2026-10-30');
+  assert.strictEqual(g.situacao.nivel, 'late'); assert.ok(/já passou há 9 dias/.test(g.situacao.texto), g.situacao.texto);
+
+  const paridaVazia = dd.matrizes.find((m) => m.id === 'm5'); // pariu em 12/03/2026 e está Vazia no exemplo
+  const [v] = G.buscarAnimais(dd, 'Paridas', paridaVazia.brinco, HOJE);
+  assert.strictEqual(v.situacao.status, 'Vazia'); assert.ok(/Vazia, último parto em 12\/03\/26 \(há 222 dias\)/.test(v.situacao.texto), v.situacao.texto);
+  assert.ok(v.linhas.some((l) => /^Cria ao pé: 6501/.test(l)), v.linhas.join(' | '));
+
+  const vend = { ...cheia, status: 'Vendida' };
+  const d2 = { ...dd, matrizes: dd.matrizes.map((m) => (m.id === cheia.id ? vend : m)) };
+  const [w] = G.buscarAnimais(d2, 'Paridas', cheia.brinco, HOJE);
+  assert.strictEqual(w.ativo, false); assert.ok(/VENDIDA/.test(w.obs)); assert.strictEqual(w.mudar, '');
+});
+
+t('busca: lista do lote traz a situação em cada linha', () => {
+  const lista = G.animaisDoLote(d, loteP, { hoje: HOJE });
+  assert.ok(lista.every((x) => x.linha2 && /cheia|vazia/.test(x.linha2)), lista.map((x) => x.linha2).join(' | '));
+  const cheiaNaLista = lista.find((x) => /^cheia · parto /.test(x.linha2));
+  assert.ok(cheiaNaLista && /\(em \d+ d\)|atrasado|hoje/.test(cheiaNaLista.linha2), cheiaNaLista && cheiaNaLista.linha2);
+});
+
+t('busca: cria (mamando), brinco que não existe, brinco repetido e touro', () => {
+  const dd = base();
+  const [c] = G.buscarAnimais(dd, 'Solteiras', '6501', HOJE);
+  assert.strictEqual(c.tipo, 'cria'); assert.strictEqual(c.animal, 'c:n1'); assert.ok(/Mamando|Desmamado/.test(c.situacao.texto), c.situacao.texto);
+  assert.ok(c.linhas.some((l) => /^Mãe: 3005/.test(l)));
+  assert.deepStrictEqual(G.buscarAnimais(dd, 'Paridas', '99999', HOJE), []);
+  assert.strictEqual(G.fichaSemCadastro('99999').obs, G.OBS_SEM_CADASTRO);
+  // dois animais com o mesmo brinco: mostra os dois (antes dizia "Brinco não cadastrado")
+  const rep = { ...dd, matrizes: [...dd.matrizes, { ...dd.matrizes[0], id: 'mdup', lote: 'Leiteiras' }] };
+  const duas = G.buscarAnimais(rep, 'Paridas', dd.matrizes[0].brinco, HOJE);
+  assert.strictEqual(duas.length, 2); assert.deepStrictEqual(duas.map((x) => x.animal).sort(), [dd.matrizes[0].id, 'mdup'].sort());
+  // número com zero na frente casa com o brinco
+  assert.strictEqual(G.buscarAnimais(dd, 'Paridas', '03001', HOJE).length, 1);
+  // touro vivo com brinco
+  const dt = { ...dd, touros: [...dd.touros, { id: 'tv1', nome: 'Trovão', raca: 'Nelore', tipo: 'Touro vivo', brinco: '7001', lote: 'Paridas', situacao: 'Ativo' }] };
+  const [tv] = G.buscarAnimais(dt, 'Solteiras', '7001', HOJE);
+  assert.strictEqual(tv.tipo, 'touro'); assert.strictEqual(tv.animal, 'tv1'.replace(/^/, 't:')); assert.ok(/Touro de outro lote \(está em Paridas\)/.test(tv.obs), tv.obs);
+  assert.ok(G.animaisDoLote(dt, 'Paridas', { hoje: HOJE }).some((x) => x.id === 't:tv1' && x.tipo === 'touro'));
+  assert.ok(G.buscarAnimais(dt, 'Paridas', '7001', HOJE, { esperados: new Set(['t:tv1']) })[0].naLista);
+});
+
+t('lote novo (sem nenhum animal): grava só com brincos de fora e sem cadastro, com a situação e a observação anotadas', () => {
+  const dd = base();
+  const cheia = dd.matrizes.find((m) => m.status === 'Cheia' && m.lote === 'Solteiras');
+  const inc = [{ brinco: cheia.brinco, animal: cheia.id }, { brinco: '88888', animal: '' }, { brinco: '88888', animal: '' }];
+  const res = G.resolverInclusoes(dd, 'Pasto da Grota', inc, HOJE, { esperados: new Set() });
+  assert.strictEqual(res.fora.length, 3); // a duplicata é tratada na tela; aqui o resolvedor só converte
+  assert.strictEqual(res.fora[0].mudar, 'pendente'); assert.ok(/Cheia, parto previsto/.test(res.fora[0].sit));
+  assert.strictEqual(res.fora[1].semCadastro, true); assert.strictEqual(res.fora[1].obs, G.OBS_SEM_CADASTRO);
+  assert.strictEqual(G.animaisDoLote(dd, 'Pasto da Grota', { hoje: HOJE }).length, 0);
+  const r = G.aplicarManejoGeral(dd, { data: HOJE, lote: 'Pasto da Grota', descricao: 'Conferência', esperados: [], marcados: [], fora: res.fora.slice(0, 2), dono: false, aprovar: [] }, { id: 'g9' });
+  assert.deepStrictEqual(r.erros, []);
+  const fora = JSON.parse(r.eventosNovos[0].foraDoLote);
+  assert.strictEqual(fora[0].mudar, 'pendente'); assert.ok(fora[0].sit); assert.strictEqual(fora[1].semCadastro, true);
+  assert.strictEqual(r.eventosNovos[0].presentes, cheia.id); // o sem cadastro não tem id: fica só no foraDoLote
+  const c = G.conferencia(r.estado, r.eventosNovos[0]);
+  assert.strictEqual(c.esperados, 0); assert.strictEqual(c.fora.length, 2); assert.strictEqual(c.semCadastro.length, 1);
+  const rel = G.relatorioConferencia(r.estado, 'g9');
+  assert.deepStrictEqual(rel.resumo.map((x) => x.valor), [0, 0, 0, 1, 1]);
+});
+
+t('lote muda depois de incluir: animal que passa a ser do lote vira marcado, não "de fora"', () => {
+  const dd = base();
+  const sol = dd.matrizes.find((m) => m.lote === 'Solteiras');
+  const inc = [{ brinco: sol.brinco, animal: sol.id }];
+  const emParidas = G.resolverInclusoes(dd, 'Paridas', inc, HOJE, { esperados: new Set() });
+  assert.strictEqual(emParidas.fora.length, 1);
+  const emSolteiras = G.resolverInclusoes(dd, 'Solteiras', inc, HOJE, { esperados: new Set(G.animaisDoLote(dd, 'Solteiras', { hoje: HOJE }).map((x) => x.id)) });
+  assert.strictEqual(emSolteiras.fora.length, 0); assert.deepStrictEqual(emSolteiras.marcadosExtra, [sol.id]);
 });
 
 console.log(`manejo geral: ${ok} ok`);

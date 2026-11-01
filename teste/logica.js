@@ -2,7 +2,7 @@
 // É usado por dois lados: o app (app.jsx) e a integração por foto (lançamentos em lote feitos pelo Claude).
 // Mexeu aqui = mudou nos dois, de propósito: uma única fonte da verdade para status, previsão e relatórios.
 
-export const VERSAO_APP = '10.4 (22/10/26)';
+export const VERSAO_APP = '10.5 (31/10/26)';
 export const VERSAO_MINIMA_SCRIPT = 12; // v12 = protocolos, manejos, touros completos (v11 = não duplica reenvio; v10 = aba Mortes)
 export const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
 
@@ -287,6 +287,19 @@ export function numeroCriaUltimoParto(matrizId, eventos) {
   if (!nascs.length) return '';
   const maisRecente = nascs.reduce((max, e) => (e.data > max.data ? e : max), nascs[0]);
   return maisRecente.brincoBezerro || '';
+}
+
+// Todos os partos lançados de cada matriz (nascimentos com a mãe e a data), do mais recente para o mais antigo.
+// Devolve Map(matrizId -> [evento de nascimento]). Usado no Rebanho e na tela Parto (aba Vazias).
+export function partosPorMatriz(eventos) {
+  const mapa = new Map();
+  (eventos || []).forEach((e) => {
+    if (e.tipo !== 'nascimento' || !e.matrizId || !e.data) return;
+    if (!mapa.has(e.matrizId)) mapa.set(e.matrizId, []);
+    mapa.get(e.matrizId).push(e);
+  });
+  mapa.forEach((l) => l.sort((a, b) => b.data.localeCompare(a.data) || String(a.brincoBezerro || '').localeCompare(String(b.brincoBezerro || ''), 'pt-BR', { numeric: true })));
+  return mapa;
 }
 
 // Previsão de parto (cálculo padrão): concepção = data do toque - dias de gestação (DG); parto = concepção + 285 dias.

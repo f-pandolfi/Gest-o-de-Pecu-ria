@@ -58,6 +58,25 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .marca-bt .two b{font-size:14.5px;font-weight:600}
 .marca-bt .two span{font-size:12.5px;color:var(--mut)}
 .marca-bt .two span.late{color:var(--late)}
+.marca-bt .two span.soon{color:var(--amber)}
+.marca-bt .two span.good{color:var(--green)}
+.ficha-busca{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;background:var(--s2);padding:10px 12px;margin:10px 0}
+.ficha-busca.good{border-left-color:var(--green)}
+.ficha-busca.soon{border-left-color:var(--amber)}
+.ficha-busca.late{border-left-color:var(--late)}
+.ficha-busca .fb-topo{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ficha-busca .fb-topo .b{font:600 22px var(--mono)}
+.ficha-busca .fb-tit{font-weight:600;font-size:15px}
+.ficha-busca .fb-sit{font-weight:600;font-size:15px;margin-top:4px;line-height:1.35}
+.ficha-busca .fb-sit.good{color:var(--green)}
+.ficha-busca .fb-sit.soon{color:var(--amber)}
+.ficha-busca .fb-sit.late{color:var(--late)}
+.ficha-busca .fb-lin{font-size:13.5px;color:var(--mut);margin-top:3px;line-height:1.4}
+.ficha-busca .fb-lin b{color:var(--tx);font-weight:600}
+.ficha-busca .fb-obs{font-size:13.5px;margin:6px 0 8px;line-height:1.35}
+.ficha-busca .fb-obs.good{color:var(--green)}
+.ficha-busca .fb-obs.soon{color:var(--amber)}
+.ficha-busca .fb-obs.late{color:var(--late)}
 .marca-extra{padding:0 12px 10px 56px}
 .marca-extra select{min-height:40px}
 .pills{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
@@ -94,6 +113,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .fora-top .b{font:600 16px var(--mono)}
 .fora-top .late{font-size:13.5px}
 .chk input{width:20px;height:20px;accent-color:var(--amber)}
+.chk-lin{display:flex;gap:10px;align-items:center;line-height:1.35;text-transform:none;letter-spacing:0;font-family:var(--body)}
+.chk-lin input{width:22px;height:22px;flex:none;accent-color:var(--amber)}
 .conf-pes-cols{display:grid;grid-template-columns:1fr;gap:14px}
 @media (min-width:700px){.conf-pes-cols{grid-template-columns:1fr 1fr}}
 .conf-pes-tit{font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-bottom:6px}
@@ -240,6 +261,14 @@ button.led-r:hover{background:var(--s2)}
 .reb-lista{display:flex;flex-direction:column;font:500 12px/17px var(--mono);white-space:nowrap}
 .led-r .reb-lista.r{align-items:flex-end;font:600 12px/17px var(--mono)}
 .reb-lista .mut{font-weight:400}
+.led-r .two span.quebra{white-space:normal;overflow:visible;text-overflow:clip}
+.parto-lin{padding:6px 0;border-bottom:1px solid var(--line2);font-size:14px}
+.parto-lin:last-of-type{border-bottom:none}
+.parto-lin .m{font:600 14px var(--mono)}
+.parto-lin .mut{color:var(--mut)}
+.parto-lin .parto-cria{color:var(--tx);margin-top:2px;line-height:1.4}
+.parto-lin .parto-cria b{font:600 14px var(--mono)}
+.parto-lin .parto-cria b.late{font-family:var(--body);color:var(--late)}
 .late{color:var(--late)} .soon{color:var(--amber)} .good{color:var(--green)} .mut{color:var(--mut)}
 .hide-s{display:none}
 @media (min-width:700px){.hide-s{display:block}}
