@@ -2,7 +2,7 @@
 // É usado por dois lados: o app (app.jsx) e a integração por foto (lançamentos em lote feitos pelo Claude).
 // Mexeu aqui = mudou nos dois, de propósito: uma única fonte da verdade para status, previsão e relatórios.
 
-export const VERSAO_APP = '10.6 (31/10/26)';
+export const VERSAO_APP = '10.7 (31/10/26)';
 export const VERSAO_MINIMA_SCRIPT = 12; // v12 = protocolos, manejos, touros completos (v11 = não duplica reenvio; v10 = aba Mortes)
 export const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
 
@@ -1409,15 +1409,20 @@ export function postsDeMudancas(mudancas) {
   (mudancas.eventos || []).forEach((m) => { if (!porTipo.has(m.tipo)) porTipo.set(m.tipo, []); porTipo.get(m.tipo).push({ id: m.id, campos: m.campos }); });
   porTipo.forEach((itens, tipo) => posts.push({ action: 'atualizarCampos', tipo, itens }));
   if ((mudancas.matrizes || []).length) posts.push({ action: 'upsertMatrizes', matrizes: mudancas.matrizes });
+  // exclusão (script v14): manejo geral apagado da planilha, com cópia na aba Excluidos
+  const apagar = new Map();
+  (mudancas.excluir || []).forEach((m) => { if (!apagar.has(m.tipo)) apagar.set(m.tipo, []); apagar.get(m.tipo).push(m.id); });
+  apagar.forEach((ids, tipo) => posts.push({ action: 'excluirEventos', tipo, ids }));
   return posts;
 }
 
 export function aplicarMudancasNoEstado(estado, mudancas) {
-  const camposPorId = new Map(mudancas.eventos.map((m) => [m.id, m.campos]));
-  const matPorId = new Map(mudancas.matrizes.map((m) => [m.id, m]));
+  const camposPorId = new Map((mudancas.eventos || []).map((m) => [m.id, m.campos]));
+  const matPorId = new Map((mudancas.matrizes || []).map((m) => [m.id, m]));
+  const apagar = new Set((mudancas.excluir || []).map((m) => m.id));
   return {
     ...estado,
-    eventos: estado.eventos.map((e) => (camposPorId.has(e.id) ? { ...e, ...camposPorId.get(e.id) } : e)),
+    eventos: estado.eventos.filter((e) => !apagar.has(e.id)).map((e) => (camposPorId.has(e.id) ? { ...e, ...camposPorId.get(e.id) } : e)),
     matrizes: estado.matrizes.map((m) => matPorId.get(m.id) || m),
   };
 }

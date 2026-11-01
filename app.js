@@ -15,12 +15,12 @@ import {
   CloudOff,
   AlertTriangle as AlertTriangle2,
   RefreshCw as RefreshCw2,
-  Trash2 as Trash26,
+  Trash2 as Trash27,
   Syringe as Syringe2
 } from "lucide-react";
 
 // src/logica.js
-var VERSAO_APP = "10.6 (31/10/26)";
+var VERSAO_APP = "10.7 (31/10/26)";
 var VERSAO_MINIMA_SCRIPT = 12;
 var PERIODO_GESTACAO_DIAS = 285;
 var TIPOS_FUNCIONARIO = ["nascimento", "desmama", "insumo", "descarte", "pesagem", "morte"];
@@ -1462,14 +1462,21 @@ function postsDeMudancas(mudancas2) {
   });
   porTipo.forEach((itens2, tipo) => posts.push({ action: "atualizarCampos", tipo, itens: itens2 }));
   if ((mudancas2.matrizes || []).length) posts.push({ action: "upsertMatrizes", matrizes: mudancas2.matrizes });
+  const apagar = /* @__PURE__ */ new Map();
+  (mudancas2.excluir || []).forEach((m) => {
+    if (!apagar.has(m.tipo)) apagar.set(m.tipo, []);
+    apagar.get(m.tipo).push(m.id);
+  });
+  apagar.forEach((ids, tipo) => posts.push({ action: "excluirEventos", tipo, ids }));
   return posts;
 }
 function aplicarMudancasNoEstado(estado, mudancas2) {
-  const camposPorId = new Map(mudancas2.eventos.map((m) => [m.id, m.campos]));
-  const matPorId = new Map(mudancas2.matrizes.map((m) => [m.id, m]));
+  const camposPorId = new Map((mudancas2.eventos || []).map((m) => [m.id, m.campos]));
+  const matPorId = new Map((mudancas2.matrizes || []).map((m) => [m.id, m]));
+  const apagar = new Set((mudancas2.excluir || []).map((m) => m.id));
   return {
     ...estado,
-    eventos: estado.eventos.map((e) => camposPorId.has(e.id) ? { ...e, ...camposPorId.get(e.id) } : e),
+    eventos: estado.eventos.filter((e) => !apagar.has(e.id)).map((e) => camposPorId.has(e.id) ? { ...e, ...camposPorId.get(e.id) } : e),
     matrizes: estado.matrizes.map((m) => matPorId.get(m.id) || m)
   };
 }
@@ -2685,7 +2692,17 @@ function animaisDoLote(estado, lote, opcoes) {
     linha2: `m\xE3e ${c.maeBrinco || "?"}`,
     nivel: "mut"
   })) : [];
-  return [...matrizes, ...touros, ...crias].sort((a, b) => ordemBrinco(a.brinco, b.brinco));
+  const todos = [...matrizes, ...touros, ...crias];
+  if (op.extras && op.extras.length) {
+    const tem = new Set(todos.map((x) => x.id));
+    const nomes = nomesDosAnimais(estado);
+    op.extras.filter((id) => !tem.has(id)).forEach((id) => {
+      const n = nomes.get(id);
+      if (!n) return;
+      todos.push({ id, brinco: n.brinco, tipo: id.startsWith("c:") ? "cria" : id.startsWith("t:") ? "touro" : "matriz", linha1: n.tipo, linha2: "anotado neste manejo (hoje n\xE3o est\xE1 na lista do lote)", nivel: "mut" });
+    });
+  }
+  return todos.sort((a, b) => ordemBrinco(a.brinco, b.brinco));
 }
 function buscarAnimais(estado, lote, brinco, hoje, op) {
   const b = String(brinco ?? "").trim();
@@ -2770,6 +2787,11 @@ function resolverInclusoes(estado, lote, incluidos, hoje, op) {
   (incluidos || []).forEach((inc) => {
     const b = String(inc.brinco ?? "").trim();
     if (!b) return;
+    if (inc.fixo) {
+      fora.push({ ...inc.fixo, manter: true });
+      if (inc.fixo.animal && o.esperados && o.esperados.has(inc.fixo.animal)) marcadosExtra.push(inc.fixo.animal);
+      return;
+    }
     const f = inc.animal ? buscarAnimais(estado, lote, b, hoje, { indice, esperados: o.esperados }).find((x) => x.animal === inc.animal) : null;
     const ficha = f || fichaSemCadastro(b);
     fichas.push(ficha);
@@ -2796,29 +2818,51 @@ function aplicarManejoGeral(estado, form, opcoes) {
   if (erros.length) return { erros };
   const aprovar = new Set(form.dono ? form.aprovar || [] : []);
   const notas = form.notas || {};
+  const anterior = form.anterior || [];
+  const efetivadaAntes = (chave2, nota) => {
+    const p = anterior.find((a) => a.nota && a.notaOk && chaveNota(a) === chave2);
+    return p && p.nota === nota ? p.notaOk : "";
+  };
+  const aprovadasAgora = /* @__PURE__ */ new Set();
   const foraFinal = fora.map((f) => {
-    const x = { animal: f.animal || "", brinco: String(f.brinco), tipo: f.tipo || "", loteAtual: f.loteAtual || "", obs: f.obs || "", mudar: f.mudar || "" };
-    if (f.sit) x.sit = String(f.sit);
-    if (f.semCadastro || !f.animal) {
-      x.semCadastro = true;
-      if (!x.obs) x.obs = OBS_SEM_CADASTRO;
+    let x;
+    if (f.manter) {
+      const { manter, nota: _n, notaOk: _o, ...resto } = f;
+      x = resto;
+    } else {
+      x = { animal: f.animal || "", brinco: String(f.brinco), tipo: f.tipo || "", loteAtual: f.loteAtual || "", obs: f.obs || "", mudar: f.mudar || "" };
+      if (f.sit) x.sit = String(f.sit);
+      if (f.semCadastro || !f.animal) {
+        x.semCadastro = true;
+        if (!x.obs) x.obs = OBS_SEM_CADASTRO;
+      }
     }
-    const nota = String(notas[chaveNota(x)] || "").trim();
-    if (nota) x.nota = nota;
+    const chave2 = chaveNota(x);
+    const nota = String(notas[chave2] || "").trim();
+    if (nota) {
+      x.nota = nota;
+      const ok = efetivadaAntes(chave2, nota);
+      if (ok) x.notaOk = ok;
+    }
     if (x.mudar === "pendente" && form.dono) {
+      if (f.manter && !aprovar.has(x.animal)) return x;
       x.mudar = aprovar.has(x.animal) ? "aprovada" : "recusada";
       x.decididoEm = now.slice(0, 10);
+      if (x.mudar === "aprovada") aprovadasAgora.add(x.animal);
     }
     return x;
   });
   const nomes = nomesDosAnimais(estado);
   const hojeRef = op.hoje || todayISO();
-  const comNota = esperados.filter((id2) => String(notas[id2] || "").trim()).map((id2) => {
+  const jaNaLista = new Set(foraFinal.map((f) => f.animal).filter(Boolean));
+  const comNota = esperados.filter((id2) => !jaNaLista.has(id2) && String(notas[id2] || "").trim()).map((id2) => {
     const n = nomes.get(id2) || { brinco: "?" };
     const m = estado.matrizes.find((x2) => x2.id === id2);
     const x = { animal: id2, brinco: String(n.brinco), tipo: id2.startsWith("c:") ? "cria" : id2.startsWith("t:") ? "touro" : "matriz", loteAtual: lote, obs: "", mudar: "", doLote: true };
     if (m) x.sit = situacaoMatriz(estado, m, hojeRef).texto;
     x.nota = String(notas[id2]).trim();
+    const ok = efetivadaAntes(id2, x.nota);
+    if (ok) x.notaOk = ok;
     return x;
   });
   const presentes = [.../* @__PURE__ */ new Set([...marcados, ...foraFinal.map((f) => f.animal).filter(Boolean)])];
@@ -2841,13 +2885,114 @@ function aplicarManejoGeral(estado, form, opcoes) {
     lote,
     foraDoLote: JSON.stringify([...foraFinal, ...comNota])
   };
-  const matrizesAlteradas = foraFinal.filter((f) => f.mudar === "aprovada").map((f) => estado.matrizes.find((m) => m.id === f.animal)).filter(Boolean).map((m) => ({ ...m, lote }));
+  const matrizesAlteradas = foraFinal.filter((f) => f.mudar === "aprovada" && aprovadasAgora.has(f.animal)).map((f) => estado.matrizes.find((m) => m.id === f.animal)).filter(Boolean).map((m) => ({ ...m, lote }));
   const porId = new Map(matrizesAlteradas.map((m) => [m.id, m]));
   return {
     estado: { ...estado, eventos: [...estado.eventos, manejo], matrizes: estado.matrizes.map((m) => porId.get(m.id) || m) },
     eventosNovos: [manejo],
     matrizesAlteradas,
     erros: []
+  };
+}
+function formDoManejo(estado, e) {
+  const anterior = foraDoLoteDe(e);
+  const notas = {};
+  anterior.forEach((f) => {
+    if (f.nota) notas[chaveNota(f)] = f.nota;
+  });
+  return {
+    editId: e.id,
+    data: String(e.data || "").slice(0, 10),
+    lote: e.lote || "",
+    descricao: e.descricao || "",
+    responsavel: e.responsavel || "",
+    aplicacoes: json(e.aplicacoes, []),
+    incluirCrias: String(e.manejoRef || "").includes("crias ao p\xE9"),
+    marcados: lista(e.presentes),
+    incluidos: anterior.filter((f) => !f.doLote).map((f) => ({ brinco: String(f.brinco), animal: f.animal || "", fixo: f })),
+    aprovar: [],
+    notas,
+    obs: e.observacoes || ""
+  };
+}
+var idsDoManejo = (e) => {
+  const deFora = new Set(foraDoLoteDe(e).filter((f) => !f.doLote && f.animal).map((f) => f.animal));
+  return [.../* @__PURE__ */ new Set([...lista(e && e.presentes), ...lista(e && e.ausentes)])].filter((id) => !deFora.has(id));
+};
+var canon = (v) => Array.isArray(v) ? `[${v.map(canon).join(",")}]` : v && typeof v === "object" ? `{${Object.keys(v).sort().map((k) => `${k}:${canon(v[k])}`).join(",")}}` : JSON.stringify(v ?? "");
+var CAMPOS_MANEJO = ["data", "lote", "descricao", "responsavel", "aplicacoes", "presentes", "ausentes", "observacoes", "manejoRef", "foraDoLote"];
+var mesmoCampo = (k, a, b) => {
+  if (k === "presentes" || k === "ausentes") return lista(a).sort().join(",") === lista(b).sort().join(",");
+  if (k === "aplicacoes" || k === "foraDoLote") return canon(json(a, [])) === canon(json(b, []));
+  if (k === "data") return String(a || "").slice(0, 10) === String(b || "").slice(0, 10);
+  return String(a ?? "") === String(b ?? "");
+};
+function editarManejoGeral(estado, id, form, opcoes) {
+  const e = estado.eventos.find((x) => x.id === id && ehManejoGeral(x));
+  if (!e) return { erros: ["N\xE3o achei esse manejo."] };
+  const dono = !!(opcoes && opcoes.dono);
+  const sem = { ...estado, eventos: estado.eventos.filter((x) => x.id !== id) };
+  const gravados = foraDoLoteDe(e);
+  let f2 = { ...form, dono, anterior: gravados };
+  if (!dono) {
+    const mesmo2 = (a, b) => String(a.brinco) === String(b.brinco) && (a.animal || "") === (b.animal || "");
+    const esperados = new Set(form.esperados || []);
+    const forasGravados = gravados.filter((f) => !f.doLote).map((f) => ({ ...f, manter: true }));
+    f2 = {
+      ...f2,
+      data: e.data,
+      lote: e.lote,
+      descricao: e.descricao,
+      responsavel: e.responsavel,
+      aplicacoes: json(e.aplicacoes, []),
+      observacoes: e.observacoes || "",
+      incluirCrias: String(e.manejoRef || "").includes("crias ao p\xE9"),
+      aprovar: [],
+      marcados: [.../* @__PURE__ */ new Set([...form.marcados || [], ...lista(e.presentes).filter((x) => esperados.has(x))])],
+      fora: [...forasGravados, ...(form.fora || []).filter((x) => !x.manter && !forasGravados.some((g) => mesmo2(g, x)))]
+    };
+  }
+  const r = aplicarManejoGeral(sem, f2, { ...opcoes || {}, id });
+  if (r.erros && r.erros.length) return { erros: r.erros };
+  const novo = { ...e, ...r.eventosNovos[0], id: e.id, createdAt: e.createdAt, tipo: "manejo", etapa: ETAPA_GERAL, protocoloId: e.protocoloId || "" };
+  if (!dono) novo.lote = e.lote;
+  const mudou = CAMPOS_MANEJO.filter((k) => !mesmoCampo(k, novo[k], e[k]));
+  if (!mudou.length && !r.matrizesAlteradas.length) return { erros: ["Nada foi alterado."] };
+  const campos = {};
+  mudou.forEach((k) => {
+    campos[k] = novo[k];
+  });
+  const porId = new Map(r.matrizesAlteradas.map((m) => [m.id, m]));
+  return {
+    erros: [],
+    evento: novo,
+    mudou,
+    estado: { ...estado, eventos: estado.eventos.map((x) => x.id === id ? novo : x), matrizes: estado.matrizes.map((m) => porId.get(m.id) || m) },
+    mudancas: { eventos: mudou.length ? [{ tipo: "manejo", id, campos }] : [], matrizes: r.matrizesAlteradas, excluir: [] }
+  };
+}
+function resumoExclusao(estado, id) {
+  const e = estado.eventos.find((x) => x.id === id && ehManejoGeral(x));
+  if (!e) return null;
+  const itens2 = foraDoLoteDe(e);
+  return {
+    data: e.data,
+    lote: e.lote || "",
+    descricao: e.descricao || "",
+    responsavel: e.responsavel || "",
+    animais: idsDoManejo(e).length + itens2.filter((f) => !f.doLote && !f.animal).length,
+    aprovadas: itens2.filter((f) => f.mudar === "aprovada").length,
+    pendentes: itens2.filter((f) => f.mudar === "pendente").length,
+    notasPendentes: itens2.filter((f) => f.nota && !f.notaOk).length
+  };
+}
+function excluirManejoGeral(estado, id) {
+  const resumo = resumoExclusao(estado, id);
+  if (!resumo) return { erro: "N\xE3o achei esse manejo." };
+  return {
+    resumo,
+    estado: { ...estado, eventos: estado.eventos.filter((x) => x.id !== id) },
+    mudancas: { eventos: [], matrizes: [], excluir: [{ tipo: "manejo", id }] }
   };
 }
 function pendenciasLote(estado) {
@@ -4765,7 +4910,7 @@ function Vacinas({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarConf
 
 // src/telas/ManejoGeral.jsx
 import React8, { useEffect as useEffect4, useMemo as useMemo8, useState as useState8 } from "react";
-import { Save as Save5, Loader2 as Loader25, FileDown as FileDown4, Plus as Plus5, X as X2, Check as Check4, ArrowLeft as ArrowLeft3, ClipboardCheck } from "lucide-react";
+import { Save as Save5, Loader2 as Loader25, FileDown as FileDown4, Plus as Plus5, X as X2, Check as Check4, ArrowLeft as ArrowLeft3, ClipboardCheck, Pencil as Pencil2, Trash2 as Trash24 } from "lucide-react";
 
 // src/telas/ManejoBusca.jsx
 import React7, { useMemo as useMemo7, useRef as useRef4, useState as useState7 } from "react";
@@ -4910,11 +5055,20 @@ var migrarRascunho = (r) => {
   const { fora, ...resto } = r;
   return resto;
 };
-function Conferencia({ dados, manejoId, msg, onVoltar }) {
+function Conferencia({ dados, manejoId, msg, onVoltar, ownerMode, onAbrir, onExcluir }) {
   const rel = useMemo8(() => relatorioConferencia(dados, manejoId), [dados, manejoId]);
   const e = dados.eventos.find((x) => x.id === manejoId);
   const rep = useMemo8(() => e ? faltasRepetidas(dados, e.lote) : [], [dados, e]);
+  const resumo = useMemo8(() => resumoExclusao(dados, manejoId), [dados, manejoId]);
   const [pdf, setPdf] = useState8(false);
+  const [confirmando, setConfirmando] = useState8(false);
+  const [erroExcluir, setErroExcluir] = useState8("");
+  const excluir = async () => {
+    const r = await onExcluir(manejoId);
+    if (r && !r.ok) {
+      setErroExcluir(r.msg);
+    }
+  };
   return /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "conferencia" }, /* @__PURE__ */ React8.createElement("button", { className: "btn quiet sm", onClick: onVoltar, style: { marginBottom: 10 } }, /* @__PURE__ */ React8.createElement(ArrowLeft3, { size: 15 }), " Voltar"), msg && /* @__PURE__ */ React8.createElement(Aviso, { tipo: "ok" }, msg), /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rel.titulo), rel.subtitulo && /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { marginTop: 0 } }, rel.subtitulo), /* @__PURE__ */ React8.createElement(Kpis, { itens: rel.resumo }), rep.length > 0 && /* @__PURE__ */ React8.createElement(Aviso, null, "Faltaram tamb\xE9m no manejo anterior deste lote: ", /* @__PURE__ */ React8.createElement("b", null, rep.map((x) => x.brinco).join(", ")), ". Vale procurar."), /* @__PURE__ */ React8.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" } }, /* @__PURE__ */ React8.createElement("button", { className: "btn ghost sm", disabled: pdf, onClick: async () => {
     setPdf(true);
     try {
@@ -4923,7 +5077,10 @@ function Conferencia({ dados, manejoId, msg, onVoltar }) {
       console.error(err);
     }
     setPdf(false);
-  } }, pdf ? /* @__PURE__ */ React8.createElement(Loader25, { size: 15, className: "spin" }) : /* @__PURE__ */ React8.createElement(FileDown4, { size: 15 }), " PDF da confer\xEAncia")), rel.secoes.filter((s) => s.linhas.length).map((s) => /* @__PURE__ */ React8.createElement(SecaoRelatorio, { key: s.titulo, secao: s })));
+  } }, pdf ? /* @__PURE__ */ React8.createElement(Loader25, { size: 15, className: "spin" }) : /* @__PURE__ */ React8.createElement(FileDown4, { size: 15 }), " PDF da confer\xEAncia"), onAbrir && /* @__PURE__ */ React8.createElement("button", { className: "btn sm", onClick: () => onAbrir(manejoId), "data-testid": "abrir-manejo" }, /* @__PURE__ */ React8.createElement(Pencil2, { size: 15 }), " ", ownerMode ? "Editar manejo" : "Incluir brincos e observa\xE7\xF5es"), ownerMode && onExcluir && /* @__PURE__ */ React8.createElement("button", { className: "btn quiet sm", onClick: () => {
+    setErroExcluir("");
+    setConfirmando(true);
+  }, "data-testid": "excluir-manejo" }, /* @__PURE__ */ React8.createElement(Trash24, { size: 15 }), " Excluir manejo")), confirmando && resumo && /* @__PURE__ */ React8.createElement(Aviso, null, /* @__PURE__ */ React8.createElement("div", { "data-testid": "confirmar-exclusao" }, /* @__PURE__ */ React8.createElement("b", null, "Excluir este manejo?"), " ", formatarDataBR(resumo.data), " \xB7 lote ", resumo.lote, " \xB7 ", resumo.descricao, ".", /* @__PURE__ */ React8.createElement("div", { style: { margin: "6px 0" } }, "Ele some do app e da planilha (a planilha guarda uma c\xF3pia na aba Excluidos).", resumo.pendentes ? ` ${resumo.pendentes} pedido(s) de mudan\xE7a de lote que ainda esperam voc\xEA somem junto.` : "", resumo.notasPendentes ? ` ${resumo.notasPendentes} observa\xE7\xE3o(\xF5es) ainda n\xE3o efetivada(s) somem junto.` : "", resumo.aprovadas ? ` ${resumo.aprovadas} mudan\xE7a(s) de lote j\xE1 confirmada(s) N\xC3O voltam: o animal continua no lote novo.` : ""), erroExcluir && /* @__PURE__ */ React8.createElement("div", { className: "late", role: "alert", style: { margin: "4px 0" } }, erroExcluir), /* @__PURE__ */ React8.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React8.createElement("button", { className: "btn sm", onClick: excluir, "data-testid": "confirmar-exclusao-sim" }, /* @__PURE__ */ React8.createElement(Trash24, { size: 15 }), " Sim, excluir"), /* @__PURE__ */ React8.createElement("button", { className: "btn quiet sm", onClick: () => setConfirmando(false) }, "N\xE3o, manter")))), rel.secoes.filter((s) => s.linhas.length).map((s) => /* @__PURE__ */ React8.createElement(SecaoRelatorio, { key: s.titulo, secao: s })));
 }
 function PendenciasLote({ dados, onDecidirLote }) {
   const pend = useMemo8(() => pendenciasLote(dados), [dados]);
@@ -4949,14 +5106,18 @@ function PendenciasNotas({ dados, onEfetivarNotas, onAbrir }) {
   };
   return /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "pendencias-notas", style: { marginBottom: 12 } }, /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Observa\xE7\xF5es para efetivar", /* @__PURE__ */ React8.createElement("small", null, pend.length)), msg && /* @__PURE__ */ React8.createElement(Aviso, { tipo: "ok", onClose: () => setMsg(null) }, msg.t, msg.desfazer && /* @__PURE__ */ React8.createElement("button", { type: "button", className: "btn quiet sm", style: { marginLeft: 8 }, onClick: desfazer, "data-testid": "desfazer-notas" }, "Desfazer")), pend.map((p) => /* @__PURE__ */ React8.createElement("div", { key: `${p.manejoId}-${p.idx}`, className: "pend-lote", "data-testid": `nota-pend-${p.brinco}` }, /* @__PURE__ */ React8.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React8.createElement("b", { className: "b" }, p.brinco), /* @__PURE__ */ React8.createElement("span", { className: "nota-quem" }, " ", p.semCadastro || !p.animal ? "sem cadastro" : p.sit || ""), /* @__PURE__ */ React8.createElement("div", { className: "l2 nota-corpo" }, p.nota), /* @__PURE__ */ React8.createElement("button", { type: "button", className: "l3 link-lin", onClick: () => onAbrir(p.manejoId) }, formatarDataBR(p.data), " \xB7 lote ", p.lote, " \xB7 ", p.descricao, p.responsavel ? ` \xB7 ${p.responsavel}` : "")), /* @__PURE__ */ React8.createElement("div", { className: "pend-bts" }, /* @__PURE__ */ React8.createElement("button", { className: "btn sm", onClick: () => efetivar([p]), "aria-label": `Efetivada a observa\xE7\xE3o do brinco ${p.brinco}` }, /* @__PURE__ */ React8.createElement(Check4, { size: 15 }), " Efetivada")))), pend.length > 1 && /* @__PURE__ */ React8.createElement("button", { className: "btn ghost sm", style: { marginTop: 10 }, onClick: () => efetivar(pend), "data-testid": "efetivar-todas" }, "Marcar todas como efetivadas (", pend.length, ")"));
 }
-function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, onGravarLote, onDecidirLote, onEfetivarNotas }) {
+function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, onGravarLote, onDecidirLote, onEfetivarNotas, onCorrigirManejo, onExcluirManejo }) {
   const [f, setF] = useState8(() => ({ ...vazio(hoje), ...migrarRascunho(lerLocal(CHAVE2, null)) || {} }));
   const [tela, setTela] = useState8(() => lerLocal(CHAVE2, null) ? "form" : "inicio");
   const [ver, setVer] = useState8(null);
   const [erro, setErro] = useState8("");
   const [gravando, setGravando] = useState8(false);
+  const [avisoInicio, setAvisoInicio] = useState8("");
+  const editando = tela === "form" && !!f.editId;
+  const eventoEdicao = editando ? dados.eventos.find((x) => x.id === f.editId) : null;
+  const soAcrescenta = editando && !ownerMode;
   useEffect4(() => {
-    if (tela === "form") gravarNoCelular(CHAVE2, f);
+    if (tela === "form" && !f.editId) gravarNoCelular(CHAVE2, f);
   }, [f, tela]);
   const set = (k, v) => {
     setErro("");
@@ -4967,21 +5128,54 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
   const comCrias = useMemo8(() => !!lote && temCriasAoPe(dados, lote, hoje), [dados, lote, hoje]);
   const incluirCrias = f.incluirCrias === null ? comCrias : f.incluirCrias && comCrias;
   const indice = useMemo8(() => indiceBusca(dados, hoje), [dados, hoje]);
-  const itens2 = useMemo8(() => animaisDoLote(dados, lote, { hoje, incluirCrias, indice }), [dados, lote, hoje, incluirCrias, indice]);
+  const mesmoLoteGravado = !!eventoEdicao && mesmoLote(lote, eventoEdicao.lote);
+  const extras = useMemo8(() => eventoEdicao && mesmoLoteGravado ? idsDoManejo(eventoEdicao) : void 0, [eventoEdicao, mesmoLoteGravado]);
+  const jaGravados = useMemo8(() => new Set(eventoEdicao ? String(eventoEdicao.presentes || "").split(",").filter(Boolean) : []), [eventoEdicao]);
+  const itens2 = useMemo8(() => animaisDoLote(dados, lote, { hoje, incluirCrias, indice, extras }), [dados, lote, hoje, incluirCrias, indice, extras]);
   const esperados = useMemo8(() => new Set(itens2.map((x) => x.id)), [itens2]);
   const incl = useMemo8(() => resolverInclusoes(dados, lote, f.incluidos, hoje, { indice, esperados }), [dados, lote, f.incluidos, hoje, indice, esperados]);
   const fora = incl.fora;
   const marcadosTodos = useMemo8(() => [.../* @__PURE__ */ new Set([...f.marcados.filter((id) => esperados.has(id)), ...incl.marcadosExtra])], [f.marcados, esperados, incl.marcadosExtra]);
   const marcados = useMemo8(() => new Set(marcadosTodos), [marcadosTodos]);
   const feitos = useMemo8(() => listarManejosGerais(dados), [dados]);
-  if (ver) return /* @__PURE__ */ React8.createElement(Conferencia, { dados, manejoId: ver.id, msg: ver.msg, onVoltar: () => setVer(null) });
+  const abrirEdicao = (id) => {
+    const e = dados.eventos.find((x) => x.id === id);
+    if (!e) return;
+    const base = formDoManejo(dados, e);
+    const existe = lotes.find((l) => mesmoLote(l.lote, base.lote));
+    setErro("");
+    setAvisoInicio("");
+    setF({ ...vazio(hoje), ...base, lote: existe ? existe.lote : OUTRO, loteDigitado: existe ? "" : base.lote });
+    setVer(null);
+    setTela("form");
+  };
+  const sairDaEdicao = () => {
+    const id = f.editId;
+    setErro("");
+    setF(vazio(hoje));
+    setTela("inicio");
+    setVer(id ? { id } : null);
+  };
+  const excluirManejo = async (id) => {
+    const r = await onExcluirManejo(id);
+    if (r && r.ok) {
+      setVer(null);
+      setAvisoInicio(r.msg);
+    }
+    return r;
+  };
+  if (ver) return /* @__PURE__ */ React8.createElement(Conferencia, { dados, manejoId: ver.id, msg: ver.msg, onVoltar: () => setVer(null), ownerMode, onAbrir: abrirEdicao, onExcluir: onExcluirManejo ? excluirManejo : null });
   if (tela === "inicio") {
-    return /* @__PURE__ */ React8.createElement(React8.Fragment, null, ownerMode && /* @__PURE__ */ React8.createElement(PendenciasLote, { dados, onDecidirLote }), ownerMode && onEfetivarNotas && /* @__PURE__ */ React8.createElement(PendenciasNotas, { dados, onEfetivarNotas, onAbrir: (id) => setVer({ id }) }), /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "geral-inicio" }, /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Manejo geral"), /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Pour-on, brinco mosquicida, verm\xEDfugo, vacina ou s\xF3 confer\xEAncia. Escolha o lote, marque quem passou no curral e o app mostra quem faltou e quem veio de outro lote."), scriptDesatualizado && /* @__PURE__ */ React8.createElement(Aviso, null, "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13). ", ownerMode ? "Implante a vers\xE3o nova do script." : "Avise o propriet\xE1rio."), /* @__PURE__ */ React8.createElement("button", { className: "btn wide", onClick: () => {
+    return /* @__PURE__ */ React8.createElement(React8.Fragment, null, avisoInicio && /* @__PURE__ */ React8.createElement(Aviso, { tipo: "ok", onClose: () => setAvisoInicio("") }, avisoInicio), ownerMode && /* @__PURE__ */ React8.createElement(PendenciasLote, { dados, onDecidirLote }), ownerMode && onEfetivarNotas && /* @__PURE__ */ React8.createElement(PendenciasNotas, { dados, onEfetivarNotas, onAbrir: (id) => setVer({ id }) }), /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "geral-inicio" }, /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Manejo geral"), /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Pour-on, brinco mosquicida, verm\xEDfugo, vacina ou s\xF3 confer\xEAncia. Escolha o lote, marque quem passou no curral e o app mostra quem faltou e quem veio de outro lote."), scriptDesatualizado && /* @__PURE__ */ React8.createElement(Aviso, null, "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13). ", ownerMode ? "Implante a vers\xE3o nova do script." : "Avise o propriet\xE1rio."), /* @__PURE__ */ React8.createElement("button", { className: "btn wide", onClick: () => {
       setF(vazio(hoje));
       setTela("form");
     }, disabled: scriptDesatualizado }, /* @__PURE__ */ React8.createElement(Plus5, { size: 17 }), " Novo manejo"), feitos.length > 0 && /* @__PURE__ */ React8.createElement(React8.Fragment, null, /* @__PURE__ */ React8.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Manejos feitos", /* @__PURE__ */ React8.createElement("small", null, feitos.length)), feitos.slice(0, 30).map((c) => /* @__PURE__ */ React8.createElement("button", { key: c.id, className: "card-prot", onClick: () => setVer({ id: c.id }), "data-testid": `manejo-${c.id}` }, /* @__PURE__ */ React8.createElement("b", null, formatarDataBR(c.data), " \xB7 ", c.descricao), /* @__PURE__ */ React8.createElement("div", { className: "l2" }, "Lote ", c.lote, " \xB7 ", c.conferidos.length, " de ", c.esperados, " conferidos", c.faltando.length ? ` \xB7 ${c.faltando.length} faltando` : "", c.fora.length ? ` \xB7 ${c.fora.length} de fora` : "", c.notas.length ? ` \xB7 ${c.notas.length} observa\xE7\xE3o(\xF5es)` : "", c.responsavel ? ` \xB7 ${c.responsavel}` : ""))))));
   }
   function toggle(id) {
+    if (soAcrescenta && jaGravados.has(id)) {
+      setErro("Quem j\xE1 foi marcado neste manejo s\xF3 o propriet\xE1rio pode desmarcar.");
+      return;
+    }
     set("marcados", marcados.has(id) ? f.marcados.filter((x) => x !== id) : [...f.marcados.filter((x) => esperados.has(x)), id]);
   }
   function incluir(ficha) {
@@ -5011,7 +5205,51 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
     const aps = m.aplicacao && !f.aplicacoes.some((a) => a.tipo === m.aplicacao) ? [...f.aplicacoes, { tipo: m.aplicacao, produto: "" }] : f.aplicacoes;
     setF((x) => ({ ...x, descricao: desc, aplicacoes: aps }));
   }
+  async function gravarEdicao() {
+    if (gravando) return;
+    const r = editarManejoGeral(dados, f.editId, {
+      data: f.data,
+      lote,
+      descricao: f.descricao,
+      responsavel: f.responsavel,
+      aplicacoes: f.aplicacoes,
+      esperados: itens2.map((x) => x.id),
+      marcados: marcadosTodos,
+      fora,
+      observacoes: f.obs,
+      incluirCrias,
+      aprovar: f.aprovar,
+      notas: f.notas
+    }, { dono: !!ownerMode, hoje });
+    if (r.erros && r.erros.length) {
+      setErro(r.erros.join(" "));
+      return;
+    }
+    setGravando(true);
+    const res = await onCorrigirManejo(r.mudancas, `edi\xE7\xE3o de manejo ${f.descricao}`);
+    setGravando(false);
+    if (!res || !res.ok) {
+      setErro(res && res.msg || "N\xE3o consegui gravar.");
+      return;
+    }
+    const e = r.evento;
+    const itensFora = JSON.parse(e.foraDoLote);
+    const pend = itensFora.filter((x) => x.mudar === "pendente").length;
+    const nNotas = itensFora.filter((x) => x.nota).length;
+    const msg = [
+      ownerMode ? "Manejo alterado." : "Brincos e observa\xE7\xF5es inclu\xEDdos no manejo.",
+      nNotas ? `${nNotas} observa\xE7\xE3o(\xF5es) por brinco no manejo.` : "",
+      r.mudancas.matrizes.length ? `${r.mudancas.matrizes.length} animal(is) mudado(s) para o lote ${e.lote}.` : "",
+      pend ? `${pend} mudan\xE7a(s) de lote esperando o propriet\xE1rio confirmar.` : "",
+      res.offline ? "Sem internet: ficou no celular e vai para a planilha quando a internet voltar." : "",
+      modoTeste ? "(modo teste: s\xF3 na tela)" : ""
+    ].filter(Boolean).join(" ");
+    setF(vazio(hoje));
+    setTela("inicio");
+    setVer({ id: e.id, msg });
+  }
   async function gravar() {
+    if (editando) return gravarEdicao();
     if (gravando) return;
     const r = aplicarManejoGeral(dados, {
       data: f.data,
@@ -5045,11 +5283,11 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
     }
     apagarLocal(CHAVE2);
     const pend = r.eventosNovos[0] ? JSON.parse(e.foraDoLote).filter((x) => x.mudar === "pendente").length : 0;
-    const semCad2 = JSON.parse(e.foraDoLote).filter((x) => x.semCadastro).length;
+    const nSem = JSON.parse(e.foraDoLote).filter(semCad).length;
     const nNotas = JSON.parse(e.foraDoLote).filter((x) => x.nota).length;
     const msg = [
       "Manejo gravado.",
-      semCad2 ? `${semCad2} brinco(s) sem cadastro anotado(s).` : "",
+      nSem ? `${nSem} brinco(s) sem cadastro anotado(s).` : "",
       nNotas ? `${nNotas} observa\xE7\xE3o(\xF5es) por brinco gravada(s)${ownerMode ? ' (ficam em "Observa\xE7\xF5es para efetivar")' : " para o propriet\xE1rio efetivar"}.` : "",
       r.matrizesAlteradas.length ? `${r.matrizesAlteradas.length} animal(is) mudado(s) para o lote ${lote}.` : "",
       pend ? `${pend} mudan\xE7a(s) de lote esperando o propriet\xE1rio confirmar.` : "",
@@ -5062,13 +5300,13 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
   }
   const nMarc = itens2.filter((x) => marcados.has(x.id)).length;
   const total = nMarc + fora.length;
-  const nSemCad = fora.filter((x) => x.semCadastro).length;
-  const foraOutro = fora.filter((x) => !x.semCadastro);
-  const semCadastro = fora.filter((x) => x.semCadastro);
-  return /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "geral-form" }, /* @__PURE__ */ React8.createElement("button", { className: "btn quiet sm", onClick: () => setTela("inicio"), style: { marginBottom: 10 } }, /* @__PURE__ */ React8.createElement(ArrowLeft3, { size: 15 }), " Voltar (o rascunho fica guardado)"), /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Novo manejo"), scriptDesatualizado && /* @__PURE__ */ React8.createElement(Aviso, null, "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13)."), /* @__PURE__ */ React8.createElement("div", { className: "grid2" }, /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-data" }, "Data"), /* @__PURE__ */ React8.createElement("input", { id: "mg-data", type: "date", value: f.data, onChange: (e) => set("data", e.target.value) })), /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-lote" }, "Lote"), /* @__PURE__ */ React8.createElement("select", { id: "mg-lote", value: f.lote, onChange: (e) => setF((x) => ({ ...x, lote: e.target.value, marcados: [], incluirCrias: null })) }, /* @__PURE__ */ React8.createElement("option", { value: "" }, "Escolha o lote"), lotes.map((l) => /* @__PURE__ */ React8.createElement("option", { key: l.lote, value: l.lote }, l.lote, " (", l.n, ")")), /* @__PURE__ */ React8.createElement("option", { value: OUTRO }, "Outro lote (digitar)")))), f.lote === OUTRO && /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-lote-novo" }, "Nome do lote"), /* @__PURE__ */ React8.createElement("input", { id: "mg-lote-novo", value: f.loteDigitado, onChange: (e) => {
+  const nSemCad = fora.filter(semCad).length;
+  const foraOutro = fora.filter((x) => !semCad(x));
+  const semCadastro = fora.filter(semCad);
+  return /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "geral-form" }, /* @__PURE__ */ React8.createElement("button", { className: "btn quiet sm", onClick: () => editando ? sairDaEdicao() : setTela("inicio"), style: { marginBottom: 10 } }, /* @__PURE__ */ React8.createElement(ArrowLeft3, { size: 15 }), " ", editando ? "Voltar sem salvar" : "Voltar (o rascunho fica guardado)"), /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, !editando ? "Novo manejo" : ownerMode ? "Editar manejo" : "Incluir brincos e observa\xE7\xF5es"), scriptDesatualizado && /* @__PURE__ */ React8.createElement(Aviso, null, "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13)."), soAcrescenta ? /* @__PURE__ */ React8.createElement("div", { className: "sub", "data-testid": "cabecalho-travado", style: { marginTop: 0 } }, /* @__PURE__ */ React8.createElement("b", null, formatarDataBR(f.data), " \xB7 lote ", lote, " \xB7 ", f.descricao), f.responsavel ? ` \xB7 ${f.responsavel}` : "", /* @__PURE__ */ React8.createElement("div", { style: { fontSize: 13, marginTop: 4 } }, "Aqui voc\xEA inclui mais brincos e escreve ou corrige observa\xE7\xF5es. O que j\xE1 foi gravado fica como est\xE1: s\xF3 o propriet\xE1rio muda o manejo ou tira brincos.")) : /* @__PURE__ */ React8.createElement(React8.Fragment, null, /* @__PURE__ */ React8.createElement("div", { className: "grid2" }, /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-data" }, "Data"), /* @__PURE__ */ React8.createElement("input", { id: "mg-data", type: "date", value: f.data, onChange: (e) => set("data", e.target.value) })), /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-lote" }, "Lote"), /* @__PURE__ */ React8.createElement("select", { id: "mg-lote", value: f.lote, onChange: (e) => setF((x) => ({ ...x, lote: e.target.value, marcados: [], incluirCrias: null })) }, /* @__PURE__ */ React8.createElement("option", { value: "" }, "Escolha o lote"), lotes.map((l) => /* @__PURE__ */ React8.createElement("option", { key: l.lote, value: l.lote }, l.lote, " (", l.n, ")")), /* @__PURE__ */ React8.createElement("option", { value: OUTRO }, "Outro lote (digitar)")))), f.lote === OUTRO && /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-lote-novo" }, "Nome do lote"), /* @__PURE__ */ React8.createElement("input", { id: "mg-lote-novo", value: f.loteDigitado, onChange: (e) => {
     setErro("");
     setF((x) => ({ ...x, loteDigitado: e.target.value }));
-  }, placeholder: "Ex.: Pasto da grota" })), /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-desc" }, "Manejo (o que est\xE1 sendo feito)"), /* @__PURE__ */ React8.createElement("div", { className: "pills", style: { marginTop: 0 } }, MANEJOS_RAPIDOS.map((m) => /* @__PURE__ */ React8.createElement("button", { key: m.rotulo, type: "button", "aria-pressed": f.descricao.toLowerCase().includes(m.rotulo.toLowerCase()), onClick: () => rapido(m) }, m.rotulo))), /* @__PURE__ */ React8.createElement("input", { id: "mg-desc", value: f.descricao, onChange: (e) => set("descricao", e.target.value), placeholder: "Ex.: Pour-on no lombo e confer\xEAncia" })), /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-resp" }, "Respons\xE1vel"), /* @__PURE__ */ React8.createElement("input", { id: "mg-resp", value: f.responsavel, onChange: (e) => set("responsavel", e.target.value) })), /* @__PURE__ */ React8.createElement(AplicacoesEditor, { valor: f.aplicacoes, onChange: (a) => set("aplicacoes", a) }), !lote && /* @__PURE__ */ React8.createElement("p", { className: "sub", "data-testid": "geral-sem-lote" }, f.lote === OUTRO ? "Digite o nome do lote novo para come\xE7ar a conferir os brincos." : 'Escolha o lote (ou "Outro lote") para conferir os brincos.'), lote && /* @__PURE__ */ React8.createElement(React8.Fragment, null, comCrias && /* @__PURE__ */ React8.createElement("label", { className: "chk-lin", style: { margin: "4px 0 10px" } }, /* @__PURE__ */ React8.createElement("input", { type: "checkbox", checked: incluirCrias, onChange: (e) => set("incluirCrias", e.target.checked), "data-testid": "incluir-crias" }), "Incluir as crias ao p\xE9 (bezerros mamando das vacas deste lote)"), /* @__PURE__ */ React8.createElement(Rotulo, null, "Conferir os brincos do lote ", lote), itens2.length === 0 && /* @__PURE__ */ React8.createElement("p", { className: "sub", "data-testid": "lote-sem-animais" }, 'Este lote ainda n\xE3o tem animais no cadastro. Digite o brinco de cada animal que passar: se ele existe em outro lote, o app mostra a situa\xE7\xE3o dele e inclui com a observa\xE7\xE3o; se n\xE3o existe em lugar nenhum, inclui anotado como "sem cadastro".'), /* @__PURE__ */ React8.createElement(ConferirBrincos, { dados, lote, hoje, itens: itens2, marcados, onToggle: toggle, incluidos: f.incluidos, onIncluir: incluir, indice, esperados, rotuloContador: "conferidos", notas: f.notas || {}, onNota: anotar }), fora.length > 0 && /* @__PURE__ */ React8.createElement("div", { className: "fora-lote", "data-testid": "fora-lote" }, foraOutro.length > 0 && /* @__PURE__ */ React8.createElement(Rotulo, null, "Inclu\xEDdos de fora da lista do lote (", foraOutro.length, ")"), foraOutro.map((x) => /* @__PURE__ */ React8.createElement("div", { key: `${x.animal}-${x.brinco}`, className: "fora-lin", "data-testid": `fora-${x.brinco}` }, /* @__PURE__ */ React8.createElement("div", { className: "fora-top" }, /* @__PURE__ */ React8.createElement("b", { className: "b" }, x.brinco), /* @__PURE__ */ React8.createElement("span", { className: "late" }, x.obs), /* @__PURE__ */ React8.createElement("button", { type: "button", className: "x-peq", "aria-label": `Tirar ${x.brinco}`, onClick: () => tirar(x) }, /* @__PURE__ */ React8.createElement(X2, { size: 16 }))), x.sit && /* @__PURE__ */ React8.createElement("div", { className: "sub fora-sit", style: { margin: "2px 0 0", fontSize: 13 } }, x.sit), /* @__PURE__ */ React8.createElement(CampoNota, { brinco: x.brinco, valor: (f.notas || {})[chaveNota(x)], onChange: (t) => anotar(chaveNota(x), t) }), x.mudar === "pendente" && (ownerMode ? /* @__PURE__ */ React8.createElement("label", { className: "chk-lin", style: { fontSize: 14 } }, /* @__PURE__ */ React8.createElement(
+  }, placeholder: "Ex.: Pasto da grota" })), /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-desc" }, "Manejo (o que est\xE1 sendo feito)"), /* @__PURE__ */ React8.createElement("div", { className: "pills", style: { marginTop: 0 } }, MANEJOS_RAPIDOS.map((m) => /* @__PURE__ */ React8.createElement("button", { key: m.rotulo, type: "button", "aria-pressed": f.descricao.toLowerCase().includes(m.rotulo.toLowerCase()), onClick: () => rapido(m) }, m.rotulo))), /* @__PURE__ */ React8.createElement("input", { id: "mg-desc", value: f.descricao, onChange: (e) => set("descricao", e.target.value), placeholder: "Ex.: Pour-on no lombo e confer\xEAncia" })), /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-resp" }, "Respons\xE1vel"), /* @__PURE__ */ React8.createElement("input", { id: "mg-resp", value: f.responsavel, onChange: (e) => set("responsavel", e.target.value) })), /* @__PURE__ */ React8.createElement(AplicacoesEditor, { valor: f.aplicacoes, onChange: (a) => set("aplicacoes", a) })), !lote && /* @__PURE__ */ React8.createElement("p", { className: "sub", "data-testid": "geral-sem-lote" }, f.lote === OUTRO ? "Digite o nome do lote novo para come\xE7ar a conferir os brincos." : 'Escolha o lote (ou "Outro lote") para conferir os brincos.'), lote && /* @__PURE__ */ React8.createElement(React8.Fragment, null, comCrias && /* @__PURE__ */ React8.createElement("label", { className: "chk-lin", style: { margin: "4px 0 10px" } }, /* @__PURE__ */ React8.createElement("input", { type: "checkbox", checked: incluirCrias, onChange: (e) => set("incluirCrias", e.target.checked), "data-testid": "incluir-crias" }), "Incluir as crias ao p\xE9 (bezerros mamando das vacas deste lote)"), /* @__PURE__ */ React8.createElement(Rotulo, null, "Conferir os brincos do lote ", lote), itens2.length === 0 && /* @__PURE__ */ React8.createElement("p", { className: "sub", "data-testid": "lote-sem-animais" }, 'Este lote ainda n\xE3o tem animais no cadastro. Digite o brinco de cada animal que passar: se ele existe em outro lote, o app mostra a situa\xE7\xE3o dele e inclui com a observa\xE7\xE3o; se n\xE3o existe em lugar nenhum, inclui anotado como "sem cadastro".'), /* @__PURE__ */ React8.createElement(ConferirBrincos, { dados, lote, hoje, itens: itens2, marcados, onToggle: toggle, incluidos: f.incluidos, onIncluir: incluir, indice, esperados, rotuloContador: "conferidos", notas: f.notas || {}, onNota: anotar }), fora.length > 0 && /* @__PURE__ */ React8.createElement("div", { className: "fora-lote", "data-testid": "fora-lote" }, foraOutro.length > 0 && /* @__PURE__ */ React8.createElement(Rotulo, null, "Inclu\xEDdos de fora da lista do lote (", foraOutro.length, ")"), foraOutro.map((x) => /* @__PURE__ */ React8.createElement("div", { key: `${x.animal}-${x.brinco}`, className: "fora-lin", "data-testid": `fora-${x.brinco}` }, /* @__PURE__ */ React8.createElement("div", { className: "fora-top" }, /* @__PURE__ */ React8.createElement("b", { className: "b" }, x.brinco), /* @__PURE__ */ React8.createElement("span", { className: "late" }, x.obs), !(soAcrescenta && x.manter) && /* @__PURE__ */ React8.createElement("button", { type: "button", className: "x-peq", "aria-label": `Tirar ${x.brinco}`, onClick: () => tirar(x) }, /* @__PURE__ */ React8.createElement(X2, { size: 16 }))), x.sit && /* @__PURE__ */ React8.createElement("div", { className: "sub fora-sit", style: { margin: "2px 0 0", fontSize: 13 } }, x.sit), /* @__PURE__ */ React8.createElement(CampoNota, { brinco: x.brinco, valor: (f.notas || {})[chaveNota(x)], onChange: (t) => anotar(chaveNota(x), t) }), x.mudar === "pendente" && (ownerMode ? /* @__PURE__ */ React8.createElement("label", { className: "chk-lin", style: { fontSize: 14 } }, /* @__PURE__ */ React8.createElement(
     "input",
     {
       type: "checkbox",
@@ -5076,11 +5314,11 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
       "aria-label": `Mudar ${x.brinco} para o lote ${lote}`,
       onChange: (e) => set("aprovar", e.target.checked ? [...f.aprovar, x.animal] : f.aprovar.filter((a) => a !== x.animal))
     }
-  ), "Mudar para o lote ", lote) : /* @__PURE__ */ React8.createElement("div", { className: "sub", style: { fontSize: 13 } }, "A mudan\xE7a para o lote ", lote, " vai para o propriet\xE1rio confirmar.")))), semCadastro.length > 0 && /* @__PURE__ */ React8.createElement("div", { style: { marginTop: foraOutro.length ? 10 : 0 } }, /* @__PURE__ */ React8.createElement(Rotulo, null, "Sem cadastro (", semCadastro.length, ")"), /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { margin: "0 0 4px", fontSize: 13 } }, "N\xE3o est\xE3o no banco de dados nem em nenhum lote. Ficam anotados no manejo.")), semCadastro.map((x) => /* @__PURE__ */ React8.createElement("div", { key: `sc-${x.brinco}`, className: "fora-lin", "data-testid": `fora-${x.brinco}` }, /* @__PURE__ */ React8.createElement("div", { className: "fora-top" }, /* @__PURE__ */ React8.createElement("b", { className: "b" }, x.brinco), /* @__PURE__ */ React8.createElement("span", { className: "late" }, x.obs), /* @__PURE__ */ React8.createElement("button", { type: "button", className: "x-peq", "aria-label": `Tirar ${x.brinco}`, onClick: () => tirar(x) }, /* @__PURE__ */ React8.createElement(X2, { size: 16 }))), /* @__PURE__ */ React8.createElement(CampoNota, { brinco: x.brinco, valor: (f.notas || {})[chaveNota(x)], onChange: (t) => anotar(chaveNota(x), t) }))))), /* @__PURE__ */ React8.createElement("div", { className: "fld", style: { marginTop: 12 } }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-obs" }, "Observa\xE7\xE3o"), /* @__PURE__ */ React8.createElement("input", { id: "mg-obs", value: f.obs, onChange: (e) => set("obs", e.target.value) })), erro && /* @__PURE__ */ React8.createElement(Aviso, null, erro), /* @__PURE__ */ React8.createElement("button", { className: "btn wide", style: { marginTop: 8 }, onClick: gravar, disabled: gravando || total === 0 || scriptDesatualizado }, gravando ? /* @__PURE__ */ React8.createElement(Loader25, { size: 18, className: "spin" }) : /* @__PURE__ */ React8.createElement(Save5, { size: 18 }), " Gravar manejo (", nMarc, " de ", itens2.length, fora.length ? ` + ${fora.length} de fora${nSemCad ? `, ${nSemCad} sem cadastro` : ""}` : "", ")"), total === 0 && !scriptDesatualizado && /* @__PURE__ */ React8.createElement("p", { className: "sub", "data-testid": "dica-gravar", style: { textAlign: "center", marginTop: 8 } }, "Para gravar: marque quem passou ou digite um brinco."), lote && itens2.length > nMarc && nMarc > 0 && /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { textAlign: "center" } }, /* @__PURE__ */ React8.createElement(ClipboardCheck, { size: 14, style: { verticalAlign: -2 } }), " ", itens2.length - nMarc, " ainda n\xE3o marcado(s): ao gravar, entram como faltando."));
+  ), "Mudar para o lote ", lote) : /* @__PURE__ */ React8.createElement("div", { className: "sub", style: { fontSize: 13 } }, "A mudan\xE7a para o lote ", lote, " vai para o propriet\xE1rio confirmar.")))), semCadastro.length > 0 && /* @__PURE__ */ React8.createElement("div", { style: { marginTop: foraOutro.length ? 10 : 0 } }, /* @__PURE__ */ React8.createElement(Rotulo, null, "Sem cadastro (", semCadastro.length, ")"), /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { margin: "0 0 4px", fontSize: 13 } }, "N\xE3o est\xE3o no banco de dados nem em nenhum lote. Ficam anotados no manejo.")), semCadastro.map((x) => /* @__PURE__ */ React8.createElement("div", { key: `sc-${x.brinco}`, className: "fora-lin", "data-testid": `fora-${x.brinco}` }, /* @__PURE__ */ React8.createElement("div", { className: "fora-top" }, /* @__PURE__ */ React8.createElement("b", { className: "b" }, x.brinco), /* @__PURE__ */ React8.createElement("span", { className: "late" }, x.obs), !(soAcrescenta && x.manter) && /* @__PURE__ */ React8.createElement("button", { type: "button", className: "x-peq", "aria-label": `Tirar ${x.brinco}`, onClick: () => tirar(x) }, /* @__PURE__ */ React8.createElement(X2, { size: 16 }))), /* @__PURE__ */ React8.createElement(CampoNota, { brinco: x.brinco, valor: (f.notas || {})[chaveNota(x)], onChange: (t) => anotar(chaveNota(x), t) }))))), !soAcrescenta && /* @__PURE__ */ React8.createElement("div", { className: "fld", style: { marginTop: 12 } }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-obs" }, "Observa\xE7\xE3o"), /* @__PURE__ */ React8.createElement("input", { id: "mg-obs", value: f.obs, onChange: (e) => set("obs", e.target.value) })), erro && /* @__PURE__ */ React8.createElement(Aviso, null, erro), /* @__PURE__ */ React8.createElement("button", { className: "btn wide", style: { marginTop: 8 }, onClick: gravar, disabled: gravando || total === 0 || scriptDesatualizado }, gravando ? /* @__PURE__ */ React8.createElement(Loader25, { size: 18, className: "spin" }) : /* @__PURE__ */ React8.createElement(Save5, { size: 18 }), " ", editando ? "Salvar altera\xE7\xF5es" : "Gravar manejo", " (", nMarc, " de ", itens2.length, fora.length ? ` + ${fora.length} de fora${nSemCad ? `, ${nSemCad} sem cadastro` : ""}` : "", ")"), total === 0 && !scriptDesatualizado && /* @__PURE__ */ React8.createElement("p", { className: "sub", "data-testid": "dica-gravar", style: { textAlign: "center", marginTop: 8 } }, "Para gravar: marque quem passou ou digite um brinco."), lote && itens2.length > nMarc && nMarc > 0 && /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { textAlign: "center" } }, /* @__PURE__ */ React8.createElement(ClipboardCheck, { size: 14, style: { verticalAlign: -2 } }), " ", itens2.length - nMarc, " ainda n\xE3o marcado(s): ao gravar, entram como faltando."));
 }
 
 // src/telas/Manejo.jsx
-function Manejo({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarProtocolo, onSalvarConfig, scriptAntes13, onDecidirLote, onEfetivarNotas }) {
+function Manejo({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarProtocolo, onSalvarConfig, scriptAntes13, onDecidirLote, onEfetivarNotas, onCorrigirManejo, onExcluirManejo }) {
   const [aba, setAba] = useState9("protocolos");
   const [novo, setNovo] = useState9(null);
   const [volta, setVolta] = useState9(0);
@@ -5113,7 +5351,7 @@ function Manejo({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarProto
         setVolta((n) => n + 1);
       }
     }
-  ), aba === "geral" && /* @__PURE__ */ React9.createElement(ManejoGeral, { key: `g${volta}`, dados, hoje, ownerMode, modoTeste, scriptDesatualizado: !!scriptAntes13, onGravarLote, onDecidirLote, onEfetivarNotas }), aba === "vacinas" && /* @__PURE__ */ React9.createElement(Vacinas, { key: `v${volta}`, dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarConfig }));
+  ), aba === "geral" && /* @__PURE__ */ React9.createElement(ManejoGeral, { key: `g${volta}`, dados, hoje, ownerMode, modoTeste, scriptDesatualizado: !!scriptAntes13, onGravarLote, onDecidirLote, onEfetivarNotas, onCorrigirManejo, onExcluirManejo }), aba === "vacinas" && /* @__PURE__ */ React9.createElement(Vacinas, { key: `v${volta}`, dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarConfig }));
 }
 
 // src/estilos.js
@@ -6298,7 +6536,7 @@ function ListaCrias({
 
 // src/telas/CriasPesar.jsx
 import React18, { useMemo as useMemo15, useRef as useRef8, useState as useState17, useEffect as useEffect8 } from "react";
-import { Plus as Plus6, Trash2 as Trash24, Save as Save9, Loader2 as Loader210, ClipboardPaste as ClipboardPaste2, FileDown as FileDown5, Tag as TagIcon } from "lucide-react";
+import { Plus as Plus6, Trash2 as Trash25, Save as Save9, Loader2 as Loader210, ClipboardPaste as ClipboardPaste2, FileDown as FileDown5, Tag as TagIcon } from "lucide-react";
 
 // src/pesagemConferencia.js
 var ordemBrinco3 = (a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true });
@@ -6668,7 +6906,7 @@ function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorri
     setErro(null);
   } }, /* @__PURE__ */ React18.createElement(TagIcon, { size: 15 }), " ", semBrinco ? "Animal sem brinco (tocar para voltar ao brinco)" : "Animal sem brinco"), /* @__PURE__ */ React18.createElement("div", { style: { minHeight: 8 } }, !semBrinco && /* @__PURE__ */ React18.createElement(FichaRapida, { ficha: infoDigitado, digitado: brinco })), confDup && /* @__PURE__ */ React18.createElement(Aviso, { tipo: "info" }, /* @__PURE__ */ React18.createElement("div", { "data-testid": "aviso-duplicado" }, /* @__PURE__ */ React18.createElement("b", null, confDup.linha.brinco), " j\xE1 foi pesado em ", formatarDataBR(data), " com ", confDup.mesmaData.map((x) => fmtKg(x.peso)).join(" e "), ". Verifique a duplicidade.", " ", "Se lan\xE7ar mesmo assim, ele fica com os dois pesos nesta data (", confDup.mesmaData.map((x) => fmtKg(x.peso)).join(", "), " e ", fmtKg(confDup.linha.peso), "), marcado como pesado 2x."), /* @__PURE__ */ React18.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React18.createElement("button", { className: "btn quiet sm", onClick: () => confirmarDup(false) }, "Cancelar"), /* @__PURE__ */ React18.createElement("button", { className: "btn sm", onClick: () => confirmarDup(true) }, "Lan\xE7ar mesmo assim"), /* @__PURE__ */ React18.createElement("button", { className: "btn ghost sm", onClick: () => confirmarDup("outro") }, "\xC9 outro animal (sem brinco)"))), erro && /* @__PURE__ */ React18.createElement(Aviso, null, erro.texto, erro.itens && /* @__PURE__ */ React18.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, erro.itens.map((t, i) => /* @__PURE__ */ React18.createElement("li", { key: i }, t)))), /* @__PURE__ */ React18.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Na lista", /* @__PURE__ */ React18.createElement("small", null, linhas.length, " animal(is)", linhas.length ? ` \xB7 ${fmtKg(total)} no total` : "")), linhas.length === 0 ? /* @__PURE__ */ React18.createElement("p", { className: "sub" }, "Nenhum animal na lista ainda.") : /* @__PURE__ */ React18.createElement("div", { "data-testid": "lista-pesar" }, linhas.map((l) => {
     if (l.semBrinco) {
-      return /* @__PURE__ */ React18.createElement("div", { className: "item-lin", key: l.k, "data-testid": "linha-SB" }, /* @__PURE__ */ React18.createElement("div", { className: "t" }, /* @__PURE__ */ React18.createElement("b", null, "SB ", /* @__PURE__ */ React18.createElement("span", { className: "tag2x", style: { background: "var(--late-bg)", color: "var(--late)" } }, "sem brinco")), /* @__PURE__ */ React18.createElement("span", null, l.sinal || "sem sinal anotado", " \xB7 fica na confer\xEAncia para ligar a um animal sem peso")), /* @__PURE__ */ React18.createElement("div", { className: "p" }, fmtKg(l.peso)), /* @__PURE__ */ React18.createElement("button", { className: "x-peq", onClick: () => setLinhas((ls) => ls.filter((x) => x.k !== l.k)), "aria-label": "Tirar o sem brinco da lista" }, /* @__PURE__ */ React18.createElement(Trash24, { size: 17 })));
+      return /* @__PURE__ */ React18.createElement("div", { className: "item-lin", key: l.k, "data-testid": "linha-SB" }, /* @__PURE__ */ React18.createElement("div", { className: "t" }, /* @__PURE__ */ React18.createElement("b", null, "SB ", /* @__PURE__ */ React18.createElement("span", { className: "tag2x", style: { background: "var(--late-bg)", color: "var(--late)" } }, "sem brinco")), /* @__PURE__ */ React18.createElement("span", null, l.sinal || "sem sinal anotado", " \xB7 fica na confer\xEAncia para ligar a um animal sem peso")), /* @__PURE__ */ React18.createElement("div", { className: "p" }, fmtKg(l.peso)), /* @__PURE__ */ React18.createElement("button", { className: "x-peq", onClick: () => setLinhas((ls) => ls.filter((x) => x.k !== l.k)), "aria-label": "Tirar o sem brinco da lista" }, /* @__PURE__ */ React18.createElement(Trash25, { size: 17 })));
     }
     const info = infos.get(l.k) || { pontos: [], mesmaData: [] };
     const aviso = info.achado ? avisoDePeso((info.pontos || []).filter((p) => p.data !== data), l.peso, data) : "Brinco n\xE3o encontrado.";
@@ -6676,7 +6914,7 @@ function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorri
     const dif = ant ? l.peso - ant.peso : null;
     const outros = modo === "pesagem" ? info.mesmaData || [] : [];
     const desc = [info.sexo, info.idade ? info.idade.texto : "", info.maeBrinco ? `m\xE3e ${info.maeBrinco}` : ""].filter(Boolean).join(" \xB7 ");
-    return /* @__PURE__ */ React18.createElement("div", { className: "item-lin", key: l.k, "data-testid": `linha-${l.brinco}` }, /* @__PURE__ */ React18.createElement("div", { className: "t" }, /* @__PURE__ */ React18.createElement("b", null, l.brinco, outros.length ? /* @__PURE__ */ React18.createElement("span", { className: "tag2x" }, outros.length + 1, "x") : null), /* @__PURE__ */ React18.createElement("span", null, desc, dif !== null ? ` \xB7 ${dif >= 0 ? "+" : ""}${fmtKg(dif)} desde ${formatarDataBR(ant.data)}` : " \xB7 primeira pesagem"), outros.length > 0 && /* @__PURE__ */ React18.createElement("span", { style: { color: "var(--amber)" } }, "J\xE1 pesado nesta data com ", outros.map((x) => fmtKg(x.peso)).join(" e "), ".", l.forcar ? " Vai gravar os dois pesos (2x)." : " Verifique a duplicidade.", !l.forcar && /* @__PURE__ */ React18.createElement("button", { className: "btn quiet sm", style: { marginLeft: 8, minHeight: 32 }, onClick: () => setLinhas((ls) => ls.map((x) => x.k === l.k ? { ...x, forcar: true } : x)) }, "Lan\xE7ar mesmo assim")), aviso && /* @__PURE__ */ React18.createElement("span", { style: { color: "var(--amber)" } }, aviso)), /* @__PURE__ */ React18.createElement("div", { className: "p" }, fmtKg(l.peso)), /* @__PURE__ */ React18.createElement("button", { className: "x-peq", onClick: () => setLinhas((ls) => ls.filter((x) => x.k !== l.k)), "aria-label": `Tirar ${l.brinco} da lista` }, /* @__PURE__ */ React18.createElement(Trash24, { size: 17 })));
+    return /* @__PURE__ */ React18.createElement("div", { className: "item-lin", key: l.k, "data-testid": `linha-${l.brinco}` }, /* @__PURE__ */ React18.createElement("div", { className: "t" }, /* @__PURE__ */ React18.createElement("b", null, l.brinco, outros.length ? /* @__PURE__ */ React18.createElement("span", { className: "tag2x" }, outros.length + 1, "x") : null), /* @__PURE__ */ React18.createElement("span", null, desc, dif !== null ? ` \xB7 ${dif >= 0 ? "+" : ""}${fmtKg(dif)} desde ${formatarDataBR(ant.data)}` : " \xB7 primeira pesagem"), outros.length > 0 && /* @__PURE__ */ React18.createElement("span", { style: { color: "var(--amber)" } }, "J\xE1 pesado nesta data com ", outros.map((x) => fmtKg(x.peso)).join(" e "), ".", l.forcar ? " Vai gravar os dois pesos (2x)." : " Verifique a duplicidade.", !l.forcar && /* @__PURE__ */ React18.createElement("button", { className: "btn quiet sm", style: { marginLeft: 8, minHeight: 32 }, onClick: () => setLinhas((ls) => ls.map((x) => x.k === l.k ? { ...x, forcar: true } : x)) }, "Lan\xE7ar mesmo assim")), aviso && /* @__PURE__ */ React18.createElement("span", { style: { color: "var(--amber)" } }, aviso)), /* @__PURE__ */ React18.createElement("div", { className: "p" }, fmtKg(l.peso)), /* @__PURE__ */ React18.createElement("button", { className: "x-peq", onClick: () => setLinhas((ls) => ls.filter((x) => x.k !== l.k)), "aria-label": `Tirar ${l.brinco} da lista` }, /* @__PURE__ */ React18.createElement(Trash25, { size: 17 })));
   })), /* @__PURE__ */ React18.createElement("button", { className: "btn wide", style: { marginTop: 12 }, onClick: gravar, disabled: gravando || travado || linhas.length === 0 }, gravando ? /* @__PURE__ */ React18.createElement(Loader210, { size: 18, className: "spin" }) : /* @__PURE__ */ React18.createElement(Save9, { size: 18 }), gravando ? "Gravando..." : modo === "desmama" ? `Gravar ${linhas.length} desmama(s)` : `Gravar ${linhas.length} pesagem(ns)`), resultado && /* @__PURE__ */ React18.createElement(Aviso, { tipo: "ok" }, resultado.modo === "desmama" ? `${resultado.qtd} desmama(s) gravada(s)` : `${resultado.qtd} pesagem(ns) gravada(s)`, resultado.semBrinco ? ` (${resultado.semBrinco} sem brinco: ligue cada um a um animal na confer\xEAncia abaixo)` : "", resultado.novilhas > 0 ? `; ${resultado.novilhas} novilha(s) entraram no lote de novilhas` : "", ".", resultado.offline ? " Sem internet: ficou guardado neste celular e vai para a planilha quando a internet voltar." : "", modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : "", resultado.rejeitados.length > 0 && /* @__PURE__ */ React18.createElement(React18.Fragment, null, /* @__PURE__ */ React18.createElement("div", { style: { marginTop: 6 } }, "N\xE3o gravadas (continuam na lista):"), /* @__PURE__ */ React18.createElement("ul", { style: { margin: "4px 0 0", paddingLeft: 18 } }, resultado.rejeitados.map((t, i) => /* @__PURE__ */ React18.createElement("li", { key: i }, t))))), /* @__PURE__ */ React18.createElement("div", { className: "sheet", style: { marginTop: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "space-between" } }, /* @__PURE__ */ React18.createElement("span", { style: { fontSize: 14 }, "data-testid": "resumo-dia" }, doDia && doDia.secoes[0].linhas.length ? /* @__PURE__ */ React18.createElement(React18.Fragment, null, "J\xE1 gravados em ", /* @__PURE__ */ React18.createElement("b", null, formatarDataBR(data)), ": ", doDia.resumo[0].valor, " pesagem(ns), m\xE9dia ", doDia.resumo[3].valor, doDia.resumo[6].valor !== "nenhum" ? /* @__PURE__ */ React18.createElement(React18.Fragment, null, ", ", /* @__PURE__ */ React18.createElement("b", { style: { color: "var(--amber)" } }, "2x: ", doDia.resumo[6].valor)) : null) : /* @__PURE__ */ React18.createElement(React18.Fragment, null, "Nada gravado em ", data ? formatarDataBR(data) : "esta data", " ainda.")), /* @__PURE__ */ React18.createElement("button", { className: "btn ghost sm", onClick: pdfDoDia, disabled: !doDia || !doDia.secoes[0].linhas.length || gerandoPdf }, gerandoPdf ? /* @__PURE__ */ React18.createElement(Loader210, { size: 16, className: "spin" }) : /* @__PURE__ */ React18.createElement(FileDown5, { size: 16 }), " PDF da pesagem")), modo === "pesagem" && data && doDia && doDia.secoes[0].linhas.length > 0 && /* @__PURE__ */ React18.createElement(ConferenciaPesagem, { dados, data, hoje, onCorrigirPesagem }), /* @__PURE__ */ React18.createElement("details", { className: "ferr noprint" }, /* @__PURE__ */ React18.createElement("summary", null, /* @__PURE__ */ React18.createElement(ClipboardPaste2, { size: 15, style: { marginRight: 8 } }), " Colar uma lista pronta"), /* @__PURE__ */ React18.createElement("div", { className: "in2", style: { display: "block" } }, /* @__PURE__ */ React18.createElement("p", { className: "sub" }, "Um animal por linha: o brinco e o peso (ex.: 6532 245). Depois toque em adicionar e confira a lista antes de gravar."), /* @__PURE__ */ React18.createElement("div", { className: "fld" }, /* @__PURE__ */ React18.createElement("label", { htmlFor: "pesar-colar" }, "Lista"), /* @__PURE__ */ React18.createElement("textarea", { id: "pesar-colar", style: { minHeight: 120 }, value: colar, onChange: (e) => setColar(e.target.value), placeholder: "6532 245\n6533 250,5", spellCheck: false })), /* @__PURE__ */ React18.createElement("button", { className: "btn quiet", onClick: adicionarColado, disabled: !colar.trim() }, "Adicionar \xE0 lista"))));
 }
 
@@ -6755,7 +6993,7 @@ function ParaVender({ crias, dados, onSalvarConfig, onVender, modoTeste, hoje })
 
 // src/telas/CriasVendas.jsx
 import React20, { useEffect as useEffect9, useMemo as useMemo17, useRef as useRef9, useState as useState19 } from "react";
-import { Plus as Plus7, Trash2 as Trash25, ShoppingCart as ShoppingCart3, Loader2 as Loader211, ChevronDown, ChevronUp, Scale as Scale2 } from "lucide-react";
+import { Plus as Plus7, Trash2 as Trash26, ShoppingCart as ShoppingCart3, Loader2 as Loader211, ChevronDown, ChevronUp, Scale as Scale2 } from "lucide-react";
 var contador = 0;
 var novaLinha = (extra) => ({ k: `l${Date.now()}-${++contador}`, brinco: "", tipoAnimal: "", peso: "", tipoManual: false, ...extra });
 function LinhaVenda({ n, linha, dados, hoje, crias, onMudar, onTirar, onEnterPeso }) {
@@ -6800,7 +7038,7 @@ function LinhaVenda({ n, linha, dados, hoje, crias, onMudar, onTirar, onEnterPes
         }
       }
     }
-  )), /* @__PURE__ */ React20.createElement("button", { type: "button", className: "x-peq f-x", onClick: () => onTirar(linha.k), "aria-label": `Tirar a linha ${n}` }, /* @__PURE__ */ React20.createElement(Trash25, { size: 17 }))), /* @__PURE__ */ React20.createElement("div", { className: "l2" }, /* @__PURE__ */ React20.createElement("div", { className: "fld f-t" }, /* @__PURE__ */ React20.createElement("label", { htmlFor: `v-t-${linha.k}` }, "Tipo de animal ", n), /* @__PURE__ */ React20.createElement("select", { id: `v-t-${linha.k}`, value: linha.tipoAnimal, onChange: (e) => onMudar(linha.k, "tipoAnimal", e.target.value) }, /* @__PURE__ */ React20.createElement("option", { value: "" }, "Escolha o tipo"), TIPOS_ANIMAL_VENDA.map((t) => /* @__PURE__ */ React20.createElement("option", { key: t, value: t }, t))))), texto && /* @__PURE__ */ React20.createElement("div", { className: `info${ruim ? " ruim" : ""}` }, texto));
+  )), /* @__PURE__ */ React20.createElement("button", { type: "button", className: "x-peq f-x", onClick: () => onTirar(linha.k), "aria-label": `Tirar a linha ${n}` }, /* @__PURE__ */ React20.createElement(Trash26, { size: 17 }))), /* @__PURE__ */ React20.createElement("div", { className: "l2" }, /* @__PURE__ */ React20.createElement("div", { className: "fld f-t" }, /* @__PURE__ */ React20.createElement("label", { htmlFor: `v-t-${linha.k}` }, "Tipo de animal ", n), /* @__PURE__ */ React20.createElement("select", { id: `v-t-${linha.k}`, value: linha.tipoAnimal, onChange: (e) => onMudar(linha.k, "tipoAnimal", e.target.value) }, /* @__PURE__ */ React20.createElement("option", { value: "" }, "Escolha o tipo"), TIPOS_ANIMAL_VENDA.map((t) => /* @__PURE__ */ React20.createElement("option", { key: t, value: t }, t))))), texto && /* @__PURE__ */ React20.createElement("div", { className: `info${ruim ? " ruim" : ""}` }, texto));
 }
 function Historico({ dados }) {
   const vendas = useMemo17(() => listarVendas(dados), [dados]);
@@ -7500,6 +7738,7 @@ function GestaoPecuaria() {
   const scriptAntes = (v) => !MODO_TESTE && versaoScript !== null && (versaoScript || 0) < v;
   const MSG_SCRIPT_12 = "O script da planilha est\xE1 desatualizado e n\xE3o aceita protocolos, manejos e touros. Avise o respons\xE1vel pelo sistema.";
   const MSG_SCRIPT_13 = "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13). Avise o propriet\xE1rio.";
+  const MSG_SCRIPT_14 = "Para excluir manejo a planilha precisa do script 14. Implante a vers\xE3o nova do script e tente de novo.";
   function salvarProtocolo(p) {
     if (scriptAntes(12)) return MSG_SCRIPT_12;
     const d = dadosRef.current;
@@ -7534,6 +7773,20 @@ function GestaoPecuaria() {
     gravarCorrecao(r, "observa\xE7\xF5es efetivadas");
     const feitas = (decisoes || []).filter((d) => d.feito).length;
     return (feitas ? `${r.n} observa\xE7\xE3o(\xF5es) marcada(s) como efetivada(s).` : `${r.n} observa\xE7\xE3o(\xF5es) voltou(aram) para a lista.`) + notaFila();
+  }
+  function corrigirManejoGeral(mudancas2, rotulo) {
+    if (scriptAntes(13)) return { ok: false, msg: MSG_SCRIPT_13 };
+    if (!mudancas2 || !mudancas2.eventos.length && !mudancas2.matrizes.length) return { ok: false, msg: "Nada foi alterado." };
+    gravarCorrecao({ mudancas: mudancas2 }, rotulo || "edi\xE7\xE3o de manejo");
+    return { ok: true, offline: semInternet(), msg: "" };
+  }
+  async function excluirManejo(id) {
+    if (!ownerMode) return { ok: false, msg: "S\xF3 o propriet\xE1rio exclui manejo." };
+    if (scriptAntes(14)) return { ok: false, msg: MSG_SCRIPT_14 };
+    const r = excluirManejoGeral(dadosRef.current, id);
+    if (r.erro) return { ok: false, msg: r.erro };
+    gravarCorrecao(r, "manejo exclu\xEDdo");
+    return { ok: true, msg: `Manejo exclu\xEDdo (${formatarDataBR(r.resumo.data)}, lote ${r.resumo.lote}, ${r.resumo.descricao}).${MODO_TESTE ? " (modo teste: s\xF3 na tela)" : " A planilha guarda uma c\xF3pia na aba Excluidos."}${notaFila()}` };
   }
   function postsDeLote(eventos, matrizes, touros) {
     const posts = [];
@@ -7693,7 +7946,7 @@ function GestaoPecuaria() {
       onEditarMorte: corrigirMorte,
       onAnularMorte: anularUmaMorte
     }
-  ), tab === "manejo" && /* @__PURE__ */ React27.createElement(Manejo, { dados, hoje, ownerMode, modoTeste: MODO_TESTE, onGravarLote: gravarManejo, onSalvarProtocolo: salvarProtocolo, onSalvarConfig: salvarConfig, scriptAntes13: scriptAntes(13), onDecidirLote: decidirMudancaLote, onEfetivarNotas: efetivarObservacoes }), tab === "parto" && /* @__PURE__ */ React27.createElement(Parto, { dados, hoje, onLancar: lancarDaVaca, onGravarLote: gravarManejo }), tab === "crias" && /* @__PURE__ */ React27.createElement(
+  ), tab === "manejo" && /* @__PURE__ */ React27.createElement(Manejo, { dados, hoje, ownerMode, modoTeste: MODO_TESTE, onGravarLote: gravarManejo, onSalvarProtocolo: salvarProtocolo, onSalvarConfig: salvarConfig, scriptAntes13: scriptAntes(13), onDecidirLote: decidirMudancaLote, onEfetivarNotas: efetivarObservacoes, onCorrigirManejo: corrigirManejoGeral, onExcluirManejo: excluirManejo }), tab === "parto" && /* @__PURE__ */ React27.createElement(Parto, { dados, hoje, onLancar: lancarDaVaca, onGravarLote: gravarManejo }), tab === "crias" && /* @__PURE__ */ React27.createElement(
     Crias,
     {
       dados,
@@ -7742,7 +7995,7 @@ function GestaoPecuaria() {
   } }, filaEst.pendentes === 0 ? /* @__PURE__ */ React27.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Tudo j\xE1 chegou na planilha. Nada esperando.") : /* @__PURE__ */ React27.createElement(React27.Fragment, null, /* @__PURE__ */ React27.createElement("p", { className: "sub", style: { marginTop: 0 } }, filaEst.semInternet ? "Sem internet. Estes lan\xE7amentos est\xE3o guardados neste celular e v\xE3o sozinhos para a planilha quando a internet voltar. N\xE3o feche o app pela metade de um lan\xE7amento, mas pode fechar e abrir \xE0 vontade: nada se perde." : filaEst.erroPlanilha ? `A planilha recusou um lan\xE7amento: ${filaEst.erroPlanilha}. Os outros esperam na fila, na ordem.` : "Enviando para a planilha..."), /* @__PURE__ */ React27.createElement("div", { className: "sheet", "data-testid": "lista-fila" }, filaEst.itens.map((it) => /* @__PURE__ */ React27.createElement("div", { className: "led-r", key: it.uid, style: { "--cols": ownerMode ? "1fr auto auto" : "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React27.createElement("span", { style: { fontSize: 14 } }, it.rotulo || it.payload.action, it.erro ? /* @__PURE__ */ React27.createElement("small", { style: { display: "block", color: it.rede ? "var(--amber)" : "var(--late)" } }, it.rede ? "esperando internet" : it.erro) : null), /* @__PURE__ */ React27.createElement("span", { className: "m mut" }, quandoTxt(it.criadoEm)), ownerMode && (descartarUid === it.uid ? /* @__PURE__ */ React27.createElement("button", { className: "btn sm", style: { background: "var(--late)" }, onClick: () => {
     descartar(it.uid);
     setDescartarUid(null);
-  } }, "Confirmar") : /* @__PURE__ */ React27.createElement("button", { className: "x-peq", "aria-label": "Descartar este lan\xE7amento da fila", title: "Descartar (s\xF3 se a planilha recusa sempre)", onClick: () => setDescartarUid(it.uid) }, /* @__PURE__ */ React27.createElement(Trash26, { size: 16 })))))), ownerMode && descartarUid && /* @__PURE__ */ React27.createElement(Aviso, null, "Descartar tira esse lan\xE7amento da fila e ele N\xC3O vai para a planilha (continua na tela at\xE9 recarregar). Use s\xF3 se a planilha recusa sempre.")), /* @__PURE__ */ React27.createElement("button", { className: "btn wide", style: { marginTop: 12 }, onClick: () => enviar(), disabled: filaEst.enviando || filaEst.pendentes === 0 }, filaEst.enviando ? /* @__PURE__ */ React27.createElement(Loader213, { size: 18, className: "spin" }) : /* @__PURE__ */ React27.createElement(RefreshCw2, { size: 18 }), " Tentar enviar agora")), pinAberto && !ownerMode && /* @__PURE__ */ React27.createElement(Modal, { titulo: "\xC1rea do propriet\xE1rio", onClose: () => setPinAberto(false) }, /* @__PURE__ */ React27.createElement("form", { onSubmit: (e) => {
+  } }, "Confirmar") : /* @__PURE__ */ React27.createElement("button", { className: "x-peq", "aria-label": "Descartar este lan\xE7amento da fila", title: "Descartar (s\xF3 se a planilha recusa sempre)", onClick: () => setDescartarUid(it.uid) }, /* @__PURE__ */ React27.createElement(Trash27, { size: 16 })))))), ownerMode && descartarUid && /* @__PURE__ */ React27.createElement(Aviso, null, "Descartar tira esse lan\xE7amento da fila e ele N\xC3O vai para a planilha (continua na tela at\xE9 recarregar). Use s\xF3 se a planilha recusa sempre.")), /* @__PURE__ */ React27.createElement("button", { className: "btn wide", style: { marginTop: 12 }, onClick: () => enviar(), disabled: filaEst.enviando || filaEst.pendentes === 0 }, filaEst.enviando ? /* @__PURE__ */ React27.createElement(Loader213, { size: 18, className: "spin" }) : /* @__PURE__ */ React27.createElement(RefreshCw2, { size: 18 }), " Tentar enviar agora")), pinAberto && !ownerMode && /* @__PURE__ */ React27.createElement(Modal, { titulo: "\xC1rea do propriet\xE1rio", onClose: () => setPinAberto(false) }, /* @__PURE__ */ React27.createElement("form", { onSubmit: (e) => {
     e.preventDefault();
     tentarEntrar();
   } }, /* @__PURE__ */ React27.createElement("div", { className: "fld" }, /* @__PURE__ */ React27.createElement("label", { htmlFor: "pin" }, "Senha (PIN)"), /* @__PURE__ */ React27.createElement("input", { id: "pin", type: "password", inputMode: "numeric", autoComplete: "off", autoFocus: true, value: pin, onChange: (e) => {
