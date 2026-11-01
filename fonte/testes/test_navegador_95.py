@@ -77,10 +77,10 @@ with sync_playwright() as p:
     srv('/__reset', 'POST')
     ctx = contexto(); pg = abrir(ctx)
 
-    @teste('abre com app 11.0 e planilha v15, sem erros')
+    @teste('abre com app 11 e planilha v15, sem erros')
     def _():
         nota = pg.inner_text('.foot-note')
-        assert 'app 11.0' in nota and 'planilha v15' in nota, nota
+        assert 'app 11.' in nota and 'planilha v15' in nota, nota
         assert not pg.erros, pg.erros
 
     # ------------------------------------------------------------------ Pesar: ficha rápida

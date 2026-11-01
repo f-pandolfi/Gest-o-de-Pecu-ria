@@ -1,5 +1,5 @@
 // src/app.jsx
-import React31, { useState as useState30, useEffect as useEffect13, useMemo as useMemo26, useRef as useRef11 } from "react";
+import React32, { useState as useState31, useEffect as useEffect14, useMemo as useMemo27, useRef as useRef11 } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Plus as Plus12,
@@ -17,12 +17,13 @@ import {
   RefreshCw as RefreshCw2,
   Trash2 as Trash27,
   Syringe as Syringe2,
-  Search as Search10,
-  Settings
+  Search as Search11,
+  Settings,
+  TrendingUp
 } from "lucide-react";
 
 // src/logica.js
-var VERSAO_APP = "11.0.3 (01/11/26)";
+var VERSAO_APP = "11.1 (01/11/26)";
 var VERSAO_MINIMA_SCRIPT = 12;
 var PERIODO_GESTACAO_DIAS = 285;
 var TIPOS_FUNCIONARIO = ["nascimento", "desmama", "insumo", "descarte", "pesagem", "morte"];
@@ -1658,13 +1659,13 @@ function relatorioNascimentos(matrizes, eventos, touros, ano) {
       total: lista4.length
     };
   };
-  const meses = /* @__PURE__ */ new Map();
+  const meses2 = /* @__PURE__ */ new Map();
   nascs.forEach((n) => {
     const k = (n.data || "").slice(0, 7) || "sem-data";
-    if (!meses.has(k)) meses.set(k, []);
-    meses.get(k).push(n);
+    if (!meses2.has(k)) meses2.set(k, []);
+    meses2.get(k).push(n);
   });
-  const linhasMes = [...meses.keys()].sort().map((k) => ({ periodo: k === "sem-data" ? "Sem data" : mesCurto(k), ...contar(meses.get(k)) }));
+  const linhasMes = [...meses2.keys()].sort().map((k) => ({ periodo: k === "sem-data" ? "Sem data" : mesCurto(k), ...contar(meses2.get(k)) }));
   if (linhasMes.length) linhasMes.push({ periodo: "Total", ...contar(nascs) });
   const pais = /* @__PURE__ */ new Map();
   nascs.forEach((n) => {
@@ -2418,28 +2419,28 @@ function idadeMesesDias(nascISO, refISO) {
   if (!nascISO || !refISO || refISO < nascISO) return null;
   const [y1, m1, d1] = nascISO.split("-").map(Number);
   const [y2, m2, d2] = refISO.split("-").map(Number);
-  let meses = (y2 - y1) * 12 + (m2 - m1);
-  if (d2 < d1) meses -= 1;
-  const base = addMeses(nascISO, meses);
+  let meses2 = (y2 - y1) * 12 + (m2 - m1);
+  if (d2 < d1) meses2 -= 1;
+  const base = addMeses(nascISO, meses2);
   const dias = diasEntre(base, refISO);
-  return { meses, dias, totalDias: diasEntre(nascISO, refISO), texto: textoMesesDias(meses, dias) };
+  return { meses: meses2, dias, totalDias: diasEntre(nascISO, refISO), texto: textoMesesDias(meses2, dias) };
 }
-function textoMesesDias(meses, dias) {
-  const m = meses === 1 ? "1 m\xEAs" : `${meses} meses`;
+function textoMesesDias(meses2, dias) {
+  const m = meses2 === 1 ? "1 m\xEAs" : `${meses2} meses`;
   const d = dias === 1 ? "1 dia" : `${dias} dias`;
-  if (!meses) return d;
+  if (!meses2) return d;
   if (!dias) return m;
   return `${m} e ${d}`;
 }
-function addMeses(iso, meses) {
+function addMeses(iso, meses2) {
   const [y, m, d] = iso.split("-").map(Number);
-  const alvo = new Date(Date.UTC(y, m - 1 + meses, 1));
+  const alvo = new Date(Date.UTC(y, m - 1 + meses2, 1));
   const ultimo = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
   alvo.setUTCDate(Math.min(d, ultimo));
   return alvo.toISOString().slice(0, 10);
 }
-function diasDeMesesDias(nascISO, meses, dias) {
-  const m = parseInt(meses, 10) || 0;
+function diasDeMesesDias(nascISO, meses2, dias) {
+  const m = parseInt(meses2, 10) || 0;
   const d = parseInt(dias, 10) || 0;
   if (nascISO) return diasEntre(nascISO, addDias(addMeses(nascISO, m), d));
   return m * 30 + d;
@@ -3751,11 +3752,11 @@ function pendenciasVacinas(estado, cfg, hoje) {
         out.push({ regra: r, animalId: id, brinco: c.brinco, tipo: c.sexo === "F\xEAmea" ? "Bezerra" : "Bezerro", prazo: fim, situacao, nivel: hoje > fim ? "atrasada" : hoje < ini ? "futura" : "pendente", mae: c.maeBrinco });
       });
     } else if (r.tipo === "periodo") {
-      const meses = num(r.intervaloMeses) || 12;
+      const meses2 = num(r.intervaloMeses) || 12;
       const alvo = r.publico === "cheias" ? plantel.filter((m) => m.status === "Cheia") : r.publico === "matrizes" ? plantel : matrizes;
       alvo.forEach((m) => {
         const ult = (cache.get(m.id) || []).filter((a) => a.tipo === r.nome).pop();
-        const prazo = ult ? addMeses(ult.data, meses) : "";
+        const prazo = ult ? addMeses(ult.data, meses2) : "";
         if (ult && diasEntre(hoje, prazo) > 30) return;
         out.push({ regra: r, animalId: m.id, brinco: m.brinco, tipo: m.categoria, prazo, situacao: !ult ? "Nunca registrada" : prazo < hoje ? `Venceu em ${formatarDataBR(prazo)}` : `Vence em ${formatarDataBR(prazo)}`, nivel: !ult || prazo < hoje ? "atrasada" : "pendente", status: m.status });
       });
@@ -4127,7 +4128,7 @@ var idadeCurta = anosTxt;
 function resumoAnimal(ix, k, fmt) {
   const t = k[0];
   const id = k.slice(2);
-  const br3 = fmt;
+  const br4 = fmt;
   if (t === "m") {
     const m = ix.matPorId.get(id);
     if (!m) return null;
@@ -4141,19 +4142,19 @@ function resumoAnimal(ix, k, fmt) {
       return {
         brinco: m.brinco,
         rot: "Novilha",
-        titulo: ind ? `Induzida em ${br3(ind.data)}` : "N\xE3o induzida",
+        titulo: ind ? `Induzida em ${br4(ind.data)}` : "N\xE3o induzida",
         cor: ind ? "green" : "amber",
-        linha: [u ? `${u.peso} kg em ${br3(u.data)}` : "sem peso", nasc ? anosTxt(nasc, ix.hoje) : "", m.lote].filter(Boolean).join(" \xB7 "),
+        linha: [u ? `${u.peso} kg em ${br4(u.data)}` : "sem peso", nasc ? anosTxt(nasc, ix.hoje) : "", m.lote].filter(Boolean).join(" \xB7 "),
         pill: { t: m.status, cor: corStatus(m.status) }
       };
     }
     const prev = m.status === "Cheia" ? previsaoPartoInfo(m.id, ix.dados.eventos) : null;
-    const ult = p[0] ? `\xDAlt. cria ${p[0].brincoBezerro || "s/ n\xBA"} \xB7 ${br3(p[0].data)}` : "Sem parto registrado";
+    const ult = p[0] ? `\xDAlt. cria ${p[0].brincoBezerro || "s/ n\xBA"} \xB7 ${br4(p[0].data)}` : "Sem parto registrado";
     const atras = prev && prev.data && prev.data < ix.hoje;
     return {
       brinco: m.brinco,
       rot: m.categoria || "Matriz",
-      titulo: prev && prev.data ? `Previs\xE3o ${br3(prev.data)}` : ult,
+      titulo: prev && prev.data ? `Previs\xE3o ${br4(prev.data)}` : ult,
       cor: prev && prev.data ? atras ? "late" : "green" : "",
       linha: [prev && prev.data ? ult : "", `${p.length} parto${p.length === 1 ? "" : "s"}`, m.lote].filter(Boolean).join(" \xB7 "),
       pill: { t: m.status, cor: corStatus(m.status) }
@@ -4166,9 +4167,9 @@ function resumoAnimal(ix, k, fmt) {
     return {
       brinco: c.brinco || "s/ n\xBA",
       rot: categoriaCria(c),
-      titulo: pesoOk ? `${c.pesoAtual} kg em ${br3(c.pesoData)}` : "Ainda n\xE3o pesado",
+      titulo: pesoOk ? `${c.pesoAtual} kg em ${br4(c.pesoData)}` : "Ainda n\xE3o pesado",
       cor: pesoOk ? "green" : "",
-      linha: `${idadeTexto(c.nascData, ix.hoje) || `nasc. ${br3(c.nascData)}`} \xB7 m\xE3e ${c.maeBrinco || "?"}`,
+      linha: `${idadeTexto(c.nascData, ix.hoje) || `nasc. ${br4(c.nascData)}`} \xB7 m\xE3e ${c.maeBrinco || "?"}`,
       pill: { t: rotuloSit(c), cor: corSituacao(c.situacao) }
     };
   }
@@ -4179,7 +4180,7 @@ function resumoAnimal(ix, k, fmt) {
     return {
       brinco: tt.brinco || "\u2014",
       rot: tt.lote ? "Boi" : "Boi",
-      titulo: u ? `${u.peso} kg em ${br3(u.data)}` : tt.pesoAtual ? `${tt.pesoAtual} kg (entrada)` : "Sem peso",
+      titulo: u ? `${u.peso} kg em ${br4(u.data)}` : tt.pesoAtual ? `${tt.pesoAtual} kg (entrada)` : "Sem peso",
       cor: u ? "green" : "",
       linha: [tt.nome && tt.nome !== tt.brinco ? tt.nome : "", tt.raca, tt.origem, tt.lote].filter(Boolean).join(" \xB7 ") || "Boi",
       pill: { t: boiAtivo(tt) ? "Na fazenda" : "Saiu", cor: boiAtivo(tt) ? "green" : "gray" }
@@ -4241,7 +4242,8 @@ function reproducaoDaMatriz(ix, m) {
   const vivo = m.status !== "Vendida" && m.status !== "Morta";
   if (vivo && m.status === "Vazia" && ps[0]) {
     const d = diasEntre(ps[0].data, ix.hoje);
-    if (d > 120) alertas.push({ t: `Vazia h\xE1 ${d} dias desde o \xFAltimo parto`, ruim: d > 365 });
+    if (d > 6 * 30.44) alertas.push({ t: `Mais de 6 meses sem emprenhar: vazia h\xE1 ${Math.round(d / 30.44)} meses (${d} dias) desde o \xFAltimo parto`, ruim: true });
+    else if (d > 120) alertas.push({ t: `Vazia h\xE1 ${d} dias desde o \xFAltimo parto` });
   }
   if (vivo && prev && prev.data) {
     const d = diasEntre(ix.hoje, prev.data);
@@ -6465,6 +6467,44 @@ button.fx-kpi{cursor:pointer} button.fx-kpi:hover{border-color:var(--line)}
 .fx-cad .v.add input{background:transparent;border:none;outline:none;width:150px;font-size:13px;color:var(--tx)}
 .fx-cad .v.off{opacity:.55;text-decoration:line-through}
 
+
+/* ---- v11.1: produtividade ---- */
+.pd-lead{margin-top:-6px;max-width:70ch;line-height:1.5}
+.pd-lead b{color:var(--tx)}
+.pd-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.pd-barras{display:flex;flex-direction:column;gap:6px}
+.pd-barra{display:grid;grid-template-columns:minmax(0,11.5rem) minmax(0,1fr) 34px;gap:10px;align-items:center;width:100%;min-height:34px;border:none;background:transparent;color:inherit;padding:0;text-align:left;cursor:pointer;font:inherit}
+.pd-barra .nome{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pd-barra .trilho{height:18px;border-radius:4px;background:var(--s2);overflow:hidden}
+.pd-barra .trilho span{display:block;height:100%;border-radius:4px}
+.pd-barra b{font:600 14px var(--mono);text-align:right}
+@media (max-width:480px){.pd-barra{grid-template-columns:minmax(0,8.5rem) minmax(0,1fr) 30px}.pd-barra .nome{font-size:12px}}
+.pd-tabela-box{overflow:auto;max-height:70vh;border:1px solid var(--line2);border-radius:14px;background:var(--s1)}
+.pd-tabela{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.pd-tabela th{position:sticky;top:0;z-index:1;background:var(--s1);text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);font:600 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mut);white-space:nowrap}
+.pd-tabela th button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;letter-spacing:inherit;text-transform:inherit}
+.pd-tabela th[aria-sort] button{color:var(--amber)}
+.pd-tabela td{padding:9px 10px;border-bottom:1px solid var(--line2);vertical-align:top}
+.pd-tabela tbody tr{cursor:pointer}
+.pd-tabela tbody tr:hover{background:var(--s2)}
+.pd-tabela .num{text-align:right}
+.pd-tabela td.br{font:600 16px var(--mono);position:sticky;left:0;background:var(--s1)}
+.pd-tabela tbody tr:hover td.br{background:var(--s2)}
+.pd-tabela td small{display:block;font:500 11px var(--body);color:var(--mut);margin-top:3px}
+.pd-tabela td small.late{color:var(--late)}
+.pd-tabela td.lista{font:500 12px/17px var(--mono);white-space:nowrap}
+.pd-tabela td.lista span{display:block}
+.pd-tabela td.acao{min-width:15rem;font-size:12.5px;color:var(--mut)}
+.pd-defs{margin-top:14px;color:var(--mut);font-size:13px}
+.pd-defs summary{cursor:pointer;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:8px 0}
+.pd-defs ul{margin:6px 0 0;padding-left:1.1rem;line-height:1.6}
+.pd-defs b{color:var(--tx)}
+.pd-alerta{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;border-left:3px solid var(--late);background:var(--late-bg);border-radius:8px;padding:10px 12px;margin:0 0 12px;font-size:14px}
+.pd-alerta b{font-family:var(--mono)}
+.pd-alerta .acts{display:flex;gap:8px;flex-wrap:wrap}
+.pd-filtro{border:1px solid var(--late);background:transparent;color:var(--late);border-radius:999px;padding:3px 10px;font:600 11.5px var(--mono);cursor:pointer}
+.pd-filtro.on{background:var(--late-bg)}
+.quebra.late{color:var(--late)}
 @media print{
   :root{--bg:#fff;--s1:#fff;--s2:#f3f3f3;--line:#999;--line2:#ccc;--tx:#000;--mut:#444;--amber:#7a4a00;--green:#1d5c1d;--late:#a02020}
   .side,.bnav,.topbar,.noprint,.itabs,.banner-teste,details.ferr{display:none!important}
@@ -7090,7 +7130,126 @@ function Toque({ dados, hoje, ownerMode, modoTeste, onGravarLote, onMontarProtoc
   } }, r))), /* @__PURE__ */ React16.createElement("label", { className: "search", style: { border: "1px solid var(--line)", borderRadius: 6 } }, /* @__PURE__ */ React16.createElement(Search6, null), /* @__PURE__ */ React16.createElement("input", { inputMode: "numeric", placeholder: "Digite o brinco da vaca no brete", "aria-label": "Buscar brinco no toque", value: busca, onChange: (e) => setBusca(e.target.value) }))), /* @__PURE__ */ React16.createElement("div", { className: "sheet", style: { marginTop: 10 } }, lista4.length === 0 && /* @__PURE__ */ React16.createElement("div", { className: "empty" }, t ? `Nenhuma vaca com o brinco ${t} no toque.` : filtro === "faltam" ? "Todas avaliadas." : "Nada aqui."), lista4.map((m) => /* @__PURE__ */ React16.createElement(Linha2, { key: m.id, dados, m, info: infos.get(m.id), marca: marcas[m.id], data: sessao.data, cfg: dados.config, onMarcar: marcar, gravada: gravadas.has(m.id) }))), /* @__PURE__ */ React16.createElement("div", { className: "sheet pad", style: { marginTop: 10, position: "sticky", bottom: 70, zIndex: 5 } }, msg && /* @__PURE__ */ React16.createElement(Aviso, { tipo: msg.tipo === "erro" ? void 0 : "ok" }, msg.texto), /* @__PURE__ */ React16.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React16.createElement("button", { className: "btn", style: { flex: "1 1 200px" }, onClick: gravar, disabled: gravando || naoGravadas.length === 0 }, gravando ? /* @__PURE__ */ React16.createElement(Loader210, { size: 18, className: "spin" }) : /* @__PURE__ */ React16.createElement(Save9, { size: 18 }), " Gravar ", naoGravadas.length, " avalia\xE7\xE3o(\xF5es)"), confEncerrar ? /* @__PURE__ */ React16.createElement("button", { className: "btn quiet", onClick: encerrar }, naoGravadas.length ? `Encerrar sem gravar ${naoGravadas.length}` : "Confirmar encerrar") : /* @__PURE__ */ React16.createElement("button", { className: "btn quiet", onClick: () => setConfEncerrar(true) }, "Encerrar toque"))));
 }
 
+// src/produtividade.js
+var MESES_SEM_EMPRENHAR = 6;
+var DIAS_EM_DIA = 395;
+var DIAS_2_ANOS = 730;
+var IDADE_NOVILHA_COBRADA = 30;
+var GRUPOS_PROD = [
+  { id: "nunca", nome: "Vaca que nunca pariu", cor: "bad" },
+  { id: "improdutiva", nome: "Vazia h\xE1 mais de 2 anos", cor: "bad" },
+  { id: "atrasada", nome: "Vazia h\xE1 13 a 24 meses", cor: "warn" },
+  { id: "prenhe", nome: "Prenhe, mas atrasada", cor: "warn" },
+  { id: "novilhaVelha", nome: "Novilha passada da idade", cor: "warn" },
+  { id: "emdia", nome: "Em dia", cor: "ok" },
+  { id: "novilha", nome: "Novilha jovem", cor: "mut" },
+  { id: "descarte", nome: "Marcada para descarte", cor: "mut" }
+];
+var meses = (d) => d === null || d === void 0 ? null : Math.round(d / 30.44);
+function analisarMatrizes(dados, hoje, criaDaMatriz) {
+  const P = partosPorMatriz(dados.eventos);
+  const diagsPor = /* @__PURE__ */ new Map();
+  dados.eventos.forEach((e) => {
+    if (e.tipo === "diagnostico" && e.matrizId) {
+      if (!diagsPor.has(e.matrizId)) diagsPor.set(e.matrizId, []);
+      diagsPor.get(e.matrizId).push(e);
+    }
+  });
+  return dados.matrizes.filter((m) => m.status !== "Vendida" && m.status !== "Morta").map((m) => {
+    const ps = (P.get(m.id) || []).slice().sort((a, b) => b.data.localeCompare(a.data));
+    const cria = criaDaMatriz ? criaDaMatriz.get(m.id) : null;
+    const nasc = m.dataNascimento || cria && cria.nascData || "";
+    const idade = nasc ? idadeMesesDias(nasc, hoje) : null;
+    const idadeMeses = idade ? idade.meses : null;
+    const ult = ps[0] ? ps[0].data : "";
+    const desde = ult ? diasEntre(ult, hoje) : null;
+    const inter = [];
+    for (let i = 0; i < ps.length - 1; i++) inter.push(diasEntre(ps[i + 1].data, ps[i].data));
+    const iep = inter.length ? inter.reduce((a, b) => a + b, 0) / inter.length : null;
+    const p12 = ps.filter((e) => diasEntre(e.data, hoje) <= 365).length;
+    const prevInfo = m.status === "Cheia" ? previsaoPartoInfo(m.id, dados.eventos) : null;
+    const prev = prevInfo && prevInfo.data ? prevInfo.data : "";
+    const vencida = prev && prev < hoje ? diasEntre(prev, hoje) : 0;
+    const toque = (diagsPor.get(m.id) || []).sort((a, b) => b.data.localeCompare(a.data))[0] || null;
+    const nov = m.categoria === "Novilha";
+    let g;
+    let acao;
+    if (m.status === "Descarte") {
+      g = "descarte";
+      acao = "J\xE1 marcada para descarte";
+    } else if (nov && !ps.length) {
+      if (idadeMeses !== null && idadeMeses >= IDADE_NOVILHA_COBRADA) {
+        g = "novilhaVelha";
+        acao = "Mais de 30 meses sem parir: avaliar no toque, induzir ou vender";
+      } else {
+        g = "novilha";
+        acao = "Ainda n\xE3o \xE9 cobrada: acompanhar peso e indu\xE7\xE3o";
+      }
+    } else if (desde !== null && desde <= DIAS_EM_DIA) {
+      g = "emdia";
+      acao = m.status === "Cheia" ? "Prenhe e em dia" : "Pariu no \xFAltimo ano: confirmar prenhez no pr\xF3ximo toque";
+    } else if (m.status === "Cheia") {
+      g = "prenhe";
+      acao = prev ? vencida ? `Previs\xE3o passou h\xE1 ${vencida} dias: pariu sem lan\xE7ar ou perdeu a cria?` : "Vai parir, mas com intervalo longo" : "Cheia sem previs\xE3o: conferir no toque";
+    } else if (desde !== null && desde <= DIAS_2_ANOS) {
+      g = "atrasada";
+      acao = "Prioridade no toque: se continuar vazia, entra para descarte";
+    } else if (desde !== null) {
+      g = "improdutiva";
+      acao = "Candidata a descarte: confirmar no toque";
+    } else {
+      g = "nunca";
+      acao = "Candidata a descarte: nenhum parto registrado";
+    }
+    const semEmprenhar = m.status === "Vazia" && desde !== null && desde > MESES_SEM_EMPRENHAR * 30.44;
+    return {
+      m,
+      id: m.id,
+      brinco: String(m.brinco),
+      grupo: g,
+      ordem: GRUPOS_PROD.findIndex((x) => x.id === g),
+      categoria: m.categoria,
+      status: m.status,
+      lote: m.lote || "",
+      idadeMeses,
+      partos: ps,
+      nPartos: ps.length,
+      antes: parseInt(m.partosAnteriores, 10) || 0,
+      ultimoParto: ult,
+      diasSemParir: desde,
+      mesesSemParir: meses(desde),
+      iepMeses: iep ? Math.round(iep / 30.44 * 10) / 10 : null,
+      partos12m: p12,
+      previsao: prev,
+      previsaoVencida: vencida,
+      toque: toque ? { data: toque.data, resultado: toque.resultado } : null,
+      semEmprenhar,
+      acao
+    };
+  });
+}
+function resumoProdutividade(linhas) {
+  const vacas = linhas.filter((l) => l.grupo !== "novilha" && l.grupo !== "novilhaVelha");
+  const pariram = vacas.filter((l) => l.partos12m > 0).length;
+  const ieps = linhas.map((l) => l.iepMeses).filter((x) => x > 0);
+  const por = (ids3) => linhas.filter((l) => ids3.includes(l.grupo)).length;
+  return {
+    vacas: vacas.length,
+    pariram12m: pariram,
+    pct12m: vacas.length ? pariram / vacas.length : 0,
+    iepMedio: ieps.length ? Math.round(ieps.reduce((a, b) => a + b, 0) / ieps.length * 10) / 10 : null,
+    iepAcima15: ieps.filter((x) => x > 15).length,
+    comIep: ieps.length,
+    descarte: por(["nunca", "improdutiva"]),
+    prioridade: por(["atrasada", "novilhaVelha"]),
+    previsaoVencida: linhas.filter((l) => l.previsaoVencida > 0).length,
+    semEmprenhar: linhas.filter((l) => l.semEmprenhar).length,
+    porGrupo: GRUPOS_PROD.map((g) => ({ ...g, n: linhas.filter((l) => l.grupo === g.id).length }))
+  };
+}
+
 // src/telas/Parto.jsx
+var DIAS_6_MESES = MESES_SEM_EMPRENHAR * 30.44;
 function textoDias(dias) {
   if (dias === null || dias === void 0) return { t: "\u2014", c: "mut" };
   if (dias < 0) return { t: `\u2212${Math.abs(dias)}`, c: "late" };
@@ -7132,9 +7291,10 @@ function PartoDetalhe({ e, c, hoje }) {
   if (e.tipoParto && e.tipoParto !== "Normal") partes.push(/* @__PURE__ */ React17.createElement("span", { key: "tp" }, "parto ", String(e.tipoParto).toLowerCase()));
   return /* @__PURE__ */ React17.createElement("div", { className: "parto-lin", "data-testid": "parto-lin" }, /* @__PURE__ */ React17.createElement("b", { className: "m" }, formatarDataBR(e.data)), " ", /* @__PURE__ */ React17.createElement("span", { className: "mut" }, "(h\xE1 ", diasEntre(e.data, hoje), " dias)"), /* @__PURE__ */ React17.createElement("div", { className: "parto-cria" }, partes.map((x, i) => /* @__PURE__ */ React17.createElement(React17.Fragment, { key: i }, i ? " \xB7 " : "", x))));
 }
-function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onGravarLote, onMontarProtocolo }) {
+function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onGravarLote, onMontarProtocolo, onAbrirProdutividade }) {
   const { abrir } = useFicha();
   const [aba, setAba] = useState16("Cheia");
+  const [so6, setSo6] = useState16(false);
   const [busca, setBusca] = useState16("");
   const [aberta, setAberta] = useState16(null);
   const todasCheias = useMemo14(() => linhasPrevisao(dados.matrizes, dados.eventos, "Cheia", hoje, ""), [dados, hoje]);
@@ -7143,8 +7303,9 @@ function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onGravarLote, onMo
   const criaPorNasc = useMemo14(() => aba !== "Toque" ? new Map(listarCrias(dados, hoje).map((c) => [c.id, c])) : /* @__PURE__ */ new Map(), [dados, hoje, aba]);
   const linhas = useMemo14(() => {
     const q = busca.trim().toLowerCase();
-    return linhasPrevisao(dados.matrizes, dados.eventos, aba, hoje, "").filter((l) => !q || String(l.matriz.brinco).toLowerCase().includes(q) || (partos.get(l.matriz.id) || []).some((e) => String(e.brincoBezerro || "").toLowerCase().includes(q)));
-  }, [dados, aba, hoje, busca, partos]);
+    return linhasPrevisao(dados.matrizes, dados.eventos, aba, hoje, "").filter((l) => !q || String(l.matriz.brinco).toLowerCase().includes(q) || (partos.get(l.matriz.id) || []).some((e) => String(e.brincoBezerro || "").toLowerCase().includes(q))).filter((l) => !(aba === "Vazia" && so6) || l.diasDesdeParto !== null && l.diasDesdeParto > DIAS_6_MESES);
+  }, [dados, aba, hoje, busca, partos, so6]);
+  const seisMeses = useMemo14(() => linhasPrevisao(dados.matrizes, dados.eventos, "Vazia", hoje, "").filter((l) => l.diasDesdeParto !== null && l.diasDesdeParto > DIAS_6_MESES).length, [dados, hoje]);
   const atrasadas = todasCheias.filter((l) => l.dias !== null && l.dias < 0).length;
   const porVir = todasCheias.filter((l) => l.dias !== null && l.dias >= 0).length;
   const semPrev = todasCheias.filter((l) => l.dias === null).length;
@@ -7165,12 +7326,16 @@ function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onGravarLote, onMo
       },
       tabs: [{ id: "Cheia", label: "Cheias", count: todasCheias.length }, { id: "Vazia", label: "Vazias", count: nVazias }, { id: "Toque", label: "Toque" }]
     }
-  ), aba === "Toque" && /* @__PURE__ */ React17.createElement(Toque, { dados, hoje, ownerMode, modoTeste, onGravarLote, onMontarProtocolo }), aba !== "Toque" && /* @__PURE__ */ React17.createElement("section", { className: "sheet" }, /* @__PURE__ */ React17.createElement("label", { className: "search" }, /* @__PURE__ */ React17.createElement(Search7, null), /* @__PURE__ */ React17.createElement("input", { placeholder: "Buscar pelo brinco da vaca ou da cria", "aria-label": "Buscar pelo brinco", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React17.createElement("div", { className: "bar-sum" }, aba === "Cheia" ? /* @__PURE__ */ React17.createElement(React17.Fragment, null, /* @__PURE__ */ React17.createElement("span", { className: "late" }, atrasadas, " atrasadas"), /* @__PURE__ */ React17.createElement("span", { className: "good" }, porVir, " por vir"), semPrev > 0 && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, semPrev, " sem previs\xE3o"), pendVac > 0 && /* @__PURE__ */ React17.createElement("span", { className: "late" }, pendVac, " com vacina pendente")) : /* @__PURE__ */ React17.createElement(React17.Fragment, null, /* @__PURE__ */ React17.createElement("span", { className: "soon" }, nVazias, " vazias"), vaziasSemParto > 0 && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, vaziasSemParto, " sem parto lan\xE7ado"))), vazias ? /* @__PURE__ */ React17.createElement("div", { className: "led-h cols-reb" }, /* @__PURE__ */ React17.createElement("span", null, "Brinco"), /* @__PURE__ */ React17.createElement("span", null, "Categoria"), /* @__PURE__ */ React17.createElement("span", null, "Partos"), /* @__PURE__ */ React17.createElement("span", { className: "r" }, "Crias")) : /* @__PURE__ */ React17.createElement("div", { className: "led-h cols-cheia" }, /* @__PURE__ */ React17.createElement("span", null, "Brinco"), /* @__PURE__ */ React17.createElement("span", null, "Categoria"), /* @__PURE__ */ React17.createElement("span", null, "Partos"), /* @__PURE__ */ React17.createElement("span", { className: "r" }, "Crias"), /* @__PURE__ */ React17.createElement("span", { className: "r" }, "Previs\xE3o")), linhas.length === 0 && /* @__PURE__ */ React17.createElement("div", { className: "empty" }, busca ? "Nenhuma matriz com esse brinco aqui." : `Nenhuma matriz ${aba === "Cheia" ? "cheia" : "vazia"}.`), vazias && linhas.map((l) => {
+  ), seisMeses > 0 && aba !== "Toque" && /* @__PURE__ */ React17.createElement("div", { className: "pd-alerta", role: "status", "data-testid": "alerta-6meses" }, /* @__PURE__ */ React17.createElement("span", null, /* @__PURE__ */ React17.createElement("b", null, seisMeses), " vaca(s) com mais de ", MESES_SEM_EMPRENHAR, " meses sem emprenhar (vazias, \xFAltimo parto h\xE1 mais de ", MESES_SEM_EMPRENHAR, " meses)."), /* @__PURE__ */ React17.createElement("span", { className: "acts" }, /* @__PURE__ */ React17.createElement("button", { className: "btn sm", onClick: () => {
+    setAba("Vazia");
+    setSo6(true);
+    setAberta(null);
+  } }, "Ver em Vazias"), onAbrirProdutividade && /* @__PURE__ */ React17.createElement("button", { className: "btn sm quiet", onClick: () => onAbrirProdutividade("seis") }, "Produtividade"))), aba === "Toque" && /* @__PURE__ */ React17.createElement(Toque, { dados, hoje, ownerMode, modoTeste, onGravarLote, onMontarProtocolo }), aba !== "Toque" && /* @__PURE__ */ React17.createElement("section", { className: "sheet" }, /* @__PURE__ */ React17.createElement("label", { className: "search" }, /* @__PURE__ */ React17.createElement(Search7, null), /* @__PURE__ */ React17.createElement("input", { placeholder: "Buscar pelo brinco da vaca ou da cria", "aria-label": "Buscar pelo brinco", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React17.createElement("div", { className: "bar-sum" }, aba === "Cheia" ? /* @__PURE__ */ React17.createElement(React17.Fragment, null, /* @__PURE__ */ React17.createElement("span", { className: "late" }, atrasadas, " atrasadas"), /* @__PURE__ */ React17.createElement("span", { className: "good" }, porVir, " por vir"), semPrev > 0 && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, semPrev, " sem previs\xE3o"), pendVac > 0 && /* @__PURE__ */ React17.createElement("span", { className: "late" }, pendVac, " com vacina pendente")) : /* @__PURE__ */ React17.createElement(React17.Fragment, null, /* @__PURE__ */ React17.createElement("span", { className: "soon" }, nVazias, " vazias"), vaziasSemParto > 0 && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, vaziasSemParto, " sem parto lan\xE7ado"), seisMeses > 0 && /* @__PURE__ */ React17.createElement("button", { className: `pd-filtro${so6 ? " on" : ""}`, "aria-pressed": so6, onClick: () => setSo6(!so6), "data-testid": "filtro-6meses" }, so6 ? `mostrando ${seisMeses} com mais de 6 meses \xB7 ver todas` : `${seisMeses} com mais de 6 meses sem emprenhar`))), vazias ? /* @__PURE__ */ React17.createElement("div", { className: "led-h cols-reb" }, /* @__PURE__ */ React17.createElement("span", null, "Brinco"), /* @__PURE__ */ React17.createElement("span", null, "Categoria"), /* @__PURE__ */ React17.createElement("span", null, "Partos"), /* @__PURE__ */ React17.createElement("span", { className: "r" }, "Crias")) : /* @__PURE__ */ React17.createElement("div", { className: "led-h cols-cheia" }, /* @__PURE__ */ React17.createElement("span", null, "Brinco"), /* @__PURE__ */ React17.createElement("span", null, "Categoria"), /* @__PURE__ */ React17.createElement("span", null, "Partos"), /* @__PURE__ */ React17.createElement("span", { className: "r" }, "Crias"), /* @__PURE__ */ React17.createElement("span", { className: "r" }, "Previs\xE3o")), linhas.length === 0 && /* @__PURE__ */ React17.createElement("div", { className: "empty" }, busca ? "Nenhuma matriz com esse brinco aqui." : `Nenhuma matriz ${aba === "Cheia" ? "cheia" : "vazia"}.`), vazias && linhas.map((l) => {
     const m = l.matriz;
     const ps = partos.get(m.id) || [];
     const antes = parseInt(m.partosAnteriores, 10) || 0;
     const aberto = aberta === m.id;
-    return /* @__PURE__ */ React17.createElement(React17.Fragment, { key: m.id }, /* @__PURE__ */ React17.createElement("button", { className: "led-r cols-reb", "aria-expanded": aberto, onClick: () => setAberta(aberto ? null : m.id), "data-testid": `vazia-${m.brinco}` }, /* @__PURE__ */ React17.createElement("span", { className: "b" }, m.brinco), /* @__PURE__ */ React17.createElement("span", { className: "two" }, /* @__PURE__ */ React17.createElement("b", null, m.categoria), /* @__PURE__ */ React17.createElement("span", null, [m.raca, m.lote].filter(Boolean).join(" \xB7 ") || "\u2014"), /* @__PURE__ */ React17.createElement("span", { className: "quebra" }, l.diasDesdeParto === null ? "sem parto lan\xE7ado" : `\xFAltimo parto h\xE1 ${l.diasDesdeParto} dias`)), /* @__PURE__ */ React17.createElement("span", { className: "reb-lista", "data-testid": "parto-datas" }, ps.length === 0 && !antes && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React17.createElement("span", { key: e.id }, formatarDataBR(e.data))), antes > 0 && /* @__PURE__ */ React17.createElement("span", { className: "mut", title: "Partos antes de entrar na fazenda" }, "+", antes, " antes")), /* @__PURE__ */ React17.createElement("span", { className: "reb-lista r", "data-testid": "parto-crias" }, ps.length === 0 && !antes && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React17.createElement("span", { key: e.id, className: e.resultadoParto === "Natimorto" || !e.brincoBezerro ? "mut" : "" }, e.resultadoParto === "Natimorto" ? "natim." : e.brincoBezerro || "s/ n\xBA")), antes > 0 && /* @__PURE__ */ React17.createElement("span", null, "\xA0"))), aberto && /* @__PURE__ */ React17.createElement("div", { className: "detalhe", "data-testid": "vazia-detalhe" }, ps.length === 0 && !antes && /* @__PURE__ */ React17.createElement("div", null, "Nenhum parto lan\xE7ado para esta vaca."), ps.map((e) => /* @__PURE__ */ React17.createElement(PartoDetalhe, { key: e.id, e, c: criaPorNasc.get(e.id), hoje })), antes > 0 && /* @__PURE__ */ React17.createElement("div", { className: "mut", style: { marginTop: 6 } }, "Mais ", antes, " parto(s) antes de entrar na fazenda (sem data lan\xE7ada)."), /* @__PURE__ */ React17.createElement("div", { style: { marginTop: 10 } }, /* @__PURE__ */ React17.createElement("button", { className: "btn sm quiet", onClick: () => abrir(`m:${m.id}`) }, "Ficha completa"))));
+    return /* @__PURE__ */ React17.createElement(React17.Fragment, { key: m.id }, /* @__PURE__ */ React17.createElement("button", { className: "led-r cols-reb", "aria-expanded": aberto, onClick: () => setAberta(aberto ? null : m.id), "data-testid": `vazia-${m.brinco}` }, /* @__PURE__ */ React17.createElement("span", { className: "b" }, m.brinco), /* @__PURE__ */ React17.createElement("span", { className: "two" }, /* @__PURE__ */ React17.createElement("b", null, m.categoria), /* @__PURE__ */ React17.createElement("span", null, [m.raca, m.lote].filter(Boolean).join(" \xB7 ") || "\u2014"), /* @__PURE__ */ React17.createElement("span", { className: `quebra${l.diasDesdeParto !== null && l.diasDesdeParto > DIAS_6_MESES ? " late" : ""}` }, l.diasDesdeParto === null ? "sem parto lan\xE7ado" : `\xFAltimo parto h\xE1 ${l.diasDesdeParto} dias (${Math.round(l.diasDesdeParto / 30.44)} meses)`)), /* @__PURE__ */ React17.createElement("span", { className: "reb-lista", "data-testid": "parto-datas" }, ps.length === 0 && !antes && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React17.createElement("span", { key: e.id }, formatarDataBR(e.data))), antes > 0 && /* @__PURE__ */ React17.createElement("span", { className: "mut", title: "Partos antes de entrar na fazenda" }, "+", antes, " antes")), /* @__PURE__ */ React17.createElement("span", { className: "reb-lista r", "data-testid": "parto-crias" }, ps.length === 0 && !antes && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React17.createElement("span", { key: e.id, className: e.resultadoParto === "Natimorto" || !e.brincoBezerro ? "mut" : "" }, e.resultadoParto === "Natimorto" ? "natim." : e.brincoBezerro || "s/ n\xBA")), antes > 0 && /* @__PURE__ */ React17.createElement("span", null, "\xA0"))), aberto && /* @__PURE__ */ React17.createElement("div", { className: "detalhe", "data-testid": "vazia-detalhe" }, ps.length === 0 && !antes && /* @__PURE__ */ React17.createElement("div", null, "Nenhum parto lan\xE7ado para esta vaca."), ps.map((e) => /* @__PURE__ */ React17.createElement(PartoDetalhe, { key: e.id, e, c: criaPorNasc.get(e.id), hoje })), antes > 0 && /* @__PURE__ */ React17.createElement("div", { className: "mut", style: { marginTop: 6 } }, "Mais ", antes, " parto(s) antes de entrar na fazenda (sem data lan\xE7ada)."), /* @__PURE__ */ React17.createElement("div", { style: { marginTop: 10 } }, /* @__PURE__ */ React17.createElement("button", { className: "btn sm quiet", onClick: () => abrir(`m:${m.id}`) }, "Ficha completa"))));
   }), !vazias && linhas.map((l) => {
     const m = l.matriz;
     const dd = aba === "Cheia" ? textoDias(l.dias) : { t: l.diasDesdeParto === null ? "\u2014" : String(l.diasDesdeParto), c: "mut" };
@@ -8531,18 +8696,65 @@ function Cadastros({ dados, onSalvarCadastros, scriptAntigo }) {
   return /* @__PURE__ */ React30.createElement("div", { className: "wrap" }, /* @__PURE__ */ React30.createElement("div", { className: "head" }, /* @__PURE__ */ React30.createElement("div", null, /* @__PURE__ */ React30.createElement("small", null, "S\xF3 o propriet\xE1rio"), /* @__PURE__ */ React30.createElement("h1", null, "Cadastros"))), /* @__PURE__ */ React30.createElement("p", { className: "sub", style: { marginTop: -6 } }, "As listas que aparecem nos campos do app. Toque no \xD7 para desativar um item (ele some das op\xE7\xF5es, mas o que j\xE1 foi lan\xE7ado continua igual). Os itens j\xE1 usados nos lan\xE7amentos aparecem aqui sozinhos."), scriptAntigo && /* @__PURE__ */ React30.createElement(Aviso, null, "Para gravar os cadastros a planilha precisa do script 15. Implante a vers\xE3o nova do script (fonte/Code_v15.gs). Enquanto isso as mudan\xE7as ficam s\xF3 na tela."), msg && /* @__PURE__ */ React30.createElement(Aviso, { onClose: () => setMsg(null) }, msg.t), LISTAS_CADASTRO.map((d) => /* @__PURE__ */ React30.createElement(Lista2, { key: d.id, def: d, dados, onSalvar: salvar2 })));
 }
 
+// src/telas/Produtividade.jsx
+import React31, { useMemo as useMemo26, useState as useState30, useEffect as useEffect13 } from "react";
+import { Search as Search10 } from "lucide-react";
+var br3 = (d) => d ? formatarDataBR(d) : "";
+var virgula = (v) => String(v).replace(".", ",");
+var COLS = [
+  { k: "brinco", t: "Brinco" },
+  { k: "ordem", t: "Situa\xE7\xE3o" },
+  { k: "nPartos", t: "Partos", num: true },
+  { k: "mesesSemParir", t: "Meses sem parir", num: true },
+  { k: "iepMeses", t: "Intervalo m\xE9dio", num: true },
+  { k: "previsao", t: "Previs\xE3o" }
+];
+function Produtividade({ dados, hoje, filtroInicial }) {
+  const { ix, abrir } = useFicha();
+  const linhas = useMemo26(() => analisarMatrizes(dados, hoje, ix ? ix.criaDaMatriz : null), [dados, hoje, ix]);
+  const r = useMemo26(() => resumoProdutividade(linhas), [linhas]);
+  const [filtro, setFiltro] = useState30(filtroInicial || "");
+  const [busca, setBusca] = useState30("");
+  const [sort, setSort] = useState30({ k: "ordem", dir: 1 });
+  useEffect13(() => {
+    if (filtroInicial) setFiltro(filtroInicial.split(":")[0]);
+  }, [filtroInicial]);
+  const q = busca.trim();
+  let lista4 = linhas.filter((l) => !filtro || (filtro === "seis" ? l.semEmprenhar : filtro === "vencida" ? l.previsaoVencida > 0 : l.grupo === filtro)).filter((l) => !q || l.brinco.startsWith(q) || l.partos.some((p) => String(p.brincoBezerro || "").startsWith(q)));
+  lista4 = lista4.slice().sort((a, b) => {
+    const k = sort.k;
+    const va = a[k];
+    const vb = b[k];
+    if (k === "ordem") return (va - vb) * sort.dir || (b.diasSemParir ?? -1) - (a.diasSemParir ?? -1);
+    const vazio2 = (v) => v === null || v === void 0 || v === "";
+    if (vazio2(va) && vazio2(vb)) return 0;
+    if (vazio2(va)) return 1;
+    if (vazio2(vb)) return -1;
+    if (typeof va === "number") return (va - vb) * sort.dir;
+    return String(va).localeCompare(String(vb), "pt-BR", { numeric: true }) * sort.dir;
+  });
+  const maxG = Math.max(1, ...r.porGrupo.map((g) => g.n));
+  const ordenar = (k) => setSort((s) => ({ k, dir: s.k === k ? -s.dir : 1 }));
+  const Chip2 = ({ id, children, cor }) => /* @__PURE__ */ React31.createElement("button", { className: `fx-cp${filtro === id ? " on" : ""}`, "aria-pressed": filtro === id, onClick: () => setFiltro(id) }, cor && /* @__PURE__ */ React31.createElement("span", { className: "pd-dot", style: { background: `var(--${cor})` } }), children);
+  const corVar = { bad: "late", warn: "amber", ok: "green", mut: "mut" };
+  return /* @__PURE__ */ React31.createElement("div", { className: "wrap", "data-testid": "produtividade" }, /* @__PURE__ */ React31.createElement("div", { className: "head" }, /* @__PURE__ */ React31.createElement("div", null, /* @__PURE__ */ React31.createElement("small", null, "Matrizes"), /* @__PURE__ */ React31.createElement("h1", null, "Produtividade"))), /* @__PURE__ */ React31.createElement("p", { className: "sub pd-lead" }, "Meta: cada vaca d\xE1 um bezerro por ano. Hoje ", /* @__PURE__ */ React31.createElement("b", null, Math.round(r.pct12m * 100), "%"), " das vacas pariram nos \xFAltimos 12 meses, o intervalo m\xE9dio entre partos \xE9 de ", /* @__PURE__ */ React31.createElement("b", null, r.iepMedio !== null ? virgula(r.iepMedio) : "\u2014", " meses"), " e ", /* @__PURE__ */ React31.createElement("b", null, r.descarte), " vacas s\xE3o candidatas a descarte."), /* @__PURE__ */ React31.createElement("div", { className: "fx-resumo" }, /* @__PURE__ */ React31.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React31.createElement("small", null, "Vacas no plantel"), /* @__PURE__ */ React31.createElement("b", null, r.vacas), /* @__PURE__ */ React31.createElement("i", null, "sem novilhas")), /* @__PURE__ */ React31.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React31.createElement("small", null, "Pariram em 12 meses"), /* @__PURE__ */ React31.createElement("b", { style: { color: "var(--green)" } }, r.pariram12m), /* @__PURE__ */ React31.createElement("i", null, Math.round(r.pct12m * 100), "%")), /* @__PURE__ */ React31.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React31.createElement("small", null, "Intervalo m\xE9dio entre partos"), /* @__PURE__ */ React31.createElement("b", { style: { color: "var(--amber)" } }, r.iepMedio !== null ? virgula(r.iepMedio) : "\u2014"), /* @__PURE__ */ React31.createElement("i", null, "meses (meta 12)")), /* @__PURE__ */ React31.createElement("button", { className: "fx-kpi", onClick: () => setFiltro("seis"), "data-testid": "kpi-seis" }, /* @__PURE__ */ React31.createElement("small", null, "Mais de ", MESES_SEM_EMPRENHAR, " meses sem emprenhar"), /* @__PURE__ */ React31.createElement("b", { style: { color: "var(--late)" } }, r.semEmprenhar)), /* @__PURE__ */ React31.createElement("button", { className: "fx-kpi", onClick: () => setFiltro("nunca") }, /* @__PURE__ */ React31.createElement("small", null, "Candidatas a descarte"), /* @__PURE__ */ React31.createElement("b", { style: { color: "var(--late)" } }, r.descarte)), /* @__PURE__ */ React31.createElement("button", { className: "fx-kpi", onClick: () => setFiltro("vencida") }, /* @__PURE__ */ React31.createElement("small", null, "Cheias com previs\xE3o vencida"), /* @__PURE__ */ React31.createElement("b", { style: { color: "var(--amber)" } }, r.previsaoVencida))), /* @__PURE__ */ React31.createElement("section", { className: "fx-card", style: { marginBottom: 14 } }, /* @__PURE__ */ React31.createElement("h3", null, "Onde est\xE1 cada matriz"), /* @__PURE__ */ React31.createElement("div", { className: "pd-barras" }, r.porGrupo.filter((g) => g.n > 0 || g.id !== "descarte").map((g) => /* @__PURE__ */ React31.createElement("button", { key: g.id, className: "pd-barra", onClick: () => setFiltro(g.id), "aria-label": `${g.nome}: ${g.n}` }, /* @__PURE__ */ React31.createElement("span", { className: "nome" }, g.nome), /* @__PURE__ */ React31.createElement("span", { className: "trilho" }, /* @__PURE__ */ React31.createElement("span", { style: { width: `${g.n / maxG * 100}%`, background: `var(--${corVar[g.cor]})` } })), /* @__PURE__ */ React31.createElement("b", null, g.n))))), /* @__PURE__ */ React31.createElement("div", { className: "fx-chips" }, /* @__PURE__ */ React31.createElement(Chip2, { id: "" }, "Todas", /* @__PURE__ */ React31.createElement("b", null, linhas.length)), /* @__PURE__ */ React31.createElement(Chip2, { id: "seis", cor: "late" }, "Mais de ", MESES_SEM_EMPRENHAR, " meses sem emprenhar", /* @__PURE__ */ React31.createElement("b", null, r.semEmprenhar)), r.previsaoVencida > 0 && /* @__PURE__ */ React31.createElement(Chip2, { id: "vencida", cor: "amber" }, "Previs\xE3o vencida", /* @__PURE__ */ React31.createElement("b", null, r.previsaoVencida)), r.porGrupo.filter((g) => g.n > 0).map((g) => /* @__PURE__ */ React31.createElement(Chip2, { key: g.id, id: g.id, cor: corVar[g.cor] }, g.nome, /* @__PURE__ */ React31.createElement("b", null, g.n)))), /* @__PURE__ */ React31.createElement("label", { className: "search fx-search" }, /* @__PURE__ */ React31.createElement(Search10, null), /* @__PURE__ */ React31.createElement("input", { placeholder: "Buscar brinco da vaca ou da cria", "aria-label": "Buscar brinco da vaca ou da cria", inputMode: "numeric", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React31.createElement("div", { className: "pd-tabela-box" }, /* @__PURE__ */ React31.createElement("table", { className: "pd-tabela", "data-testid": "tabela-produtividade" }, /* @__PURE__ */ React31.createElement("thead", null, /* @__PURE__ */ React31.createElement("tr", null, COLS.map((c) => /* @__PURE__ */ React31.createElement("th", { key: c.k, className: c.num ? "num" : "", "aria-sort": sort.k === c.k ? sort.dir > 0 ? "ascending" : "descending" : void 0 }, /* @__PURE__ */ React31.createElement("button", { onClick: () => ordenar(c.k) }, c.t))), /* @__PURE__ */ React31.createElement("th", null, "Datas dos partos"), /* @__PURE__ */ React31.createElement("th", null, "Crias"), /* @__PURE__ */ React31.createElement("th", null, "O que fazer"))), /* @__PURE__ */ React31.createElement("tbody", null, lista4.length === 0 && /* @__PURE__ */ React31.createElement("tr", null, /* @__PURE__ */ React31.createElement("td", { colSpan: 9, className: "mut" }, "Nenhuma matriz com esse filtro.")), lista4.map((l) => {
+    const g = GRUPOS_PROD[l.ordem];
+    return /* @__PURE__ */ React31.createElement("tr", { key: l.id, onClick: () => abrir(`m:${l.id}`), "data-testid": `prod-${l.brinco}` }, /* @__PURE__ */ React31.createElement("td", { className: "br" }, l.brinco, /* @__PURE__ */ React31.createElement("small", null, l.status, l.lote ? ` \xB7 ${l.lote}` : "")), /* @__PURE__ */ React31.createElement("td", null, /* @__PURE__ */ React31.createElement("span", { className: `fx-pill p-${{ bad: "late", warn: "amber", ok: "green", mut: "gray" }[g.cor]}` }, g.nome), l.semEmprenhar && /* @__PURE__ */ React31.createElement("small", { className: "late" }, l.mesesSemParir, " meses sem emprenhar")), /* @__PURE__ */ React31.createElement("td", { className: "num" }, l.nPartos, l.antes ? /* @__PURE__ */ React31.createElement("small", null, "+", l.antes, " antes") : null), /* @__PURE__ */ React31.createElement("td", { className: "num" }, l.mesesSemParir ?? ""), /* @__PURE__ */ React31.createElement("td", { className: "num" }, l.iepMeses !== null ? virgula(l.iepMeses) : ""), /* @__PURE__ */ React31.createElement("td", null, br3(l.previsao), l.previsaoVencida ? /* @__PURE__ */ React31.createElement("small", { className: "late" }, "venceu h\xE1 ", l.previsaoVencida, " d") : null), /* @__PURE__ */ React31.createElement("td", { className: "lista" }, l.partos.map((p) => /* @__PURE__ */ React31.createElement("span", { key: p.id }, br3(p.data)))), /* @__PURE__ */ React31.createElement("td", { className: "lista" }, l.partos.map((p) => /* @__PURE__ */ React31.createElement("span", { key: p.id, className: p.brincoBezerro ? "" : "mut" }, p.resultadoParto === "Natimorto" ? "natim." : p.brincoBezerro || "s/ n\xBA"))), /* @__PURE__ */ React31.createElement("td", { className: "acao" }, l.acao));
+  })))), /* @__PURE__ */ React31.createElement("details", { className: "pd-defs" }, /* @__PURE__ */ React31.createElement("summary", null, "Como cada situa\xE7\xE3o \xE9 definida"), /* @__PURE__ */ React31.createElement("ul", null, /* @__PURE__ */ React31.createElement("li", null, /* @__PURE__ */ React31.createElement("b", null, "Em dia"), ": pariu nos \xFAltimos 13 meses (um bezerro por ano, com um m\xEAs de folga)."), /* @__PURE__ */ React31.createElement("li", null, /* @__PURE__ */ React31.createElement("b", null, "Mais de ", MESES_SEM_EMPRENHAR, " meses sem emprenhar"), ": est\xE1 vazia e o \xFAltimo parto foi h\xE1 mais de ", MESES_SEM_EMPRENHAR, " meses. Vaca que pariu e ainda n\xE3o passou por toque aparece como vazia: o toque confirma."), /* @__PURE__ */ React31.createElement("li", null, /* @__PURE__ */ React31.createElement("b", null, "Prenhe, mas atrasada"), ": cheia, mas o \xFAltimo parto foi h\xE1 mais de 13 meses (ou nunca pariu)."), /* @__PURE__ */ React31.createElement("li", null, /* @__PURE__ */ React31.createElement("b", null, "Vazia h\xE1 13 a 24 meses"), ": perdeu uma pari\xE7\xE3o. ", /* @__PURE__ */ React31.createElement("b", null, "Vazia h\xE1 mais de 2 anos"), " e ", /* @__PURE__ */ React31.createElement("b", null, "Vaca que nunca pariu"), ": candidatas a descarte."), /* @__PURE__ */ React31.createElement("li", null, /* @__PURE__ */ React31.createElement("b", null, "Novilha passada da idade"), ": 30 meses ou mais sem parir. ", /* @__PURE__ */ React31.createElement("b", null, "Novilha jovem"), ": menos de 30 meses ou idade n\xE3o informada."), /* @__PURE__ */ React31.createElement("li", null, "Intervalo m\xE9dio: m\xE9dia dos intervalos entre partos de cada vaca com dois partos ou mais. Partos antes de 2022 ou antes de a vaca entrar na fazenda n\xE3o t\xEAm data e n\xE3o entram na conta."))));
+}
+
 // src/app.jsx
 var OWNER_PIN = typeof __PIN_TESTE__ !== "undefined" ? __PIN_TESTE__ : "1537";
 var VAZIO = { matrizes: [], touros: [], eventos: [], config: {}, protocolos: [] };
 function BotaoBusca() {
   const { buscar: buscar2 } = useFicha();
-  return /* @__PURE__ */ React31.createElement("button", { className: "chip fx-buscar", onClick: () => buscar2(""), "aria-label": "Buscar animal pelo brinco", "data-testid": "buscar-animal" }, /* @__PURE__ */ React31.createElement(Search10, { size: 17 }), /* @__PURE__ */ React31.createElement("span", null, "Buscar animal"));
+  return /* @__PURE__ */ React32.createElement("button", { className: "chip fx-buscar", onClick: () => buscar2(""), "aria-label": "Buscar animal pelo brinco", "data-testid": "buscar-animal" }, /* @__PURE__ */ React32.createElement(Search11, { size: 17 }), /* @__PURE__ */ React32.createElement("span", null, "Buscar animal"));
 }
 function Marca() {
-  return /* @__PURE__ */ React31.createElement("div", { className: "brand" }, /* @__PURE__ */ React31.createElement("small", null, "Fazenda Ibira\xE7u"), /* @__PURE__ */ React31.createElement("b", null, "Gest\xE3o da Pecu\xE1ria"));
+  return /* @__PURE__ */ React32.createElement("div", { className: "brand" }, /* @__PURE__ */ React32.createElement("small", null, "Fazenda Ibira\xE7u"), /* @__PURE__ */ React32.createElement("b", null, "Gest\xE3o da Pecu\xE1ria"));
 }
 function SeletorAno({ ano, anos, onChange }) {
-  return /* @__PURE__ */ React31.createElement("label", { className: "chip", title: "Ano de gest\xE3o" }, /* @__PURE__ */ React31.createElement("span", { className: "sr" }, "Ano de gest\xE3o"), /* @__PURE__ */ React31.createElement("span", { "aria-hidden": "true" }, "ANO"), /* @__PURE__ */ React31.createElement("select", { "aria-label": "Ano de gest\xE3o", value: String(ano), onChange: (e) => onChange(e.target.value === "todos" ? "todos" : Number(e.target.value)) }, anos.map((a) => /* @__PURE__ */ React31.createElement("option", { key: a, value: a }, a)), /* @__PURE__ */ React31.createElement("option", { value: "todos" }, "Todos")), /* @__PURE__ */ React31.createElement(ChevronDown2, { size: 14, "aria-hidden": "true" }));
+  return /* @__PURE__ */ React32.createElement("label", { className: "chip", title: "Ano de gest\xE3o" }, /* @__PURE__ */ React32.createElement("span", { className: "sr" }, "Ano de gest\xE3o"), /* @__PURE__ */ React32.createElement("span", { "aria-hidden": "true" }, "ANO"), /* @__PURE__ */ React32.createElement("select", { "aria-label": "Ano de gest\xE3o", value: String(ano), onChange: (e) => onChange(e.target.value === "todos" ? "todos" : Number(e.target.value)) }, anos.map((a) => /* @__PURE__ */ React32.createElement("option", { key: a, value: a }, a)), /* @__PURE__ */ React32.createElement("option", { value: "todos" }, "Todos")), /* @__PURE__ */ React32.createElement(ChevronDown2, { size: 14, "aria-hidden": "true" }));
 }
 function quandoTxt(iso) {
   if (!iso) return "";
@@ -8554,41 +8766,42 @@ function quandoTxt(iso) {
 function ChipFila({ est, onClick }) {
   if (!est.pendentes) return null;
   if (est.semInternet) {
-    return /* @__PURE__ */ React31.createElement("button", { className: "chip fila-off", onClick, "data-testid": "chip-fila" }, /* @__PURE__ */ React31.createElement(CloudOff, { size: 14 }), " ", est.pendentes, " no celular");
+    return /* @__PURE__ */ React32.createElement("button", { className: "chip fila-off", onClick, "data-testid": "chip-fila" }, /* @__PURE__ */ React32.createElement(CloudOff, { size: 14 }), " ", est.pendentes, " no celular");
   }
   if (est.erroPlanilha) {
-    return /* @__PURE__ */ React31.createElement("button", { className: "chip fila-erro", onClick, "data-testid": "chip-fila" }, /* @__PURE__ */ React31.createElement(AlertTriangle2, { size: 14 }), " erro ao gravar");
+    return /* @__PURE__ */ React32.createElement("button", { className: "chip fila-erro", onClick, "data-testid": "chip-fila" }, /* @__PURE__ */ React32.createElement(AlertTriangle2, { size: 14 }), " erro ao gravar");
   }
-  return /* @__PURE__ */ React31.createElement("button", { className: "chip", onClick, "data-testid": "chip-fila" }, /* @__PURE__ */ React31.createElement(Loader214, { size: 14, className: "spin" }), " gravando ", est.pendentes);
+  return /* @__PURE__ */ React32.createElement("button", { className: "chip", onClick, "data-testid": "chip-fila" }, /* @__PURE__ */ React32.createElement(Loader214, { size: 14, className: "spin" }), " gravando ", est.pendentes);
 }
 function GestaoPecuaria() {
-  const [tab, setTab] = useState30("lancar");
-  const [dados, setDados] = useState30(VAZIO);
+  const [tab, setTab] = useState31("lancar");
+  const [dados, setDados] = useState31(VAZIO);
   const dadosRef = useRef11(VAZIO);
-  const [loading, setLoading] = useState30(true);
-  const [aviso, setAviso] = useState30(null);
-  const [versaoScript, setVersaoScript] = useState30(null);
-  const [ownerMode, setOwnerMode] = useState30(false);
-  const [pinAberto, setPinAberto] = useState30(false);
-  const [pin, setPin] = useState30("");
-  const [pinErro, setPinErro] = useState30(false);
-  const [hoje, setHoje] = useState30(todayISO());
-  const [ano, setAno] = useState30(() => anoDe(todayISO()));
-  const [filaEst, setFilaEst] = useState30(estadoFila());
-  const [filaAberta, setFilaAberta] = useState30(false);
-  const [descartarUid, setDescartarUid] = useState30(null);
-  const [sincronizando, setSincronizando] = useState30(false);
-  const [preset, setPreset] = useState30(null);
-  const [editMatriz, setEditMatriz] = useState30(null);
-  const [editBoi, setEditBoi] = useState30(null);
-  const [novoProt, setNovoProt] = useState30(null);
-  const [atualizadoEm, setAtualizadoEm] = useState30(null);
-  const [doCelular, setDoCelular] = useState30(false);
+  const [loading, setLoading] = useState31(true);
+  const [aviso, setAviso] = useState31(null);
+  const [versaoScript, setVersaoScript] = useState31(null);
+  const [ownerMode, setOwnerMode] = useState31(false);
+  const [pinAberto, setPinAberto] = useState31(false);
+  const [pin, setPin] = useState31("");
+  const [pinErro, setPinErro] = useState31(false);
+  const [hoje, setHoje] = useState31(todayISO());
+  const [ano, setAno] = useState31(() => anoDe(todayISO()));
+  const [filaEst, setFilaEst] = useState31(estadoFila());
+  const [filaAberta, setFilaAberta] = useState31(false);
+  const [descartarUid, setDescartarUid] = useState31(null);
+  const [sincronizando, setSincronizando] = useState31(false);
+  const [preset, setPreset] = useState31(null);
+  const [editMatriz, setEditMatriz] = useState31(null);
+  const [editBoi, setEditBoi] = useState31(null);
+  const [novoProt, setNovoProt] = useState31(null);
+  const [prodFiltro, setProdFiltro] = useState31("");
+  const [atualizadoEm, setAtualizadoEm] = useState31(null);
+  const [doCelular, setDoCelular] = useState31(false);
   const versaoRef = useRef11(null);
   const timerCopia = useRef11(null);
   const pendentes = filaEst.pendentes;
-  useEffect13(() => assinarFila(setFilaEst), []);
-  useEffect13(() => {
+  useEffect14(() => assinarFila(setFilaEst), []);
+  useEffect14(() => {
     const agora = () => {
       if (dadosRef.current !== VAZIO) {
         clearTimeout(timerCopia.current);
@@ -8624,12 +8837,12 @@ function GestaoPecuaria() {
     versaoRef.current = v;
     setVersaoScript(v);
   }
-  useEffect13(() => {
+  useEffect14(() => {
     const f = () => setHoje(todayISO());
     document.addEventListener("visibilitychange", f);
     return () => document.removeEventListener("visibilitychange", f);
   }, []);
-  useEffect13(() => {
+  useEffect14(() => {
     carregar();
   }, []);
   async function carregar() {
@@ -8901,28 +9114,29 @@ function GestaoPecuaria() {
     setPreset({ tipo, matrizId, n: Date.now() });
     setTab("lancar");
   }
-  const anos = useMemo26(() => anosDisponiveis(dados.eventos, hoje), [dados.eventos, hoje]);
+  const anos = useMemo27(() => anosDisponiveis(dados.eventos, hoje), [dados.eventos, hoje]);
   const itensNav = [
     ownerMode && { id: "painel", label: "Painel", Icon: LayoutDashboard },
     { id: "lancar", label: "Lan\xE7ar", Icon: Plus12 },
     { id: "manejo", label: "Manejo", Icon: Syringe2 },
-    { id: "parto", label: "Diagn\xF3stico", Icon: ClipboardCheck2 },
-    { id: "crias", label: "Nascimentos", Icon: Baby },
+    { id: "parto", label: "Diagn\xF3stico", curto: "Diagn\xF3st.", Icon: ClipboardCheck2 },
+    { id: "crias", label: "Nascimentos", curto: "Nascim.", Icon: Baby },
     { id: "rebanho", label: "Rebanho", Icon: List },
-    { id: "relatorios", label: "Relat\xF3rios", Icon: FileText }
+    { id: "produtividade", label: "Produtividade", curto: "Produtiv.", Icon: TrendingUp },
+    { id: "relatorios", label: "Relat\xF3rios", curto: "Relat\xF3r.", Icon: FileText }
   ].filter(Boolean);
-  const anoSel = /* @__PURE__ */ React31.createElement(SeletorAno, { ano, anos, onChange: setAno });
-  const botaoCad = ownerMode ? /* @__PURE__ */ React31.createElement("button", { className: `chip lock${tab === "cadastros" ? " on" : ""}`, onClick: () => mudarTab("cadastros"), "aria-label": "Cadastros", title: "Cadastros (listas do app)", "data-testid": "abrir-cadastros" }, /* @__PURE__ */ React31.createElement(Settings, { size: 17 })) : null;
-  const botaoDono = ownerMode ? /* @__PURE__ */ React31.createElement("button", { className: "chip on", onClick: sairDoModoDono, "aria-label": "Sair do modo propriet\xE1rio", title: "Voltar para o modo funcion\xE1rio" }, /* @__PURE__ */ React31.createElement(Unlock, { size: 15 }), " DONO") : /* @__PURE__ */ React31.createElement("button", { className: "chip lock", onClick: () => {
+  const anoSel = /* @__PURE__ */ React32.createElement(SeletorAno, { ano, anos, onChange: setAno });
+  const botaoCad = ownerMode ? /* @__PURE__ */ React32.createElement("button", { className: `chip lock${tab === "cadastros" ? " on" : ""}`, onClick: () => mudarTab("cadastros"), "aria-label": "Cadastros", title: "Cadastros (listas do app)", "data-testid": "abrir-cadastros" }, /* @__PURE__ */ React32.createElement(Settings, { size: 17 })) : null;
+  const botaoDono = ownerMode ? /* @__PURE__ */ React32.createElement("button", { className: "chip on", onClick: sairDoModoDono, "aria-label": "Sair do modo propriet\xE1rio", title: "Voltar para o modo funcion\xE1rio" }, /* @__PURE__ */ React32.createElement(Unlock, { size: 15 }), " DONO") : /* @__PURE__ */ React32.createElement("button", { className: "chip lock", onClick: () => {
     setPinAberto(true);
     setPin("");
     setPinErro(false);
-  }, "aria-label": "Entrar como propriet\xE1rio", title: "Entrar como propriet\xE1rio" }, /* @__PURE__ */ React31.createElement(Lock3, { size: 16 }));
+  }, "aria-label": "Entrar como propriet\xE1rio", title: "Entrar como propriet\xE1rio" }, /* @__PURE__ */ React32.createElement(Lock3, { size: 16 }));
   if (loading) {
-    return /* @__PURE__ */ React31.createElement("div", { className: "app" }, /* @__PURE__ */ React31.createElement("style", null, CSS), /* @__PURE__ */ React31.createElement("div", { className: "main" }, /* @__PURE__ */ React31.createElement("div", { className: "loading" }, /* @__PURE__ */ React31.createElement(Loader214, { size: 20, className: "spin" }), " Abrindo o livro do rebanho...")));
+    return /* @__PURE__ */ React32.createElement("div", { className: "app" }, /* @__PURE__ */ React32.createElement("style", null, CSS), /* @__PURE__ */ React32.createElement("div", { className: "main" }, /* @__PURE__ */ React32.createElement("div", { className: "loading" }, /* @__PURE__ */ React32.createElement(Loader214, { size: 20, className: "spin" }), " Abrindo o livro do rebanho...")));
   }
   definirDadosCadastro(dados);
-  return /* @__PURE__ */ React31.createElement(FichaProvider, { dados, hoje, ownerMode, onEditarMatriz: (m) => setEditMatriz(m), onEditarBoi: (t) => setEditBoi(t) }, /* @__PURE__ */ React31.createElement("div", { className: "app" }, /* @__PURE__ */ React31.createElement("style", null, CSS), /* @__PURE__ */ React31.createElement("aside", { className: "side" }, /* @__PURE__ */ React31.createElement(Marca, null), /* @__PURE__ */ React31.createElement("nav", { "aria-label": "Telas" }, itensNav.map(({ id, label, Icon }) => /* @__PURE__ */ React31.createElement("button", { key: id, "aria-current": tab === id ? "page" : void 0, onClick: () => mudarTab(id) }, /* @__PURE__ */ React31.createElement(Icon, null), " ", label))), /* @__PURE__ */ React31.createElement("div", { className: "foot" }, /* @__PURE__ */ React31.createElement(BotaoBusca, null), botaoCad, botaoDono)), /* @__PURE__ */ React31.createElement("div", { className: "main" }, MODO_TESTE && /* @__PURE__ */ React31.createElement("div", { className: "banner-teste", role: "status" }, /* @__PURE__ */ React31.createElement("b", null, "MODO TESTE"), /* @__PURE__ */ React31.createElement("span", null, "L\xEA os dados reais da planilha, mas N\xC3O grava nada nela. O que voc\xEA lan\xE7ar aqui some ao recarregar com internet."), /* @__PURE__ */ React31.createElement("button", { onClick: carregar }, "Recarregar dados")), /* @__PURE__ */ React31.createElement("header", { className: "topbar" }, /* @__PURE__ */ React31.createElement("div", { className: "in" }, /* @__PURE__ */ React31.createElement(Marca, null), /* @__PURE__ */ React31.createElement(ChipFila, { est: filaEst, onClick: () => setFilaAberta(true) }), /* @__PURE__ */ React31.createElement(BotaoBusca, null), botaoCad, botaoDono)), pendentes > 0 && /* @__PURE__ */ React31.createElement("span", { className: "sr", role: "status" }, filaEst.semInternet ? `${pendentes} lan\xE7amento(s) guardado(s) no celular esperando internet` : "Gravando na planilha"), pendentes > 0 && /* @__PURE__ */ React31.createElement("div", { className: "lado-fila" }, /* @__PURE__ */ React31.createElement(ChipFila, { est: filaEst, onClick: () => setFilaAberta(true) })), aviso && /* @__PURE__ */ React31.createElement("div", { className: "wrap" }, /* @__PURE__ */ React31.createElement(Aviso, { tipo: aviso.tipo === "erro" ? void 0 : aviso.tipo, onClose: () => setAviso(null) }, aviso.texto)), tab === "lancar" && /* @__PURE__ */ React31.createElement(
+  return /* @__PURE__ */ React32.createElement(FichaProvider, { dados, hoje, ownerMode, onEditarMatriz: (m) => setEditMatriz(m), onEditarBoi: (t) => setEditBoi(t) }, /* @__PURE__ */ React32.createElement("div", { className: "app" }, /* @__PURE__ */ React32.createElement("style", null, CSS), /* @__PURE__ */ React32.createElement("aside", { className: "side" }, /* @__PURE__ */ React32.createElement(Marca, null), /* @__PURE__ */ React32.createElement("nav", { "aria-label": "Telas" }, itensNav.map(({ id, label, Icon }) => /* @__PURE__ */ React32.createElement("button", { key: id, "aria-current": tab === id ? "page" : void 0, onClick: () => mudarTab(id) }, /* @__PURE__ */ React32.createElement(Icon, null), " ", label))), /* @__PURE__ */ React32.createElement("div", { className: "foot" }, /* @__PURE__ */ React32.createElement(BotaoBusca, null), botaoCad, botaoDono)), /* @__PURE__ */ React32.createElement("div", { className: "main" }, MODO_TESTE && /* @__PURE__ */ React32.createElement("div", { className: "banner-teste", role: "status" }, /* @__PURE__ */ React32.createElement("b", null, "MODO TESTE"), /* @__PURE__ */ React32.createElement("span", null, "L\xEA os dados reais da planilha, mas N\xC3O grava nada nela. O que voc\xEA lan\xE7ar aqui some ao recarregar com internet."), /* @__PURE__ */ React32.createElement("button", { onClick: carregar }, "Recarregar dados")), /* @__PURE__ */ React32.createElement("header", { className: "topbar" }, /* @__PURE__ */ React32.createElement("div", { className: "in" }, /* @__PURE__ */ React32.createElement(Marca, null), /* @__PURE__ */ React32.createElement(ChipFila, { est: filaEst, onClick: () => setFilaAberta(true) }), /* @__PURE__ */ React32.createElement(BotaoBusca, null), botaoCad, botaoDono)), pendentes > 0 && /* @__PURE__ */ React32.createElement("span", { className: "sr", role: "status" }, filaEst.semInternet ? `${pendentes} lan\xE7amento(s) guardado(s) no celular esperando internet` : "Gravando na planilha"), pendentes > 0 && /* @__PURE__ */ React32.createElement("div", { className: "lado-fila" }, /* @__PURE__ */ React32.createElement(ChipFila, { est: filaEst, onClick: () => setFilaAberta(true) })), aviso && /* @__PURE__ */ React32.createElement("div", { className: "wrap" }, /* @__PURE__ */ React32.createElement(Aviso, { tipo: aviso.tipo === "erro" ? void 0 : aviso.tipo, onClose: () => setAviso(null) }, aviso.texto)), tab === "lancar" && /* @__PURE__ */ React32.createElement(
     Lancar,
     {
       dados,
@@ -8937,7 +9151,7 @@ function GestaoPecuaria() {
       onEditarMorte: corrigirMorte,
       onAnularMorte: anularUmaMorte
     }
-  ), tab === "manejo" && /* @__PURE__ */ React31.createElement(Manejo, { key: novoProt ? novoProt.n : "m", novoProtocolo: novoProt, dados, hoje, ownerMode, modoTeste: MODO_TESTE, onGravarLote: gravarManejo, onSalvarProtocolo: salvarProtocolo, onSalvarConfig: salvarConfig, scriptAntes13: scriptAntes(13), onDecidirLote: decidirMudancaLote, onEfetivarNotas: efetivarObservacoes, onCorrigirManejo: corrigirManejoGeral, onExcluirManejo: excluirManejo }), tab === "parto" && /* @__PURE__ */ React31.createElement(
+  ), tab === "manejo" && /* @__PURE__ */ React32.createElement(Manejo, { key: novoProt ? novoProt.n : "m", novoProtocolo: novoProt, dados, hoje, ownerMode, modoTeste: MODO_TESTE, onGravarLote: gravarManejo, onSalvarProtocolo: salvarProtocolo, onSalvarConfig: salvarConfig, scriptAntes13: scriptAntes(13), onDecidirLote: decidirMudancaLote, onEfetivarNotas: efetivarObservacoes, onCorrigirManejo: corrigirManejoGeral, onExcluirManejo: excluirManejo }), tab === "parto" && /* @__PURE__ */ React32.createElement(
     Parto,
     {
       dados,
@@ -8949,9 +9163,13 @@ function GestaoPecuaria() {
       onMontarProtocolo: (ids3) => {
         setNovoProt({ tipo: "IATF", animais: ids3, nome: "", n: Date.now() });
         setTab("manejo");
+      },
+      onAbrirProdutividade: (f) => {
+        setProdFiltro(`${f}:${Date.now()}`);
+        setTab("produtividade");
       }
     }
-  ), tab === "cadastros" && ownerMode && /* @__PURE__ */ React31.createElement(Cadastros, { dados, onSalvarCadastros: salvarCadastros, scriptAntigo: scriptAntes(15) }), tab === "crias" && /* @__PURE__ */ React31.createElement(
+  ), tab === "produtividade" && /* @__PURE__ */ React32.createElement(Produtividade, { dados, hoje, filtroInicial: prodFiltro }), tab === "cadastros" && ownerMode && /* @__PURE__ */ React32.createElement(Cadastros, { dados, onSalvarCadastros: salvarCadastros, scriptAntigo: scriptAntes(15) }), tab === "crias" && /* @__PURE__ */ React32.createElement(
     Crias,
     {
       dados,
@@ -8969,7 +9187,7 @@ function GestaoPecuaria() {
       onAnularMorte: anularUmaMorte,
       onCorrigirPesagem: corrigirPesagem
     }
-  ), tab === "rebanho" && /* @__PURE__ */ React31.createElement(Rebanho, { dados, hoje, ownerMode, onSalvarMatriz: salvarMatriz, onSalvarTouro: salvarTouro }), tab === "painel" && ownerMode && /* @__PURE__ */ React31.createElement(
+  ), tab === "rebanho" && /* @__PURE__ */ React32.createElement(Rebanho, { dados, hoje, ownerMode, onSalvarMatriz: salvarMatriz, onSalvarTouro: salvarTouro }), tab === "painel" && ownerMode && /* @__PURE__ */ React32.createElement(
     Painel,
     {
       anoSel,
@@ -8983,7 +9201,7 @@ function GestaoPecuaria() {
       onSync: sincronizarTudo,
       onRecarregar: carregar
     }
-  ), tab === "relatorios" && /* @__PURE__ */ React31.createElement(
+  ), tab === "relatorios" && /* @__PURE__ */ React32.createElement(
     Relatorios,
     {
       anoSel,
@@ -8994,18 +9212,18 @@ function GestaoPecuaria() {
       onExcel: () => exportarExcel(dadosRef.current, ano, hoje),
       onExcelRelatorio: (rel) => exportarRelatorioExcel(rel, ano, hoje)
     }
-  ), /* @__PURE__ */ React31.createElement("div", { className: "foot-note" }, "Fazenda Ibira\xE7u \xB7 app ", VERSAO_APP, " \xB7 planilha ", versaoScript ? `v${versaoScript}` : "vers\xE3o antiga", MODO_TESTE ? " \xB7 TESTE" : "", atualizadoEm ? ` \xB7 dados de ${quandoTxt(atualizadoEm)}${doCelular ? " (guardados no celular)" : ""}` : "")), /* @__PURE__ */ React31.createElement("nav", { className: `bnav${itensNav.length > 5 ? " mini" : ""}`, "aria-label": "Telas (celular)" }, itensNav.map(({ id, label, Icon }) => /* @__PURE__ */ React31.createElement("button", { key: id, "aria-current": tab === id ? "page" : void 0, onClick: () => mudarTab(id) }, /* @__PURE__ */ React31.createElement(Icon, null), " ", label))), filaAberta && /* @__PURE__ */ React31.createElement(Modal, { titulo: "Lan\xE7amentos guardados no celular", onClose: () => {
+  ), /* @__PURE__ */ React32.createElement("div", { className: "foot-note" }, "Fazenda Ibira\xE7u \xB7 app ", VERSAO_APP, " \xB7 planilha ", versaoScript ? `v${versaoScript}` : "vers\xE3o antiga", MODO_TESTE ? " \xB7 TESTE" : "", atualizadoEm ? ` \xB7 dados de ${quandoTxt(atualizadoEm)}${doCelular ? " (guardados no celular)" : ""}` : "")), /* @__PURE__ */ React32.createElement("nav", { className: `bnav${itensNav.length > 5 ? " mini" : ""}`, "aria-label": "Telas (celular)" }, itensNav.map(({ id, label, curto, Icon }) => /* @__PURE__ */ React32.createElement("button", { key: id, "aria-current": tab === id ? "page" : void 0, "aria-label": label, onClick: () => mudarTab(id) }, /* @__PURE__ */ React32.createElement(Icon, null), " ", itensNav.length > 6 && curto ? curto : label))), filaAberta && /* @__PURE__ */ React32.createElement(Modal, { titulo: "Lan\xE7amentos guardados no celular", onClose: () => {
     setFilaAberta(false);
     setDescartarUid(null);
-  } }, filaEst.pendentes === 0 ? /* @__PURE__ */ React31.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Tudo j\xE1 chegou na planilha. Nada esperando.") : /* @__PURE__ */ React31.createElement(React31.Fragment, null, /* @__PURE__ */ React31.createElement("p", { className: "sub", style: { marginTop: 0 } }, filaEst.semInternet ? "Sem internet. Estes lan\xE7amentos est\xE3o guardados neste celular e v\xE3o sozinhos para a planilha quando a internet voltar. N\xE3o feche o app pela metade de um lan\xE7amento, mas pode fechar e abrir \xE0 vontade: nada se perde." : filaEst.erroPlanilha ? `A planilha recusou um lan\xE7amento: ${filaEst.erroPlanilha}. Os outros esperam na fila, na ordem.` : "Enviando para a planilha..."), /* @__PURE__ */ React31.createElement("div", { className: "sheet", "data-testid": "lista-fila" }, filaEst.itens.map((it) => /* @__PURE__ */ React31.createElement("div", { className: "led-r", key: it.uid, style: { "--cols": ownerMode ? "1fr auto auto" : "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React31.createElement("span", { style: { fontSize: 14 } }, it.rotulo || it.payload.action, it.erro ? /* @__PURE__ */ React31.createElement("small", { style: { display: "block", color: it.rede ? "var(--amber)" : "var(--late)" } }, it.rede ? "esperando internet" : it.erro) : null), /* @__PURE__ */ React31.createElement("span", { className: "m mut" }, quandoTxt(it.criadoEm)), ownerMode && (descartarUid === it.uid ? /* @__PURE__ */ React31.createElement("button", { className: "btn sm", style: { background: "var(--late)" }, onClick: () => {
+  } }, filaEst.pendentes === 0 ? /* @__PURE__ */ React32.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Tudo j\xE1 chegou na planilha. Nada esperando.") : /* @__PURE__ */ React32.createElement(React32.Fragment, null, /* @__PURE__ */ React32.createElement("p", { className: "sub", style: { marginTop: 0 } }, filaEst.semInternet ? "Sem internet. Estes lan\xE7amentos est\xE3o guardados neste celular e v\xE3o sozinhos para a planilha quando a internet voltar. N\xE3o feche o app pela metade de um lan\xE7amento, mas pode fechar e abrir \xE0 vontade: nada se perde." : filaEst.erroPlanilha ? `A planilha recusou um lan\xE7amento: ${filaEst.erroPlanilha}. Os outros esperam na fila, na ordem.` : "Enviando para a planilha..."), /* @__PURE__ */ React32.createElement("div", { className: "sheet", "data-testid": "lista-fila" }, filaEst.itens.map((it) => /* @__PURE__ */ React32.createElement("div", { className: "led-r", key: it.uid, style: { "--cols": ownerMode ? "1fr auto auto" : "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React32.createElement("span", { style: { fontSize: 14 } }, it.rotulo || it.payload.action, it.erro ? /* @__PURE__ */ React32.createElement("small", { style: { display: "block", color: it.rede ? "var(--amber)" : "var(--late)" } }, it.rede ? "esperando internet" : it.erro) : null), /* @__PURE__ */ React32.createElement("span", { className: "m mut" }, quandoTxt(it.criadoEm)), ownerMode && (descartarUid === it.uid ? /* @__PURE__ */ React32.createElement("button", { className: "btn sm", style: { background: "var(--late)" }, onClick: () => {
     descartar(it.uid);
     setDescartarUid(null);
-  } }, "Confirmar") : /* @__PURE__ */ React31.createElement("button", { className: "x-peq", "aria-label": "Descartar este lan\xE7amento da fila", title: "Descartar (s\xF3 se a planilha recusa sempre)", onClick: () => setDescartarUid(it.uid) }, /* @__PURE__ */ React31.createElement(Trash27, { size: 16 })))))), ownerMode && descartarUid && /* @__PURE__ */ React31.createElement(Aviso, null, "Descartar tira esse lan\xE7amento da fila e ele N\xC3O vai para a planilha (continua na tela at\xE9 recarregar). Use s\xF3 se a planilha recusa sempre.")), /* @__PURE__ */ React31.createElement("button", { className: "btn wide", style: { marginTop: 12 }, onClick: () => enviar(), disabled: filaEst.enviando || filaEst.pendentes === 0 }, filaEst.enviando ? /* @__PURE__ */ React31.createElement(Loader214, { size: 18, className: "spin" }) : /* @__PURE__ */ React31.createElement(RefreshCw2, { size: 18 }), " Tentar enviar agora")), pinAberto && !ownerMode && /* @__PURE__ */ React31.createElement(Modal, { titulo: "\xC1rea do propriet\xE1rio", onClose: () => setPinAberto(false) }, /* @__PURE__ */ React31.createElement("form", { onSubmit: (e) => {
+  } }, "Confirmar") : /* @__PURE__ */ React32.createElement("button", { className: "x-peq", "aria-label": "Descartar este lan\xE7amento da fila", title: "Descartar (s\xF3 se a planilha recusa sempre)", onClick: () => setDescartarUid(it.uid) }, /* @__PURE__ */ React32.createElement(Trash27, { size: 16 })))))), ownerMode && descartarUid && /* @__PURE__ */ React32.createElement(Aviso, null, "Descartar tira esse lan\xE7amento da fila e ele N\xC3O vai para a planilha (continua na tela at\xE9 recarregar). Use s\xF3 se a planilha recusa sempre.")), /* @__PURE__ */ React32.createElement("button", { className: "btn wide", style: { marginTop: 12 }, onClick: () => enviar(), disabled: filaEst.enviando || filaEst.pendentes === 0 }, filaEst.enviando ? /* @__PURE__ */ React32.createElement(Loader214, { size: 18, className: "spin" }) : /* @__PURE__ */ React32.createElement(RefreshCw2, { size: 18 }), " Tentar enviar agora")), pinAberto && !ownerMode && /* @__PURE__ */ React32.createElement(Modal, { titulo: "\xC1rea do propriet\xE1rio", onClose: () => setPinAberto(false) }, /* @__PURE__ */ React32.createElement("form", { onSubmit: (e) => {
     e.preventDefault();
     tentarEntrar();
-  } }, /* @__PURE__ */ React31.createElement("div", { className: "fld" }, /* @__PURE__ */ React31.createElement("label", { htmlFor: "pin" }, "Senha (PIN)"), /* @__PURE__ */ React31.createElement("input", { id: "pin", type: "password", inputMode: "numeric", autoComplete: "off", autoFocus: true, value: pin, onChange: (e) => {
+  } }, /* @__PURE__ */ React32.createElement("div", { className: "fld" }, /* @__PURE__ */ React32.createElement("label", { htmlFor: "pin" }, "Senha (PIN)"), /* @__PURE__ */ React32.createElement("input", { id: "pin", type: "password", inputMode: "numeric", autoComplete: "off", autoFocus: true, value: pin, onChange: (e) => {
     setPin(e.target.value);
     setPinErro(false);
-  } }), pinErro && /* @__PURE__ */ React31.createElement("div", { className: "hint late", role: "alert" }, "Senha incorreta.")), /* @__PURE__ */ React31.createElement("button", { type: "submit", className: "btn wide" }, "Entrar"))), editMatriz && ownerMode && /* @__PURE__ */ React31.createElement(ModalMatriz, { key: editMatriz.id, m: editMatriz, dados, ownerMode: true, editarDireto: true, onSalvar: salvarMatriz, onFechar: () => setEditMatriz(null) }), editBoi && ownerMode && /* @__PURE__ */ React31.createElement(ModalBoi, { boi: editBoi, dados, onSalvar: salvarTouro, onFechar: () => setEditBoi(null) })));
+  } }), pinErro && /* @__PURE__ */ React32.createElement("div", { className: "hint late", role: "alert" }, "Senha incorreta.")), /* @__PURE__ */ React32.createElement("button", { type: "submit", className: "btn wide" }, "Entrar"))), editMatriz && ownerMode && /* @__PURE__ */ React32.createElement(ModalMatriz, { key: editMatriz.id, m: editMatriz, dados, ownerMode: true, editarDireto: true, onSalvar: salvarMatriz, onFechar: () => setEditMatriz(null) }), editBoi && ownerMode && /* @__PURE__ */ React32.createElement(ModalBoi, { boi: editBoi, dados, onSalvar: salvarTouro, onFechar: () => setEditBoi(null) })));
 }
-createRoot(document.getElementById("root")).render(/* @__PURE__ */ React31.createElement(GestaoPecuaria, null));
+createRoot(document.getElementById("root")).render(/* @__PURE__ */ React32.createElement(GestaoPecuaria, null));

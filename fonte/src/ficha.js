@@ -185,7 +185,7 @@ export function reproducaoDaMatriz(ix, m) {
   const nasc = m.dataNascimento || (cria && cria.nascData) || '';
   const alertas = [];
   const vivo = m.status !== 'Vendida' && m.status !== 'Morta';
-  if (vivo && m.status === 'Vazia' && ps[0]) { const d = diasEntre(ps[0].data, ix.hoje); if (d > 120) alertas.push({ t: `Vazia há ${d} dias desde o último parto`, ruim: d > 365 }); }
+  if (vivo && m.status === 'Vazia' && ps[0]) { const d = diasEntre(ps[0].data, ix.hoje); if (d > 6 * 30.44) alertas.push({ t: `Mais de 6 meses sem emprenhar: vazia há ${Math.round(d / 30.44)} meses (${d} dias) desde o último parto`, ruim: true }); else if (d > 120) alertas.push({ t: `Vazia há ${d} dias desde o último parto` }); }
   if (vivo && prev && prev.data) { const d = diasEntre(ix.hoje, prev.data); if (d >= 0 && d <= 30) alertas.push({ t: `Parto previsto em ${d} dia(s)` }); if (d < 0) alertas.push({ t: `Previsão de parto passou há ${-d} dias: conferir se pariu`, ruim: true }); }
   const inds = inducoesDe(ix.dados, m.id);
   if (vivo && m.categoria === 'Novilha' && !inds.length) {

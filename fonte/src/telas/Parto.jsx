@@ -6,6 +6,9 @@ import { IndexTabs, Aviso } from '../ui.jsx';
 import { aplicacoesPorAnimal, situacaoVacinaVaca, manejoConfirmacaoVacina } from '../manejo.js';
 import { useFicha } from './Ficha.jsx';
 import Toque from './Toque.jsx';
+import { MESES_SEM_EMPRENHAR } from '../produtividade.js';
+
+const DIAS_6_MESES = MESES_SEM_EMPRENHAR * 30.44;
 
 function textoDias(dias) {
   if (dias === null || dias === undefined) return { t: '—', c: 'mut' };
@@ -74,9 +77,10 @@ function PartoDetalhe({ e, c, hoje }) {
 }
 
 // v11: a aba Parto passou a se chamar Diagnóstico e ganhou o Toque (que antes ficava em Manejo).
-export default function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onGravarLote, onMontarProtocolo }) {
+export default function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onGravarLote, onMontarProtocolo, onAbrirProdutividade }) {
   const { abrir } = useFicha();
   const [aba, setAba] = useState('Cheia');
+  const [so6, setSo6] = useState(false); // v11.1: só as vazias com mais de 6 meses sem emprenhar
   const [busca, setBusca] = useState('');
   const [aberta, setAberta] = useState(null);
 
@@ -89,8 +93,11 @@ export default function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onG
     // v11.0.2: nas Cheias a busca também acha pelo brinco da cria (como nas Vazias)
     const q = busca.trim().toLowerCase();
     return linhasPrevisao(dados.matrizes, dados.eventos, aba, hoje, '').filter((l) => !q || String(l.matriz.brinco).toLowerCase().includes(q)
-      || (partos.get(l.matriz.id) || []).some((e) => String(e.brincoBezerro || '').toLowerCase().includes(q)));
-  }, [dados, aba, hoje, busca, partos]);
+      || (partos.get(l.matriz.id) || []).some((e) => String(e.brincoBezerro || '').toLowerCase().includes(q)))
+      .filter((l) => !(aba === 'Vazia' && so6) || (l.diasDesdeParto !== null && l.diasDesdeParto > DIAS_6_MESES));
+  }, [dados, aba, hoje, busca, partos, so6]);
+  // v11.1: alerta de vacas vazias com o último parto há mais de 6 meses
+  const seisMeses = useMemo(() => linhasPrevisao(dados.matrizes, dados.eventos, 'Vazia', hoje, '').filter((l) => l.diasDesdeParto !== null && l.diasDesdeParto > DIAS_6_MESES).length, [dados, hoje]);
 
   const atrasadas = todasCheias.filter((l) => l.dias !== null && l.dias < 0).length;
   const porVir = todasCheias.filter((l) => l.dias !== null && l.dias >= 0).length;
@@ -115,6 +122,15 @@ export default function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onG
         onChange={(v) => { setAba(v); setAberta(null); }}
         tabs={[{ id: 'Cheia', label: 'Cheias', count: todasCheias.length }, { id: 'Vazia', label: 'Vazias', count: nVazias }, { id: 'Toque', label: 'Toque' }]}
       />
+      {seisMeses > 0 && aba !== 'Toque' && (
+        <div className="pd-alerta" role="status" data-testid="alerta-6meses">
+          <span><b>{seisMeses}</b> vaca(s) com mais de {MESES_SEM_EMPRENHAR} meses sem emprenhar (vazias, último parto há mais de {MESES_SEM_EMPRENHAR} meses).</span>
+          <span className="acts">
+            <button className="btn sm" onClick={() => { setAba('Vazia'); setSo6(true); setAberta(null); }}>Ver em Vazias</button>
+            {onAbrirProdutividade && <button className="btn sm quiet" onClick={() => onAbrirProdutividade('seis')}>Produtividade</button>}
+          </span>
+        </div>
+      )}
       {aba === 'Toque' && <Toque dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={modoTeste} onGravarLote={onGravarLote} onMontarProtocolo={onMontarProtocolo} />}
       {aba !== 'Toque' && <section className="sheet">
         <label className="search">
@@ -134,6 +150,7 @@ export default function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onG
             <>
               <span className="soon">{nVazias} vazias</span>
               {vaziasSemParto > 0 && <span className="mut">{vaziasSemParto} sem parto lançado</span>}
+              {seisMeses > 0 && <button className={`pd-filtro${so6 ? ' on' : ''}`} aria-pressed={so6} onClick={() => setSo6(!so6)} data-testid="filtro-6meses">{so6 ? `mostrando ${seisMeses} com mais de 6 meses · ver todas` : `${seisMeses} com mais de 6 meses sem emprenhar`}</button>}
             </>
           )}
         </div>
@@ -162,7 +179,7 @@ export default function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onG
               <button className="led-r cols-reb" aria-expanded={aberto} onClick={() => setAberta(aberto ? null : m.id)} data-testid={`vazia-${m.brinco}`}>
                 <span className="b">{m.brinco}</span>
                 <span className="two"><b>{m.categoria}</b><span>{[m.raca, m.lote].filter(Boolean).join(' · ') || '—'}</span>
-                  <span className="quebra">{l.diasDesdeParto === null ? 'sem parto lançado' : `último parto há ${l.diasDesdeParto} dias`}</span>
+                  <span className={`quebra${l.diasDesdeParto !== null && l.diasDesdeParto > DIAS_6_MESES ? ' late' : ''}`}>{l.diasDesdeParto === null ? 'sem parto lançado' : `último parto há ${l.diasDesdeParto} dias (${Math.round(l.diasDesdeParto / 30.44)} meses)`}</span>
                 </span>
                 <span className="reb-lista" data-testid="parto-datas">
                   {ps.length === 0 && !antes && <span className="mut">—</span>}

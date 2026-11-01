@@ -59,7 +59,7 @@ with sync_playwright() as p:
     @teste('Menu novo: Diagnóstico e Nascimentos no lugar de Parto e Crias')
     def _():
         bar = pg.get_by_role('navigation', name='Telas (celular)')
-        for n in ['Lançar', 'Manejo', 'Diagnóstico', 'Nascimentos', 'Rebanho', 'Relatórios']:
+        for n in ['Lançar', 'Manejo', 'Diagnóstico', 'Nascimentos', 'Rebanho', 'Produtividade', 'Relatórios']:
             expect(bar.get_by_role('button', name=n)).to_be_visible()
         assert bar.get_by_role('button', name='Parto').count() == 0 and bar.get_by_role('button', name='Crias').count() == 0
 
@@ -180,9 +180,30 @@ with sync_playwright() as p:
         opts = pg.locator('#f-causa option').all_inner_texts()
         assert 'Afogamento' in opts and 'Raio' not in opts, opts
 
+    @teste('Produtividade: aba nova com números, situação de cada matriz, filtro de 6 meses e ficha ao tocar')
+    def _():
+        nav(pg, 'Produtividade')
+        t = pg.get_by_test_id('produtividade'); expect(t).to_contain_text('Meta: cada vaca dá um bezerro por ano')
+        expect(t).to_contain_text('Onde está cada matriz')
+        expect(pg.get_by_test_id('prod-3005')).to_contain_text('12/03/26')
+        pg.get_by_test_id('kpi-seis').click()
+        n = pg.locator('[data-testid=tabela-produtividade] tbody tr').count(); assert n >= 1, n
+        pg.get_by_role('button', name='Todas').first.click()
+        pg.get_by_test_id('prod-3005').click(); expect(pg.locator('.fx-sobre')).to_contain_text('Partos e crias')
+        pg.get_by_role('button', name='Fechar').click()
+
+    @teste('Diagnóstico avisa vacas com mais de 6 meses sem emprenhar e filtra as Vazias')
+    def _():
+        nav(pg, 'Diagnóstico')
+        expect(pg.get_by_test_id('alerta-6meses')).to_contain_text('meses sem emprenhar')
+        pg.get_by_role('button', name='Ver em Vazias').click()
+        expect(pg.get_by_test_id('filtro-6meses')).to_contain_text('mostrando')
+        assert pg.locator('[data-testid^=vazia-]').count() >= 1
+        pg.get_by_test_id('filtro-6meses').click()
+
     @teste('Celular e computador sem rolagem lateral; sem erros de tela')
     def _():
-        for tela in ['Rebanho', 'Nascimentos', 'Diagnóstico', 'Manejo']:
+        for tela in ['Rebanho', 'Nascimentos', 'Diagnóstico', 'Manejo', 'Produtividade']:
             nav(pg, tela); w = pg.evaluate('document.documentElement.scrollWidth'); assert w <= 390, (tela, w)
         pg.screenshot(path=os.path.join(SAIDA, 'v11_celular.png'))
         pg.set_viewport_size({'width': 1280, 'height': 900})

@@ -499,6 +499,44 @@ button.fx-kpi{cursor:pointer} button.fx-kpi:hover{border-color:var(--line)}
 .fx-cad .v.add input{background:transparent;border:none;outline:none;width:150px;font-size:13px;color:var(--tx)}
 .fx-cad .v.off{opacity:.55;text-decoration:line-through}
 
+
+/* ---- v11.1: produtividade ---- */
+.pd-lead{margin-top:-6px;max-width:70ch;line-height:1.5}
+.pd-lead b{color:var(--tx)}
+.pd-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.pd-barras{display:flex;flex-direction:column;gap:6px}
+.pd-barra{display:grid;grid-template-columns:minmax(0,11.5rem) minmax(0,1fr) 34px;gap:10px;align-items:center;width:100%;min-height:34px;border:none;background:transparent;color:inherit;padding:0;text-align:left;cursor:pointer;font:inherit}
+.pd-barra .nome{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pd-barra .trilho{height:18px;border-radius:4px;background:var(--s2);overflow:hidden}
+.pd-barra .trilho span{display:block;height:100%;border-radius:4px}
+.pd-barra b{font:600 14px var(--mono);text-align:right}
+@media (max-width:480px){.pd-barra{grid-template-columns:minmax(0,8.5rem) minmax(0,1fr) 30px}.pd-barra .nome{font-size:12px}}
+.pd-tabela-box{overflow:auto;max-height:70vh;border:1px solid var(--line2);border-radius:14px;background:var(--s1)}
+.pd-tabela{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.pd-tabela th{position:sticky;top:0;z-index:1;background:var(--s1);text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);font:600 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mut);white-space:nowrap}
+.pd-tabela th button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;letter-spacing:inherit;text-transform:inherit}
+.pd-tabela th[aria-sort] button{color:var(--amber)}
+.pd-tabela td{padding:9px 10px;border-bottom:1px solid var(--line2);vertical-align:top}
+.pd-tabela tbody tr{cursor:pointer}
+.pd-tabela tbody tr:hover{background:var(--s2)}
+.pd-tabela .num{text-align:right}
+.pd-tabela td.br{font:600 16px var(--mono);position:sticky;left:0;background:var(--s1)}
+.pd-tabela tbody tr:hover td.br{background:var(--s2)}
+.pd-tabela td small{display:block;font:500 11px var(--body);color:var(--mut);margin-top:3px}
+.pd-tabela td small.late{color:var(--late)}
+.pd-tabela td.lista{font:500 12px/17px var(--mono);white-space:nowrap}
+.pd-tabela td.lista span{display:block}
+.pd-tabela td.acao{min-width:15rem;font-size:12.5px;color:var(--mut)}
+.pd-defs{margin-top:14px;color:var(--mut);font-size:13px}
+.pd-defs summary{cursor:pointer;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:8px 0}
+.pd-defs ul{margin:6px 0 0;padding-left:1.1rem;line-height:1.6}
+.pd-defs b{color:var(--tx)}
+.pd-alerta{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;border-left:3px solid var(--late);background:var(--late-bg);border-radius:8px;padding:10px 12px;margin:0 0 12px;font-size:14px}
+.pd-alerta b{font-family:var(--mono)}
+.pd-alerta .acts{display:flex;gap:8px;flex-wrap:wrap}
+.pd-filtro{border:1px solid var(--late);background:transparent;color:var(--late);border-radius:999px;padding:3px 10px;font:600 11.5px var(--mono);cursor:pointer}
+.pd-filtro.on{background:var(--late-bg)}
+.quebra.late{color:var(--late)}
 @media print{
   :root{--bg:#fff;--s1:#fff;--s2:#f3f3f3;--line:#999;--line2:#ccc;--tx:#000;--mut:#444;--amber:#7a4a00;--green:#1d5c1d;--late:#a02020}
   .side,.bnav,.topbar,.noprint,.itabs,.banner-teste,details.ferr{display:none!important}

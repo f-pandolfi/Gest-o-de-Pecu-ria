@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Plus, ClipboardCheck, List, LayoutDashboard, FileText, Lock, Unlock, Loader2, ChevronDown, Baby, CloudOff, AlertTriangle, RefreshCw, Trash2, Syringe, Search, Settings,
+  Plus, ClipboardCheck, List, LayoutDashboard, FileText, Lock, Unlock, Loader2, ChevronDown, Baby, CloudOff, AlertTriangle, RefreshCw, Trash2, Syringe, Search, Settings, TrendingUp,
 } from 'lucide-react';
 import {
   VERSAO_APP, VERSAO_MINIMA_SCRIPT, todayISO, anoDe, anosDisponiveis, filtrarPorAno,
@@ -30,6 +30,7 @@ import Rebanho from './telas/Rebanho.jsx';
 import Painel from './telas/Painel.jsx';
 import Relatorios from './telas/Relatorios.jsx';
 import Cadastros from './telas/Cadastros.jsx';
+import Produtividade from './telas/Produtividade.jsx';
 import { FichaProvider, useFicha } from './telas/Ficha.jsx';
 import { ModalMatriz, ModalBoi } from './telas/Rebanho.jsx';
 import { definirDadosCadastro } from './ficha.js';
@@ -115,6 +116,7 @@ function GestaoPecuaria() {
   const [editMatriz, setEditMatriz] = useState(null);
   const [editBoi, setEditBoi] = useState(null);
   const [novoProt, setNovoProt] = useState(null);
+  const [prodFiltro, setProdFiltro] = useState('');
   const [atualizadoEm, setAtualizadoEm] = useState(null); // quando os dados da tela vieram da planilha
   const [doCelular, setDoCelular] = useState(false); // tela mostrando a cópia guardada no celular (sem internet)
   const versaoRef = useRef(null);
@@ -465,10 +467,11 @@ function GestaoPecuaria() {
     ownerMode && { id: 'painel', label: 'Painel', Icon: LayoutDashboard },
     { id: 'lancar', label: 'Lançar', Icon: Plus },
     { id: 'manejo', label: 'Manejo', Icon: Syringe },
-    { id: 'parto', label: 'Diagnóstico', Icon: ClipboardCheck },
-    { id: 'crias', label: 'Nascimentos', Icon: Baby },
+    { id: 'parto', label: 'Diagnóstico', curto: 'Diagnóst.', Icon: ClipboardCheck },
+    { id: 'crias', label: 'Nascimentos', curto: 'Nascim.', Icon: Baby },
     { id: 'rebanho', label: 'Rebanho', Icon: List },
-    { id: 'relatorios', label: 'Relatórios', Icon: FileText },
+    { id: 'produtividade', label: 'Produtividade', curto: 'Produtiv.', Icon: TrendingUp },
+    { id: 'relatorios', label: 'Relatórios', curto: 'Relatór.', Icon: FileText },
   ].filter(Boolean);
 
   const anoSel = <SeletorAno ano={ano} anos={anos} onChange={setAno} />;
@@ -542,8 +545,10 @@ function GestaoPecuaria() {
         )}
         {tab === 'parto' && (
           <Parto dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE} onLancar={lancarDaVaca} onGravarLote={gravarManejo}
-            onMontarProtocolo={(ids) => { setNovoProt({ tipo: 'IATF', animais: ids, nome: '', n: Date.now() }); setTab('manejo'); }} />
+            onMontarProtocolo={(ids) => { setNovoProt({ tipo: 'IATF', animais: ids, nome: '', n: Date.now() }); setTab('manejo'); }}
+            onAbrirProdutividade={(f) => { setProdFiltro(`${f}:${Date.now()}`); setTab('produtividade'); }} />
         )}
+        {tab === 'produtividade' && <Produtividade dados={dados} hoje={hoje} filtroInicial={prodFiltro} />}
         {tab === 'cadastros' && ownerMode && <Cadastros dados={dados} onSalvarCadastros={salvarCadastros} scriptAntigo={scriptAntes(15)} />}
         {tab === 'crias' && (
           <Crias
@@ -575,8 +580,8 @@ function GestaoPecuaria() {
       </div>
 
       <nav className={`bnav${itensNav.length > 5 ? ' mini' : ''}`} aria-label="Telas (celular)">
-        {itensNav.map(({ id, label, Icon }) => (
-          <button key={id} aria-current={tab === id ? 'page' : undefined} onClick={() => mudarTab(id)}><Icon /> {label}</button>
+        {itensNav.map(({ id, label, curto, Icon }) => (
+          <button key={id} aria-current={tab === id ? 'page' : undefined} aria-label={label} onClick={() => mudarTab(id)}><Icon /> {itensNav.length > 6 && curto ? curto : label}</button>
         ))}
       </nav>
 
