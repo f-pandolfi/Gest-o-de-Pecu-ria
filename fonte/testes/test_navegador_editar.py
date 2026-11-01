@@ -198,6 +198,20 @@ with sync_playwright() as p:
         ir('Manejo'); aba('Geral')
         assert pg.locator('[data-testid^=manejo-]').count() == 0
 
+    @teste('Manejo gravado antes da 10.6 (brinco sem cadastro sem o sinal semCadastro) aparece em "Sem cadastro" ao reabrir')
+    def _():
+        item = {'animal': '', 'brinco': '4033', 'tipo': '', 'loteAtual': '', 'obs': 'Brinco não cadastrado', 'mudar': ''}
+        ev = {'id': 'velho1', 'data': '2026-10-31', 'etapa': 'Geral', 'descricao': 'Pour-on', 'lote': 'Paridas', 'presentes': A['id'], 'ausentes': '', 'responsavel': 'RAYLON', 'aplicacoes': '[]', 'observacoes': '', 'foraDoLote': json.dumps([item]), 'createdAt': '2026-10-31T21:00:00Z'}
+        req = urllib.request.Request(BASE + '/exec', method='POST', data=json.dumps({'action': 'appendEventos', 'itens': [{'tipo': 'manejo', 'evento': ev}]}).encode(), headers={'Content-Type': 'text/plain'})
+        urllib.request.urlopen(req).read()
+        pg.reload(); pg.wait_for_selector('.foot-note'); pg.wait_for_timeout(2500)
+        ir('Manejo'); aba('Geral')
+        pg.get_by_test_id('manejo-velho1').click(); pg.get_by_test_id('abrir-manejo').click()
+        fl = pg.get_by_test_id('fora-lote'); fl.wait_for()
+        expect(fl).to_contain_text('Sem cadastro (1)')
+        assert 'Incluídos de fora da lista do lote' not in fl.inner_text()
+        expect(pg.get_by_role('button', name='Salvar alterações')).to_contain_text('1 sem cadastro')
+
     @teste('Computador: tela de edição sem rolagem lateral e sem erros')
     def _():
         c2 = b.new_context(viewport={'width': 1280, 'height': 900}, locale='pt-BR', timezone_id='America/Sao_Paulo')

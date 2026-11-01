@@ -10,7 +10,7 @@ import { formatarDataBR, padronizarLote, mesmoLote } from '../logica.js';
 import {
   MANEJOS_RAPIDOS, lotesParaManejo, animaisDoLote, temCriasAoPe, aplicarManejoGeral, pendenciasLote,
   listarManejosGerais, relatorioConferencia, faltasRepetidas, indiceBusca, resolverInclusoes, pendenciasNotas, chaveNota,
-  formDoManejo, idsDoManejo, editarManejoGeral, resumoExclusao,
+  formDoManejo, idsDoManejo, editarManejoGeral, resumoExclusao, semCad,
 } from '../manejoGeral.js';
 import { Aviso, Kpis, SecaoRelatorio } from '../ui.jsx';
 import { AplicacoesEditor, Rotulo } from './ManejoComum.jsx';
@@ -296,11 +296,11 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
     if (!res.ok) { setErro(res.msg); return; }
     apagarLocal(CHAVE);
     const pend = r.eventosNovos[0] ? JSON.parse(e.foraDoLote).filter((x) => x.mudar === 'pendente').length : 0;
-    const semCad = JSON.parse(e.foraDoLote).filter((x) => x.semCadastro).length;
+    const nSem = JSON.parse(e.foraDoLote).filter(semCad).length;
     const nNotas = JSON.parse(e.foraDoLote).filter((x) => x.nota).length;
     const msg = [
       'Manejo gravado.',
-      semCad ? `${semCad} brinco(s) sem cadastro anotado(s).` : '',
+      nSem ? `${nSem} brinco(s) sem cadastro anotado(s).` : '',
       nNotas ? `${nNotas} observação(ões) por brinco gravada(s)${ownerMode ? ' (ficam em "Observações para efetivar")' : ' para o proprietário efetivar'}.` : '',
       r.matrizesAlteradas.length ? `${r.matrizesAlteradas.length} animal(is) mudado(s) para o lote ${lote}.` : '',
       pend ? `${pend} mudança(s) de lote esperando o proprietário confirmar.` : '',
@@ -312,9 +312,10 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
 
   const nMarc = itens.filter((x) => marcados.has(x.id)).length;
   const total = nMarc + fora.length;
-  const nSemCad = fora.filter((x) => x.semCadastro).length;
-  const foraOutro = fora.filter((x) => !x.semCadastro);
-  const semCadastro = fora.filter((x) => x.semCadastro);
+  // manejo gravado antes da 10.6 não tem o sinal semCadastro: sem animal ligado também é "sem cadastro"
+  const nSemCad = fora.filter(semCad).length;
+  const foraOutro = fora.filter((x) => !semCad(x));
+  const semCadastro = fora.filter(semCad);
   return (
     <section className="sheet pad" data-testid="geral-form">
       <button className="btn quiet sm" onClick={() => (editando ? sairDaEdicao() : setTela('inicio'))} style={{ marginBottom: 10 }}><ArrowLeft size={15} /> {editando ? 'Voltar sem salvar' : 'Voltar (o rascunho fica guardado)'}</button>

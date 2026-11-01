@@ -5283,11 +5283,11 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
     }
     apagarLocal(CHAVE2);
     const pend = r.eventosNovos[0] ? JSON.parse(e.foraDoLote).filter((x) => x.mudar === "pendente").length : 0;
-    const semCad2 = JSON.parse(e.foraDoLote).filter((x) => x.semCadastro).length;
+    const nSem = JSON.parse(e.foraDoLote).filter(semCad).length;
     const nNotas = JSON.parse(e.foraDoLote).filter((x) => x.nota).length;
     const msg = [
       "Manejo gravado.",
-      semCad2 ? `${semCad2} brinco(s) sem cadastro anotado(s).` : "",
+      nSem ? `${nSem} brinco(s) sem cadastro anotado(s).` : "",
       nNotas ? `${nNotas} observa\xE7\xE3o(\xF5es) por brinco gravada(s)${ownerMode ? ' (ficam em "Observa\xE7\xF5es para efetivar")' : " para o propriet\xE1rio efetivar"}.` : "",
       r.matrizesAlteradas.length ? `${r.matrizesAlteradas.length} animal(is) mudado(s) para o lote ${lote}.` : "",
       pend ? `${pend} mudan\xE7a(s) de lote esperando o propriet\xE1rio confirmar.` : "",
@@ -5300,9 +5300,9 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
   }
   const nMarc = itens2.filter((x) => marcados.has(x.id)).length;
   const total = nMarc + fora.length;
-  const nSemCad = fora.filter((x) => x.semCadastro).length;
-  const foraOutro = fora.filter((x) => !x.semCadastro);
-  const semCadastro = fora.filter((x) => x.semCadastro);
+  const nSemCad = fora.filter(semCad).length;
+  const foraOutro = fora.filter((x) => !semCad(x));
+  const semCadastro = fora.filter(semCad);
   return /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "geral-form" }, /* @__PURE__ */ React8.createElement("button", { className: "btn quiet sm", onClick: () => editando ? sairDaEdicao() : setTela("inicio"), style: { marginBottom: 10 } }, /* @__PURE__ */ React8.createElement(ArrowLeft3, { size: 15 }), " ", editando ? "Voltar sem salvar" : "Voltar (o rascunho fica guardado)"), /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, !editando ? "Novo manejo" : ownerMode ? "Editar manejo" : "Incluir brincos e observa\xE7\xF5es"), scriptDesatualizado && /* @__PURE__ */ React8.createElement(Aviso, null, "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13)."), soAcrescenta ? /* @__PURE__ */ React8.createElement("div", { className: "sub", "data-testid": "cabecalho-travado", style: { marginTop: 0 } }, /* @__PURE__ */ React8.createElement("b", null, formatarDataBR(f.data), " \xB7 lote ", lote, " \xB7 ", f.descricao), f.responsavel ? ` \xB7 ${f.responsavel}` : "", /* @__PURE__ */ React8.createElement("div", { style: { fontSize: 13, marginTop: 4 } }, "Aqui voc\xEA inclui mais brincos e escreve ou corrige observa\xE7\xF5es. O que j\xE1 foi gravado fica como est\xE1: s\xF3 o propriet\xE1rio muda o manejo ou tira brincos.")) : /* @__PURE__ */ React8.createElement(React8.Fragment, null, /* @__PURE__ */ React8.createElement("div", { className: "grid2" }, /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-data" }, "Data"), /* @__PURE__ */ React8.createElement("input", { id: "mg-data", type: "date", value: f.data, onChange: (e) => set("data", e.target.value) })), /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-lote" }, "Lote"), /* @__PURE__ */ React8.createElement("select", { id: "mg-lote", value: f.lote, onChange: (e) => setF((x) => ({ ...x, lote: e.target.value, marcados: [], incluirCrias: null })) }, /* @__PURE__ */ React8.createElement("option", { value: "" }, "Escolha o lote"), lotes.map((l) => /* @__PURE__ */ React8.createElement("option", { key: l.lote, value: l.lote }, l.lote, " (", l.n, ")")), /* @__PURE__ */ React8.createElement("option", { value: OUTRO }, "Outro lote (digitar)")))), f.lote === OUTRO && /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-lote-novo" }, "Nome do lote"), /* @__PURE__ */ React8.createElement("input", { id: "mg-lote-novo", value: f.loteDigitado, onChange: (e) => {
     setErro("");
     setF((x) => ({ ...x, loteDigitado: e.target.value }));
