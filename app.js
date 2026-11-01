@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 // src/logica.js
-var VERSAO_APP = "10.5 (31/10/26)";
+var VERSAO_APP = "10.6 (31/10/26)";
 var VERSAO_MINIMA_SCRIPT = 12;
 var PERIODO_GESTACAO_DIAS = 285;
 var TIPOS_FUNCIONARIO = ["nascimento", "desmama", "insumo", "descarte", "pesagem", "morte"];
@@ -2602,6 +2602,7 @@ var ordemBrinco = (a, b) => String(a).localeCompare(String(b), "pt-BR", { numeri
 var ativa = (m) => m.status !== "Vendida" && m.status !== "Morta";
 var ehManejoGeral = (e) => e && e.tipo === "manejo" && e.etapa === ETAPA_GERAL;
 var foraDoLoteDe = (e) => json(e && e.foraDoLote, []);
+var chaveNota = (x) => x && x.animal || `b:${String((x && x.brinco) ?? "").trim()}`;
 var lotesParaManejo = (estado) => lotesExistentes(estado.matrizes);
 function criasAoPe(estado, lote, hoje) {
   const maes = new Map(estado.matrizes.filter((m) => ativa(m) && mesmoLote(m.lote, lote)).map((m) => [m.id, m]));
@@ -2794,6 +2795,7 @@ function aplicarManejoGeral(estado, form, opcoes) {
   if (!marcados.length && !fora.length) erros.push("Marque pelo menos um animal que passou no curral.");
   if (erros.length) return { erros };
   const aprovar = new Set(form.dono ? form.aprovar || [] : []);
+  const notas = form.notas || {};
   const foraFinal = fora.map((f) => {
     const x = { animal: f.animal || "", brinco: String(f.brinco), tipo: f.tipo || "", loteAtual: f.loteAtual || "", obs: f.obs || "", mudar: f.mudar || "" };
     if (f.sit) x.sit = String(f.sit);
@@ -2801,10 +2803,22 @@ function aplicarManejoGeral(estado, form, opcoes) {
       x.semCadastro = true;
       if (!x.obs) x.obs = OBS_SEM_CADASTRO;
     }
+    const nota = String(notas[chaveNota(x)] || "").trim();
+    if (nota) x.nota = nota;
     if (x.mudar === "pendente" && form.dono) {
       x.mudar = aprovar.has(x.animal) ? "aprovada" : "recusada";
       x.decididoEm = now.slice(0, 10);
     }
+    return x;
+  });
+  const nomes = nomesDosAnimais(estado);
+  const hojeRef = op.hoje || todayISO();
+  const comNota = esperados.filter((id2) => String(notas[id2] || "").trim()).map((id2) => {
+    const n = nomes.get(id2) || { brinco: "?" };
+    const m = estado.matrizes.find((x2) => x2.id === id2);
+    const x = { animal: id2, brinco: String(n.brinco), tipo: id2.startsWith("c:") ? "cria" : id2.startsWith("t:") ? "touro" : "matriz", loteAtual: lote, obs: "", mudar: "", doLote: true };
+    if (m) x.sit = situacaoMatriz(estado, m, hojeRef).texto;
+    x.nota = String(notas[id2]).trim();
     return x;
   });
   const presentes = [.../* @__PURE__ */ new Set([...marcados, ...foraFinal.map((f) => f.animal).filter(Boolean)])];
@@ -2825,7 +2839,7 @@ function aplicarManejoGeral(estado, form, opcoes) {
     observacoes: String(form.observacoes || "").trim(),
     createdAt: now,
     lote,
-    foraDoLote: JSON.stringify(foraFinal)
+    foraDoLote: JSON.stringify([...foraFinal, ...comNota])
   };
   const matrizesAlteradas = foraFinal.filter((f) => f.mudar === "aprovada").map((f) => estado.matrizes.find((m) => m.id === f.animal)).filter(Boolean).map((m) => ({ ...m, lote }));
   const porId = new Map(matrizesAlteradas.map((m) => [m.id, m]));
@@ -2880,7 +2894,8 @@ function listarManejosGerais(estado, ano) {
   return estado.eventos.filter(ehManejoGeral).filter((e) => !ano || String(e.data || "").slice(0, 4) === String(ano)).map((e) => conferencia(estado, e)).sort((a, b) => (b.data || "").localeCompare(a.data || "") || (b.manejo.createdAt || "").localeCompare(a.manejo.createdAt || ""));
 }
 function conferencia(estado, e) {
-  const fora = foraDoLoteDe(e);
+  const todos = foraDoLoteDe(e);
+  const fora = todos.filter((f) => !f.doLote);
   const idsFora = new Set(fora.map((f) => f.animal).filter(Boolean));
   const presentes = lista(e.presentes);
   const conferidos = presentes.filter((id) => !idsFora.has(id));
@@ -2900,8 +2915,41 @@ function conferencia(estado, e) {
     conferidos: conferidos.map((id) => ({ id, ...nome(id) })).sort((a, b) => ordemBrinco(a.brinco, b.brinco)),
     faltando: ausentes.map((id) => ({ id, ...nome(id) })).sort((a, b) => ordemBrinco(a.brinco, b.brinco)),
     fora: fora.slice().sort((a, b) => ordemBrinco(a.brinco, b.brinco)),
-    semCadastro: fora.filter(semCad).sort((a, b) => ordemBrinco(a.brinco, b.brinco))
+    semCadastro: fora.filter(semCad).sort((a, b) => ordemBrinco(a.brinco, b.brinco)),
+    notas: todos.map((f, idx) => ({ ...f, idx })).filter((f) => f.nota).sort((a, b) => ordemBrinco(a.brinco, b.brinco))
   };
+}
+function pendenciasNotas(estado) {
+  const out = [];
+  estado.eventos.filter(ehManejoGeral).forEach((e) => {
+    foraDoLoteDe(e).forEach((f, idx) => {
+      if (!f.nota || f.notaOk) return;
+      out.push({ manejoId: e.id, idx, data: e.data, lote: e.lote || "", descricao: e.descricao || "", responsavel: e.responsavel || "", animal: f.animal || "", brinco: f.brinco, tipo: f.tipo || "", sit: f.sit || "", obs: f.obs || "", semCadastro: !f.doLote && semCad(f), nota: f.nota });
+    });
+  });
+  return out.sort((a, b) => (b.data || "").localeCompare(a.data || "") || ordemBrinco(a.brinco, b.brinco));
+}
+function efetivarNotas(estado, decisoes, opcoes) {
+  const hoje = (opcoes && opcoes.now || (/* @__PURE__ */ new Date()).toISOString()).slice(0, 10);
+  const porManejo = /* @__PURE__ */ new Map();
+  (decisoes || []).forEach((d) => {
+    if (!porManejo.has(d.manejoId)) porManejo.set(d.manejoId, /* @__PURE__ */ new Map());
+    porManejo.get(d.manejoId).set(d.idx, !!d.feito);
+  });
+  const eventos = [];
+  let n = 0;
+  porManejo.forEach((dec, manejoId) => {
+    const e = estado.eventos.find((x) => x.id === manejoId && ehManejoGeral(x));
+    if (!e) return;
+    const lista3 = foraDoLoteDe(e).map((f, idx) => {
+      if (!f.nota || !dec.has(idx)) return f;
+      n++;
+      const { notaOk, ...resto } = f;
+      return dec.get(idx) ? { ...resto, notaOk: hoje } : resto;
+    });
+    eventos.push({ tipo: "manejo", id: e.id, campos: { foraDoLote: JSON.stringify(lista3) } });
+  });
+  return { mudancas: { eventos, matrizes: [] }, n };
 }
 function nomesDosAnimais(estado) {
   const mapa = new Map(estado.matrizes.map((m) => [m.id, { brinco: String(m.brinco), tipo: m.categoria || "Matriz" }]));
@@ -2929,7 +2977,8 @@ function relatorioConferencia(estado, manejoId) {
       { rotulo: "Conferidos", valor: c.conferidos.length },
       { rotulo: "Faltando", valor: c.faltando.length },
       { rotulo: "De outro lote", valor: c.fora.length - c.semCadastro.length },
-      { rotulo: "Sem cadastro", valor: c.semCadastro.length }
+      { rotulo: "Sem cadastro", valor: c.semCadastro.length },
+      ...c.notas.length ? [{ rotulo: "Observa\xE7\xF5es", valor: c.notas.length }] : []
     ],
     secoes: [
       { titulo: "Faltando (n\xE3o passaram no curral)", colunas: [{ k: "brinco", label: "Brinco", mono: true }, { k: "tipo", label: "Animal" }], linhas: c.faltando },
@@ -2939,6 +2988,11 @@ function relatorioConferencia(estado, manejoId) {
         linhas: c.fora.filter((f) => !semCad(f)).map((f) => ({ ...f, animalSit: [NOME_TIPO[f.tipo] || "", f.sit].filter(Boolean).join(" \xB7 "), sit: textoMudar(f) }))
       },
       { titulo: "Sem cadastro (n\xE3o est\xE3o no banco de dados nem em nenhum lote)", colunas: [{ k: "brinco", label: "Brinco", mono: true }, { k: "obs", label: "Observa\xE7\xE3o" }], linhas: c.semCadastro },
+      {
+        titulo: "Observa\xE7\xF5es por brinco",
+        colunas: [{ k: "brinco", label: "Brinco", mono: true }, { k: "nota", label: "Observa\xE7\xE3o", quebra: true }, { k: "animalSit", label: "Animal e situa\xE7\xE3o", quebra: true }, { k: "efet", label: "Efetivada" }],
+        linhas: c.notas.map((f) => ({ ...f, animalSit: f.semCadastro || !f.animal ? "Sem cadastro" : [NOME_TIPO[f.tipo] || "", f.sit].filter(Boolean).join(" \xB7 "), efet: f.notaOk ? `sim, ${formatarDataBR(f.notaOk)}` : "pendente" }))
+      },
       { titulo: "Conferidos", colunas: [{ k: "brinco", label: "Brinco", mono: true }, { k: "tipo", label: "Animal" }], linhas: c.conferidos }
     ]
   };
@@ -3944,7 +3998,7 @@ function SecaoRelatorio({ secao }) {
       "td",
       {
         key: c.k,
-        className: `${c.align === "right" ? "r " : ""}${c.mono ? "mono " : ""}${c.k === "brincos" ? "wrapt" : ""}`,
+        className: `${c.align === "right" ? "r " : ""}${c.mono ? "mono " : ""}${c.k === "brincos" || c.quebra ? "wrapt" : ""}`,
         style: total ? { fontWeight: 700, color: "var(--amber)" } : void 0
       },
       vazioTxt(l[c.k])
@@ -4715,14 +4769,33 @@ import { Save as Save5, Loader2 as Loader25, FileDown as FileDown4, Plus as Plus
 
 // src/telas/ManejoBusca.jsx
 import React7, { useMemo as useMemo7, useRef as useRef4, useState as useState7 } from "react";
-import { Search as Search3, Check as Check3, Plus as Plus4, AlertTriangle } from "lucide-react";
+import { Search as Search3, Check as Check3, Plus as Plus4, AlertTriangle, StickyNote } from "lucide-react";
 var mesmaInclusao = (i, f) => String(i.brinco) === String(f.brinco) && (i.animal || "") === (f.animal || "");
-function Ficha({ f, marcado, incluido, lote, onMarcar, onIncluir }) {
-  const cor = f.naLista ? "good" : f.obs ? f.ativo ? "soon" : "late" : "mut";
-  return /* @__PURE__ */ React7.createElement("div", { className: `ficha-busca ${cor}`, "data-testid": `ficha-${f.chave}` }, /* @__PURE__ */ React7.createElement("div", { className: "fb-topo" }, /* @__PURE__ */ React7.createElement("b", { className: "b" }, f.brinco), /* @__PURE__ */ React7.createElement("span", { className: "fb-tit" }, f.titulo)), /* @__PURE__ */ React7.createElement("div", { className: `fb-sit ${f.situacao.nivel}`, "data-testid": "ficha-situacao" }, f.situacao.texto), f.linhas.map((l) => /* @__PURE__ */ React7.createElement("div", { key: l, className: "fb-lin" }, l)), /* @__PURE__ */ React7.createElement("div", { className: "fb-lin" }, f.loteAtual ? /* @__PURE__ */ React7.createElement(React7.Fragment, null, "Lote atual: ", /* @__PURE__ */ React7.createElement("b", null, f.loteAtual)) : f.tipo === "cria" ? "Cria: n\xE3o tem lote pr\xF3prio" : "Sem lote no cadastro"), /* @__PURE__ */ React7.createElement("div", { className: `fb-obs ${f.naLista ? "good" : f.ativo ? "soon" : "late"}` }, f.naLista ? `Est\xE1 na lista do lote ${lote}.` : f.obs), f.naLista ? /* @__PURE__ */ React7.createElement("button", { type: "button", className: `btn wide${marcado ? " quiet" : ""}`, onClick: () => onMarcar(f), "data-testid": "ficha-acao" }, /* @__PURE__ */ React7.createElement(Check3, { size: 17 }), " ", marcado ? "Marcada. Toque para desmarcar" : "Marcar como presente") : incluido ? /* @__PURE__ */ React7.createElement("button", { type: "button", className: "btn wide quiet", disabled: true, "data-testid": "ficha-acao" }, /* @__PURE__ */ React7.createElement(Check3, { size: 17 }), " J\xE1 inclu\xEDda no manejo") : /* @__PURE__ */ React7.createElement("button", { type: "button", className: "btn wide", onClick: () => onIncluir(f), "data-testid": "ficha-acao" }, /* @__PURE__ */ React7.createElement(Plus4, { size: 17 }), " ", f.ativo ? "Incluir no manejo" : "Incluir mesmo assim"));
+function CampoNota({ brinco, valor, onChange, autoFocus, id }) {
+  return /* @__PURE__ */ React7.createElement(
+    "input",
+    {
+      id,
+      className: "nota-inp",
+      value: valor || "",
+      onChange: (e) => onChange(e.target.value),
+      maxLength: 300,
+      autoFocus,
+      autoComplete: "off",
+      "aria-label": `Observa\xE7\xE3o do brinco ${brinco}`,
+      placeholder: "Observa\xE7\xE3o deste brinco (opcional)",
+      "data-testid": `nota-${brinco}`
+    }
+  );
 }
-function ConferirBrincos({ dados, lote, hoje, itens: itens2, marcados, onToggle, incluidos, onIncluir, indice, esperados, rotuloContador }) {
+function Ficha({ f, marcado, incluido, lote, nota, onNota, onMarcar, onIncluir }) {
+  const cor = f.naLista ? "good" : f.obs ? f.ativo ? "soon" : "late" : "mut";
+  return /* @__PURE__ */ React7.createElement("div", { className: `ficha-busca ${cor}`, "data-testid": `ficha-${f.chave}` }, /* @__PURE__ */ React7.createElement("div", { className: "fb-topo" }, /* @__PURE__ */ React7.createElement("b", { className: "b" }, f.brinco), /* @__PURE__ */ React7.createElement("span", { className: "fb-tit" }, f.titulo)), /* @__PURE__ */ React7.createElement("div", { className: `fb-sit ${f.situacao.nivel}`, "data-testid": "ficha-situacao" }, f.situacao.texto), f.linhas.map((l) => /* @__PURE__ */ React7.createElement("div", { key: l, className: "fb-lin" }, l)), /* @__PURE__ */ React7.createElement("div", { className: "fb-lin" }, f.loteAtual ? /* @__PURE__ */ React7.createElement(React7.Fragment, null, "Lote atual: ", /* @__PURE__ */ React7.createElement("b", null, f.loteAtual)) : f.tipo === "cria" ? "Cria: n\xE3o tem lote pr\xF3prio" : "Sem lote no cadastro"), /* @__PURE__ */ React7.createElement("div", { className: `fb-obs ${f.naLista ? "good" : f.ativo ? "soon" : "late"}` }, f.naLista ? `Est\xE1 na lista do lote ${lote}.` : f.obs), /* @__PURE__ */ React7.createElement(CampoNota, { brinco: f.brinco, valor: nota, onChange: (t) => onNota(chaveNota(f), t) }), nota && !f.naLista && !incluido && /* @__PURE__ */ React7.createElement("div", { className: "fb-lin", style: { margin: "3px 0 0" } }, "A observa\xE7\xE3o \xE9 gravada quando voc\xEA incluir o brinco no manejo."), /* @__PURE__ */ React7.createElement("div", { style: { height: 8 } }), f.naLista ? /* @__PURE__ */ React7.createElement("button", { type: "button", className: `btn wide${marcado ? " quiet" : ""}`, onClick: () => onMarcar(f), "data-testid": "ficha-acao" }, /* @__PURE__ */ React7.createElement(Check3, { size: 17 }), " ", marcado ? "Marcada. Toque para desmarcar" : "Marcar como presente") : incluido ? /* @__PURE__ */ React7.createElement("button", { type: "button", className: "btn wide quiet", disabled: true, "data-testid": "ficha-acao" }, /* @__PURE__ */ React7.createElement(Check3, { size: 17 }), " J\xE1 inclu\xEDda no manejo") : /* @__PURE__ */ React7.createElement("button", { type: "button", className: "btn wide", onClick: () => onIncluir(f), "data-testid": "ficha-acao" }, /* @__PURE__ */ React7.createElement(Plus4, { size: 17 }), " ", f.ativo ? "Incluir no manejo" : "Incluir mesmo assim"));
+}
+function ConferirBrincos({ dados, lote, hoje, itens: itens2, marcados, onToggle, incluidos, onIncluir, indice, esperados, rotuloContador, notas, onNota }) {
+  const nts = notas || {};
   const [q, setQ] = useState7("");
+  const [abertas, setAbertas] = useState7({});
   const [msg, setMsg] = useState7(null);
   const [letras, setLetras] = useState7(false);
   const entrada = useRef4(null);
@@ -4805,16 +4878,29 @@ function ConferirBrincos({ dados, lote, hoje, itens: itens2, marcados, onToggle,
       }
     },
     letras ? "123" : "ABC"
-  )), msg && /* @__PURE__ */ React7.createElement("div", { className: `hint ${msg.tom}`, role: "status", "data-testid": "msg-marcar", style: { margin: "6px 2px", fontSize: 13.5 } }, msg.t), fichas.map((f) => /* @__PURE__ */ React7.createElement(Ficha, { key: f.chave, f, lote, marcado: marcadoNaFicha(f), incluido: incluidos.some((i) => mesmaInclusao(i, f)), onMarcar: marcar, onIncluir: incluir })), b && fichas.length === 0 && filtrados.length === 0 && /* @__PURE__ */ React7.createElement("div", { className: "ficha-busca late", "data-testid": "ficha-sem-cadastro" }, /* @__PURE__ */ React7.createElement("div", { className: "fb-topo" }, /* @__PURE__ */ React7.createElement("b", { className: "b" }, b), /* @__PURE__ */ React7.createElement("span", { className: "fb-tit" }, /* @__PURE__ */ React7.createElement(AlertTriangle, { size: 14, style: { verticalAlign: -2 } }), " Brinco sem cadastro")), /* @__PURE__ */ React7.createElement("div", { className: "fb-lin" }, "N\xE3o est\xE1 no banco de dados (matrizes, novilhas, crias e touros) nem em nenhum lote."), /* @__PURE__ */ React7.createElement("button", { type: "button", className: "btn wide", onClick: () => incluir(fichaSemCadastro(b)), "data-testid": "incluir-sem-cadastro" }, /* @__PURE__ */ React7.createElement(Plus4, { size: 17 }), " Incluir ", b, " mesmo assim")), /* @__PURE__ */ React7.createElement("div", { className: "marcar", "data-testid": "lista-marcar", hidden: filtrados.length === 0 && !!b }, filtrados.map((x) => {
+  )), msg && /* @__PURE__ */ React7.createElement("div", { className: `hint ${msg.tom}`, role: "status", "data-testid": "msg-marcar", style: { margin: "6px 2px", fontSize: 13.5 } }, msg.t), fichas.map((f) => /* @__PURE__ */ React7.createElement(Ficha, { key: f.chave, f, lote, nota: nts[chaveNota(f)], onNota, marcado: marcadoNaFicha(f), incluido: incluidos.some((i) => mesmaInclusao(i, f)), onMarcar: marcar, onIncluir: incluir })), b && fichas.length === 0 && filtrados.length === 0 && /* @__PURE__ */ React7.createElement("div", { className: "ficha-busca late", "data-testid": "ficha-sem-cadastro" }, /* @__PURE__ */ React7.createElement("div", { className: "fb-topo" }, /* @__PURE__ */ React7.createElement("b", { className: "b" }, b), /* @__PURE__ */ React7.createElement("span", { className: "fb-tit" }, /* @__PURE__ */ React7.createElement(AlertTriangle, { size: 14, style: { verticalAlign: -2 } }), " Brinco sem cadastro")), /* @__PURE__ */ React7.createElement("div", { className: "fb-lin" }, "N\xE3o est\xE1 no banco de dados (matrizes, novilhas, crias e touros) nem em nenhum lote."), /* @__PURE__ */ React7.createElement("div", { style: { height: 8 } }), /* @__PURE__ */ React7.createElement(CampoNota, { brinco: b, valor: nts[`b:${b}`], onChange: (t) => onNota(`b:${b}`, t) }), /* @__PURE__ */ React7.createElement("div", { style: { height: 8 } }), /* @__PURE__ */ React7.createElement("button", { type: "button", className: "btn wide", onClick: () => incluir(fichaSemCadastro(b)), "data-testid": "incluir-sem-cadastro" }, /* @__PURE__ */ React7.createElement(Plus4, { size: 17 }), " Incluir ", b, " mesmo assim")), /* @__PURE__ */ React7.createElement("div", { className: "marcar", "data-testid": "lista-marcar", hidden: filtrados.length === 0 && !!b }, filtrados.map((x) => {
     const on = marcados.has(x.id);
-    return /* @__PURE__ */ React7.createElement("div", { key: x.id, className: `marca-lin${on ? " on" : ""}` }, /* @__PURE__ */ React7.createElement("button", { type: "button", className: "marca-bt", "aria-pressed": on, "aria-label": `${on ? "Desmarcar" : "Marcar"} ${x.brinco}`, onClick: () => onToggle(x.id) }, /* @__PURE__ */ React7.createElement("span", { className: "caixa" }, on ? /* @__PURE__ */ React7.createElement(Check3, { size: 18 }) : null), /* @__PURE__ */ React7.createElement("span", { className: "b" }, x.brinco), /* @__PURE__ */ React7.createElement("span", { className: "two" }, /* @__PURE__ */ React7.createElement("b", null, x.linha1), /* @__PURE__ */ React7.createElement("span", { className: x.nivel || "mut" }, x.linha2))));
+    const nota = nts[x.id] || "";
+    const aberta = !!abertas[x.id];
+    return /* @__PURE__ */ React7.createElement("div", { key: x.id, className: `marca-lin${on ? " on" : ""}` }, /* @__PURE__ */ React7.createElement("div", { className: "marca-topo" }, /* @__PURE__ */ React7.createElement("button", { type: "button", className: "marca-bt", "aria-pressed": on, "aria-label": `${on ? "Desmarcar" : "Marcar"} ${x.brinco}`, onClick: () => onToggle(x.id) }, /* @__PURE__ */ React7.createElement("span", { className: "caixa" }, on ? /* @__PURE__ */ React7.createElement(Check3, { size: 18 }) : null), /* @__PURE__ */ React7.createElement("span", { className: "b" }, x.brinco), /* @__PURE__ */ React7.createElement("span", { className: "two" }, /* @__PURE__ */ React7.createElement("b", null, x.linha1), /* @__PURE__ */ React7.createElement("span", { className: x.nivel || "mut" }, x.linha2))), onNota && /* @__PURE__ */ React7.createElement(
+      "button",
+      {
+        type: "button",
+        className: `nota-bt${nota ? " tem" : ""}`,
+        "aria-expanded": aberta,
+        "aria-label": `Observa\xE7\xE3o do brinco ${x.brinco}${nota ? " (tem observa\xE7\xE3o)" : ""}`,
+        "data-testid": `nota-bt-${x.brinco}`,
+        onClick: () => setAbertas((a) => ({ ...a, [x.id]: !a[x.id] }))
+      },
+      /* @__PURE__ */ React7.createElement(StickyNote, { size: 19 })
+    )), onNota && aberta && /* @__PURE__ */ React7.createElement("div", { className: "nota-cx" }, /* @__PURE__ */ React7.createElement(CampoNota, { brinco: x.brinco, valor: nota, onChange: (t) => onNota(x.id, t), autoFocus: true })), onNota && !aberta && nota && /* @__PURE__ */ React7.createElement("div", { className: "nota-txt", "data-testid": `nota-txt-${x.brinco}` }, nota));
   }), filtrados.length === 0 && !b && /* @__PURE__ */ React7.createElement("div", { className: "empty" }, "Nenhum animal cadastrado neste lote ainda.")));
 }
 
 // src/telas/ManejoGeral.jsx
 var CHAVE2 = "rascunho-manejo-geral-v1";
 var OUTRO = "__outro__";
-var vazio = (hoje) => ({ data: hoje, lote: "", loteDigitado: "", descricao: "", responsavel: "", aplicacoes: [], incluirCrias: null, marcados: [], incluidos: [], aprovar: [], obs: "" });
+var vazio = (hoje) => ({ data: hoje, lote: "", loteDigitado: "", descricao: "", responsavel: "", aplicacoes: [], incluirCrias: null, marcados: [], incluidos: [], aprovar: [], notas: {}, obs: "" });
 var migrarRascunho = (r) => {
   if (!r) return r;
   if (r.fora && !r.incluidos) {
@@ -4849,7 +4935,21 @@ function PendenciasLote({ dados, onDecidirLote }) {
   };
   return /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "pendencias-lote", style: { marginBottom: 12 } }, /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Mudan\xE7as de lote para confirmar", /* @__PURE__ */ React8.createElement("small", null, pend.length)), msg && /* @__PURE__ */ React8.createElement(Aviso, { tipo: "ok", onClose: () => setMsg("") }, msg), pend.map((p) => /* @__PURE__ */ React8.createElement("div", { key: `${p.manejoId}-${p.animal}`, className: "pend-lote", "data-testid": `pend-${p.brinco}` }, /* @__PURE__ */ React8.createElement("div", null, /* @__PURE__ */ React8.createElement("b", { className: "b" }, p.brinco), /* @__PURE__ */ React8.createElement("div", { className: "l2" }, p.de || "sem lote", " \u2192 ", /* @__PURE__ */ React8.createElement("b", null, p.para)), /* @__PURE__ */ React8.createElement("div", { className: "l3" }, formatarDataBR(p.data), " \xB7 ", p.descricao, p.responsavel ? ` \xB7 ${p.responsavel}` : "")), /* @__PURE__ */ React8.createElement("div", { className: "pend-bts" }, /* @__PURE__ */ React8.createElement("button", { className: "btn sm", onClick: () => decidir([p], true), "aria-label": `Confirmar mudan\xE7a de lote da ${p.brinco}` }, /* @__PURE__ */ React8.createElement(Check4, { size: 15 }), " Mudar"), /* @__PURE__ */ React8.createElement("button", { className: "btn quiet sm", onClick: () => decidir([p], false), "aria-label": `Recusar mudan\xE7a de lote da ${p.brinco}` }, /* @__PURE__ */ React8.createElement(X2, { size: 15 }), " N\xE3o")))), pend.length > 1 && /* @__PURE__ */ React8.createElement("button", { className: "btn ghost sm", style: { marginTop: 10 }, onClick: () => decidir(pend, true) }, "Confirmar todas (", pend.length, ")"));
 }
-function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, onGravarLote, onDecidirLote }) {
+function PendenciasNotas({ dados, onEfetivarNotas, onAbrir }) {
+  const pend = useMemo8(() => pendenciasNotas(dados), [dados]);
+  const [msg, setMsg] = useState8(null);
+  if (!pend.length && !msg) return null;
+  const efetivar = (itens2) => {
+    const r = onEfetivarNotas(itens2.map((p) => ({ manejoId: p.manejoId, idx: p.idx, feito: true })));
+    setMsg(r ? { t: r, desfazer: itens2.map((p) => ({ manejoId: p.manejoId, idx: p.idx, feito: false })) } : null);
+  };
+  const desfazer = () => {
+    const r = onEfetivarNotas(msg.desfazer);
+    setMsg(r ? { t: "Voltou para a lista de observa\xE7\xF5es para efetivar.", desfazer: null } : null);
+  };
+  return /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "pendencias-notas", style: { marginBottom: 12 } }, /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Observa\xE7\xF5es para efetivar", /* @__PURE__ */ React8.createElement("small", null, pend.length)), msg && /* @__PURE__ */ React8.createElement(Aviso, { tipo: "ok", onClose: () => setMsg(null) }, msg.t, msg.desfazer && /* @__PURE__ */ React8.createElement("button", { type: "button", className: "btn quiet sm", style: { marginLeft: 8 }, onClick: desfazer, "data-testid": "desfazer-notas" }, "Desfazer")), pend.map((p) => /* @__PURE__ */ React8.createElement("div", { key: `${p.manejoId}-${p.idx}`, className: "pend-lote", "data-testid": `nota-pend-${p.brinco}` }, /* @__PURE__ */ React8.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React8.createElement("b", { className: "b" }, p.brinco), /* @__PURE__ */ React8.createElement("span", { className: "nota-quem" }, " ", p.semCadastro || !p.animal ? "sem cadastro" : p.sit || ""), /* @__PURE__ */ React8.createElement("div", { className: "l2 nota-corpo" }, p.nota), /* @__PURE__ */ React8.createElement("button", { type: "button", className: "l3 link-lin", onClick: () => onAbrir(p.manejoId) }, formatarDataBR(p.data), " \xB7 lote ", p.lote, " \xB7 ", p.descricao, p.responsavel ? ` \xB7 ${p.responsavel}` : "")), /* @__PURE__ */ React8.createElement("div", { className: "pend-bts" }, /* @__PURE__ */ React8.createElement("button", { className: "btn sm", onClick: () => efetivar([p]), "aria-label": `Efetivada a observa\xE7\xE3o do brinco ${p.brinco}` }, /* @__PURE__ */ React8.createElement(Check4, { size: 15 }), " Efetivada")))), pend.length > 1 && /* @__PURE__ */ React8.createElement("button", { className: "btn ghost sm", style: { marginTop: 10 }, onClick: () => efetivar(pend), "data-testid": "efetivar-todas" }, "Marcar todas como efetivadas (", pend.length, ")"));
+}
+function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, onGravarLote, onDecidirLote, onEfetivarNotas }) {
   const [f, setF] = useState8(() => ({ ...vazio(hoje), ...migrarRascunho(lerLocal(CHAVE2, null)) || {} }));
   const [tela, setTela] = useState8(() => lerLocal(CHAVE2, null) ? "form" : "inicio");
   const [ver, setVer] = useState8(null);
@@ -4876,10 +4976,10 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
   const feitos = useMemo8(() => listarManejosGerais(dados), [dados]);
   if (ver) return /* @__PURE__ */ React8.createElement(Conferencia, { dados, manejoId: ver.id, msg: ver.msg, onVoltar: () => setVer(null) });
   if (tela === "inicio") {
-    return /* @__PURE__ */ React8.createElement(React8.Fragment, null, ownerMode && /* @__PURE__ */ React8.createElement(PendenciasLote, { dados, onDecidirLote }), /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "geral-inicio" }, /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Manejo geral"), /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Pour-on, brinco mosquicida, verm\xEDfugo, vacina ou s\xF3 confer\xEAncia. Escolha o lote, marque quem passou no curral e o app mostra quem faltou e quem veio de outro lote."), scriptDesatualizado && /* @__PURE__ */ React8.createElement(Aviso, null, "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13). ", ownerMode ? "Implante a vers\xE3o nova do script." : "Avise o propriet\xE1rio."), /* @__PURE__ */ React8.createElement("button", { className: "btn wide", onClick: () => {
+    return /* @__PURE__ */ React8.createElement(React8.Fragment, null, ownerMode && /* @__PURE__ */ React8.createElement(PendenciasLote, { dados, onDecidirLote }), ownerMode && onEfetivarNotas && /* @__PURE__ */ React8.createElement(PendenciasNotas, { dados, onEfetivarNotas, onAbrir: (id) => setVer({ id }) }), /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "geral-inicio" }, /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Manejo geral"), /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Pour-on, brinco mosquicida, verm\xEDfugo, vacina ou s\xF3 confer\xEAncia. Escolha o lote, marque quem passou no curral e o app mostra quem faltou e quem veio de outro lote."), scriptDesatualizado && /* @__PURE__ */ React8.createElement(Aviso, null, "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13). ", ownerMode ? "Implante a vers\xE3o nova do script." : "Avise o propriet\xE1rio."), /* @__PURE__ */ React8.createElement("button", { className: "btn wide", onClick: () => {
       setF(vazio(hoje));
       setTela("form");
-    }, disabled: scriptDesatualizado }, /* @__PURE__ */ React8.createElement(Plus5, { size: 17 }), " Novo manejo"), feitos.length > 0 && /* @__PURE__ */ React8.createElement(React8.Fragment, null, /* @__PURE__ */ React8.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Manejos feitos", /* @__PURE__ */ React8.createElement("small", null, feitos.length)), feitos.slice(0, 30).map((c) => /* @__PURE__ */ React8.createElement("button", { key: c.id, className: "card-prot", onClick: () => setVer({ id: c.id }), "data-testid": `manejo-${c.id}` }, /* @__PURE__ */ React8.createElement("b", null, formatarDataBR(c.data), " \xB7 ", c.descricao), /* @__PURE__ */ React8.createElement("div", { className: "l2" }, "Lote ", c.lote, " \xB7 ", c.conferidos.length, " de ", c.esperados, " conferidos", c.faltando.length ? ` \xB7 ${c.faltando.length} faltando` : "", c.fora.length ? ` \xB7 ${c.fora.length} de fora` : "", c.responsavel ? ` \xB7 ${c.responsavel}` : ""))))));
+    }, disabled: scriptDesatualizado }, /* @__PURE__ */ React8.createElement(Plus5, { size: 17 }), " Novo manejo"), feitos.length > 0 && /* @__PURE__ */ React8.createElement(React8.Fragment, null, /* @__PURE__ */ React8.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Manejos feitos", /* @__PURE__ */ React8.createElement("small", null, feitos.length)), feitos.slice(0, 30).map((c) => /* @__PURE__ */ React8.createElement("button", { key: c.id, className: "card-prot", onClick: () => setVer({ id: c.id }), "data-testid": `manejo-${c.id}` }, /* @__PURE__ */ React8.createElement("b", null, formatarDataBR(c.data), " \xB7 ", c.descricao), /* @__PURE__ */ React8.createElement("div", { className: "l2" }, "Lote ", c.lote, " \xB7 ", c.conferidos.length, " de ", c.esperados, " conferidos", c.faltando.length ? ` \xB7 ${c.faltando.length} faltando` : "", c.fora.length ? ` \xB7 ${c.fora.length} de fora` : "", c.notas.length ? ` \xB7 ${c.notas.length} observa\xE7\xE3o(\xF5es)` : "", c.responsavel ? ` \xB7 ${c.responsavel}` : ""))))));
   }
   function toggle(id) {
     set("marcados", marcados.has(id) ? f.marcados.filter((x) => x !== id) : [...f.marcados.filter((x) => esperados.has(x)), id]);
@@ -4896,7 +4996,14 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
     });
   }
   function tirar(x) {
-    setF((s) => ({ ...s, incluidos: s.incluidos.filter((i) => !(String(i.brinco) === String(x.brinco) && (i.animal || "") === (x.animal || ""))), aprovar: s.aprovar.filter((a) => a !== x.animal) }));
+    setF((s) => {
+      const { [chaveNota(x)]: _tirada, ...notas } = s.notas || {};
+      return { ...s, incluidos: s.incluidos.filter((i) => !(String(i.brinco) === String(x.brinco) && (i.animal || "") === (x.animal || ""))), aprovar: s.aprovar.filter((a) => a !== x.animal), notas };
+    });
+  }
+  function anotar(chave2, texto) {
+    setErro("");
+    setF((s) => ({ ...s, notas: { ...s.notas || {}, [chave2]: texto } }));
   }
   function rapido(m) {
     const ja = f.descricao.trim();
@@ -4918,7 +5025,8 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
       observacoes: f.obs,
       incluirCrias,
       dono: ownerMode,
-      aprovar: f.aprovar
+      aprovar: f.aprovar,
+      notas: f.notas
     });
     if (r.erros && r.erros.length) {
       setErro(r.erros.join(" "));
@@ -4938,9 +5046,11 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
     apagarLocal(CHAVE2);
     const pend = r.eventosNovos[0] ? JSON.parse(e.foraDoLote).filter((x) => x.mudar === "pendente").length : 0;
     const semCad2 = JSON.parse(e.foraDoLote).filter((x) => x.semCadastro).length;
+    const nNotas = JSON.parse(e.foraDoLote).filter((x) => x.nota).length;
     const msg = [
       "Manejo gravado.",
       semCad2 ? `${semCad2} brinco(s) sem cadastro anotado(s).` : "",
+      nNotas ? `${nNotas} observa\xE7\xE3o(\xF5es) por brinco gravada(s)${ownerMode ? ' (ficam em "Observa\xE7\xF5es para efetivar")' : " para o propriet\xE1rio efetivar"}.` : "",
       r.matrizesAlteradas.length ? `${r.matrizesAlteradas.length} animal(is) mudado(s) para o lote ${lote}.` : "",
       pend ? `${pend} mudan\xE7a(s) de lote esperando o propriet\xE1rio confirmar.` : "",
       res.offline ? "Sem internet: ficou no celular e vai para a planilha quando a internet voltar." : "",
@@ -4958,7 +5068,7 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
   return /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "geral-form" }, /* @__PURE__ */ React8.createElement("button", { className: "btn quiet sm", onClick: () => setTela("inicio"), style: { marginBottom: 10 } }, /* @__PURE__ */ React8.createElement(ArrowLeft3, { size: 15 }), " Voltar (o rascunho fica guardado)"), /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Novo manejo"), scriptDesatualizado && /* @__PURE__ */ React8.createElement(Aviso, null, "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13)."), /* @__PURE__ */ React8.createElement("div", { className: "grid2" }, /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-data" }, "Data"), /* @__PURE__ */ React8.createElement("input", { id: "mg-data", type: "date", value: f.data, onChange: (e) => set("data", e.target.value) })), /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-lote" }, "Lote"), /* @__PURE__ */ React8.createElement("select", { id: "mg-lote", value: f.lote, onChange: (e) => setF((x) => ({ ...x, lote: e.target.value, marcados: [], incluirCrias: null })) }, /* @__PURE__ */ React8.createElement("option", { value: "" }, "Escolha o lote"), lotes.map((l) => /* @__PURE__ */ React8.createElement("option", { key: l.lote, value: l.lote }, l.lote, " (", l.n, ")")), /* @__PURE__ */ React8.createElement("option", { value: OUTRO }, "Outro lote (digitar)")))), f.lote === OUTRO && /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-lote-novo" }, "Nome do lote"), /* @__PURE__ */ React8.createElement("input", { id: "mg-lote-novo", value: f.loteDigitado, onChange: (e) => {
     setErro("");
     setF((x) => ({ ...x, loteDigitado: e.target.value }));
-  }, placeholder: "Ex.: Pasto da grota" })), /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-desc" }, "Manejo (o que est\xE1 sendo feito)"), /* @__PURE__ */ React8.createElement("div", { className: "pills", style: { marginTop: 0 } }, MANEJOS_RAPIDOS.map((m) => /* @__PURE__ */ React8.createElement("button", { key: m.rotulo, type: "button", "aria-pressed": f.descricao.toLowerCase().includes(m.rotulo.toLowerCase()), onClick: () => rapido(m) }, m.rotulo))), /* @__PURE__ */ React8.createElement("input", { id: "mg-desc", value: f.descricao, onChange: (e) => set("descricao", e.target.value), placeholder: "Ex.: Pour-on no lombo e confer\xEAncia" })), /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-resp" }, "Respons\xE1vel"), /* @__PURE__ */ React8.createElement("input", { id: "mg-resp", value: f.responsavel, onChange: (e) => set("responsavel", e.target.value) })), /* @__PURE__ */ React8.createElement(AplicacoesEditor, { valor: f.aplicacoes, onChange: (a) => set("aplicacoes", a) }), !lote && /* @__PURE__ */ React8.createElement("p", { className: "sub", "data-testid": "geral-sem-lote" }, f.lote === OUTRO ? "Digite o nome do lote novo para come\xE7ar a conferir os brincos." : 'Escolha o lote (ou "Outro lote") para conferir os brincos.'), lote && /* @__PURE__ */ React8.createElement(React8.Fragment, null, comCrias && /* @__PURE__ */ React8.createElement("label", { className: "chk-lin", style: { margin: "4px 0 10px" } }, /* @__PURE__ */ React8.createElement("input", { type: "checkbox", checked: incluirCrias, onChange: (e) => set("incluirCrias", e.target.checked), "data-testid": "incluir-crias" }), "Incluir as crias ao p\xE9 (bezerros mamando das vacas deste lote)"), /* @__PURE__ */ React8.createElement(Rotulo, null, "Conferir os brincos do lote ", lote), itens2.length === 0 && /* @__PURE__ */ React8.createElement("p", { className: "sub", "data-testid": "lote-sem-animais" }, 'Este lote ainda n\xE3o tem animais no cadastro. Digite o brinco de cada animal que passar: se ele existe em outro lote, o app mostra a situa\xE7\xE3o dele e inclui com a observa\xE7\xE3o; se n\xE3o existe em lugar nenhum, inclui anotado como "sem cadastro".'), /* @__PURE__ */ React8.createElement(ConferirBrincos, { dados, lote, hoje, itens: itens2, marcados, onToggle: toggle, incluidos: f.incluidos, onIncluir: incluir, indice, esperados, rotuloContador: "conferidos" }), fora.length > 0 && /* @__PURE__ */ React8.createElement("div", { className: "fora-lote", "data-testid": "fora-lote" }, foraOutro.length > 0 && /* @__PURE__ */ React8.createElement(Rotulo, null, "Inclu\xEDdos de fora da lista do lote (", foraOutro.length, ")"), foraOutro.map((x) => /* @__PURE__ */ React8.createElement("div", { key: `${x.animal}-${x.brinco}`, className: "fora-lin", "data-testid": `fora-${x.brinco}` }, /* @__PURE__ */ React8.createElement("div", { className: "fora-top" }, /* @__PURE__ */ React8.createElement("b", { className: "b" }, x.brinco), /* @__PURE__ */ React8.createElement("span", { className: "late" }, x.obs), /* @__PURE__ */ React8.createElement("button", { type: "button", className: "x-peq", "aria-label": `Tirar ${x.brinco}`, onClick: () => tirar(x) }, /* @__PURE__ */ React8.createElement(X2, { size: 16 }))), x.sit && /* @__PURE__ */ React8.createElement("div", { className: "sub fora-sit", style: { margin: "2px 0 0", fontSize: 13 } }, x.sit), x.mudar === "pendente" && (ownerMode ? /* @__PURE__ */ React8.createElement("label", { className: "chk-lin", style: { fontSize: 14 } }, /* @__PURE__ */ React8.createElement(
+  }, placeholder: "Ex.: Pasto da grota" })), /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-desc" }, "Manejo (o que est\xE1 sendo feito)"), /* @__PURE__ */ React8.createElement("div", { className: "pills", style: { marginTop: 0 } }, MANEJOS_RAPIDOS.map((m) => /* @__PURE__ */ React8.createElement("button", { key: m.rotulo, type: "button", "aria-pressed": f.descricao.toLowerCase().includes(m.rotulo.toLowerCase()), onClick: () => rapido(m) }, m.rotulo))), /* @__PURE__ */ React8.createElement("input", { id: "mg-desc", value: f.descricao, onChange: (e) => set("descricao", e.target.value), placeholder: "Ex.: Pour-on no lombo e confer\xEAncia" })), /* @__PURE__ */ React8.createElement("div", { className: "fld" }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-resp" }, "Respons\xE1vel"), /* @__PURE__ */ React8.createElement("input", { id: "mg-resp", value: f.responsavel, onChange: (e) => set("responsavel", e.target.value) })), /* @__PURE__ */ React8.createElement(AplicacoesEditor, { valor: f.aplicacoes, onChange: (a) => set("aplicacoes", a) }), !lote && /* @__PURE__ */ React8.createElement("p", { className: "sub", "data-testid": "geral-sem-lote" }, f.lote === OUTRO ? "Digite o nome do lote novo para come\xE7ar a conferir os brincos." : 'Escolha o lote (ou "Outro lote") para conferir os brincos.'), lote && /* @__PURE__ */ React8.createElement(React8.Fragment, null, comCrias && /* @__PURE__ */ React8.createElement("label", { className: "chk-lin", style: { margin: "4px 0 10px" } }, /* @__PURE__ */ React8.createElement("input", { type: "checkbox", checked: incluirCrias, onChange: (e) => set("incluirCrias", e.target.checked), "data-testid": "incluir-crias" }), "Incluir as crias ao p\xE9 (bezerros mamando das vacas deste lote)"), /* @__PURE__ */ React8.createElement(Rotulo, null, "Conferir os brincos do lote ", lote), itens2.length === 0 && /* @__PURE__ */ React8.createElement("p", { className: "sub", "data-testid": "lote-sem-animais" }, 'Este lote ainda n\xE3o tem animais no cadastro. Digite o brinco de cada animal que passar: se ele existe em outro lote, o app mostra a situa\xE7\xE3o dele e inclui com a observa\xE7\xE3o; se n\xE3o existe em lugar nenhum, inclui anotado como "sem cadastro".'), /* @__PURE__ */ React8.createElement(ConferirBrincos, { dados, lote, hoje, itens: itens2, marcados, onToggle: toggle, incluidos: f.incluidos, onIncluir: incluir, indice, esperados, rotuloContador: "conferidos", notas: f.notas || {}, onNota: anotar }), fora.length > 0 && /* @__PURE__ */ React8.createElement("div", { className: "fora-lote", "data-testid": "fora-lote" }, foraOutro.length > 0 && /* @__PURE__ */ React8.createElement(Rotulo, null, "Inclu\xEDdos de fora da lista do lote (", foraOutro.length, ")"), foraOutro.map((x) => /* @__PURE__ */ React8.createElement("div", { key: `${x.animal}-${x.brinco}`, className: "fora-lin", "data-testid": `fora-${x.brinco}` }, /* @__PURE__ */ React8.createElement("div", { className: "fora-top" }, /* @__PURE__ */ React8.createElement("b", { className: "b" }, x.brinco), /* @__PURE__ */ React8.createElement("span", { className: "late" }, x.obs), /* @__PURE__ */ React8.createElement("button", { type: "button", className: "x-peq", "aria-label": `Tirar ${x.brinco}`, onClick: () => tirar(x) }, /* @__PURE__ */ React8.createElement(X2, { size: 16 }))), x.sit && /* @__PURE__ */ React8.createElement("div", { className: "sub fora-sit", style: { margin: "2px 0 0", fontSize: 13 } }, x.sit), /* @__PURE__ */ React8.createElement(CampoNota, { brinco: x.brinco, valor: (f.notas || {})[chaveNota(x)], onChange: (t) => anotar(chaveNota(x), t) }), x.mudar === "pendente" && (ownerMode ? /* @__PURE__ */ React8.createElement("label", { className: "chk-lin", style: { fontSize: 14 } }, /* @__PURE__ */ React8.createElement(
     "input",
     {
       type: "checkbox",
@@ -4966,17 +5076,17 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
       "aria-label": `Mudar ${x.brinco} para o lote ${lote}`,
       onChange: (e) => set("aprovar", e.target.checked ? [...f.aprovar, x.animal] : f.aprovar.filter((a) => a !== x.animal))
     }
-  ), "Mudar para o lote ", lote) : /* @__PURE__ */ React8.createElement("div", { className: "sub", style: { fontSize: 13 } }, "A mudan\xE7a para o lote ", lote, " vai para o propriet\xE1rio confirmar.")))), semCadastro.length > 0 && /* @__PURE__ */ React8.createElement("div", { style: { marginTop: foraOutro.length ? 10 : 0 } }, /* @__PURE__ */ React8.createElement(Rotulo, null, "Sem cadastro (", semCadastro.length, ")"), /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { margin: "0 0 4px", fontSize: 13 } }, "N\xE3o est\xE3o no banco de dados nem em nenhum lote. Ficam anotados no manejo.")), semCadastro.map((x) => /* @__PURE__ */ React8.createElement("div", { key: `sc-${x.brinco}`, className: "fora-lin", "data-testid": `fora-${x.brinco}` }, /* @__PURE__ */ React8.createElement("div", { className: "fora-top" }, /* @__PURE__ */ React8.createElement("b", { className: "b" }, x.brinco), /* @__PURE__ */ React8.createElement("span", { className: "late" }, x.obs), /* @__PURE__ */ React8.createElement("button", { type: "button", className: "x-peq", "aria-label": `Tirar ${x.brinco}`, onClick: () => tirar(x) }, /* @__PURE__ */ React8.createElement(X2, { size: 16 }))))))), /* @__PURE__ */ React8.createElement("div", { className: "fld", style: { marginTop: 12 } }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-obs" }, "Observa\xE7\xE3o"), /* @__PURE__ */ React8.createElement("input", { id: "mg-obs", value: f.obs, onChange: (e) => set("obs", e.target.value) })), erro && /* @__PURE__ */ React8.createElement(Aviso, null, erro), /* @__PURE__ */ React8.createElement("button", { className: "btn wide", style: { marginTop: 8 }, onClick: gravar, disabled: gravando || total === 0 || scriptDesatualizado }, gravando ? /* @__PURE__ */ React8.createElement(Loader25, { size: 18, className: "spin" }) : /* @__PURE__ */ React8.createElement(Save5, { size: 18 }), " Gravar manejo (", nMarc, " de ", itens2.length, fora.length ? ` + ${fora.length} de fora${nSemCad ? `, ${nSemCad} sem cadastro` : ""}` : "", ")"), total === 0 && !scriptDesatualizado && /* @__PURE__ */ React8.createElement("p", { className: "sub", "data-testid": "dica-gravar", style: { textAlign: "center", marginTop: 8 } }, "Para gravar: marque quem passou ou digite um brinco."), lote && itens2.length > nMarc && nMarc > 0 && /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { textAlign: "center" } }, /* @__PURE__ */ React8.createElement(ClipboardCheck, { size: 14, style: { verticalAlign: -2 } }), " ", itens2.length - nMarc, " ainda n\xE3o marcado(s): ao gravar, entram como faltando."));
+  ), "Mudar para o lote ", lote) : /* @__PURE__ */ React8.createElement("div", { className: "sub", style: { fontSize: 13 } }, "A mudan\xE7a para o lote ", lote, " vai para o propriet\xE1rio confirmar.")))), semCadastro.length > 0 && /* @__PURE__ */ React8.createElement("div", { style: { marginTop: foraOutro.length ? 10 : 0 } }, /* @__PURE__ */ React8.createElement(Rotulo, null, "Sem cadastro (", semCadastro.length, ")"), /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { margin: "0 0 4px", fontSize: 13 } }, "N\xE3o est\xE3o no banco de dados nem em nenhum lote. Ficam anotados no manejo.")), semCadastro.map((x) => /* @__PURE__ */ React8.createElement("div", { key: `sc-${x.brinco}`, className: "fora-lin", "data-testid": `fora-${x.brinco}` }, /* @__PURE__ */ React8.createElement("div", { className: "fora-top" }, /* @__PURE__ */ React8.createElement("b", { className: "b" }, x.brinco), /* @__PURE__ */ React8.createElement("span", { className: "late" }, x.obs), /* @__PURE__ */ React8.createElement("button", { type: "button", className: "x-peq", "aria-label": `Tirar ${x.brinco}`, onClick: () => tirar(x) }, /* @__PURE__ */ React8.createElement(X2, { size: 16 }))), /* @__PURE__ */ React8.createElement(CampoNota, { brinco: x.brinco, valor: (f.notas || {})[chaveNota(x)], onChange: (t) => anotar(chaveNota(x), t) }))))), /* @__PURE__ */ React8.createElement("div", { className: "fld", style: { marginTop: 12 } }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "mg-obs" }, "Observa\xE7\xE3o"), /* @__PURE__ */ React8.createElement("input", { id: "mg-obs", value: f.obs, onChange: (e) => set("obs", e.target.value) })), erro && /* @__PURE__ */ React8.createElement(Aviso, null, erro), /* @__PURE__ */ React8.createElement("button", { className: "btn wide", style: { marginTop: 8 }, onClick: gravar, disabled: gravando || total === 0 || scriptDesatualizado }, gravando ? /* @__PURE__ */ React8.createElement(Loader25, { size: 18, className: "spin" }) : /* @__PURE__ */ React8.createElement(Save5, { size: 18 }), " Gravar manejo (", nMarc, " de ", itens2.length, fora.length ? ` + ${fora.length} de fora${nSemCad ? `, ${nSemCad} sem cadastro` : ""}` : "", ")"), total === 0 && !scriptDesatualizado && /* @__PURE__ */ React8.createElement("p", { className: "sub", "data-testid": "dica-gravar", style: { textAlign: "center", marginTop: 8 } }, "Para gravar: marque quem passou ou digite um brinco."), lote && itens2.length > nMarc && nMarc > 0 && /* @__PURE__ */ React8.createElement("p", { className: "sub", style: { textAlign: "center" } }, /* @__PURE__ */ React8.createElement(ClipboardCheck, { size: 14, style: { verticalAlign: -2 } }), " ", itens2.length - nMarc, " ainda n\xE3o marcado(s): ao gravar, entram como faltando."));
 }
 
 // src/telas/Manejo.jsx
-function Manejo({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarProtocolo, onSalvarConfig, scriptAntes13, onDecidirLote }) {
+function Manejo({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarProtocolo, onSalvarConfig, scriptAntes13, onDecidirLote, onEfetivarNotas }) {
   const [aba, setAba] = useState9("protocolos");
   const [novo, setNovo] = useState9(null);
   const [volta, setVolta] = useState9(0);
   const pend = pendenciasVacinas(dados, dados.config, hoje).filter((p) => p.nivel !== "futura").length;
   const ativos2 = (dados.protocolos || []).filter((p) => p.status !== "Encerrado").length;
-  const pendLote = ownerMode ? pendenciasLote(dados).length : 0;
+  const pendLote = ownerMode ? pendenciasLote(dados).length + pendenciasNotas(dados).length : 0;
   return /* @__PURE__ */ React9.createElement("div", { className: "wrap" }, /* @__PURE__ */ React9.createElement("div", { className: "head" }, /* @__PURE__ */ React9.createElement("div", null, /* @__PURE__ */ React9.createElement("small", null, "Curral"), /* @__PURE__ */ React9.createElement("h1", null, "Manejo"))), /* @__PURE__ */ React9.createElement(
     IndexTabs,
     {
@@ -5003,7 +5113,7 @@ function Manejo({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarProto
         setVolta((n) => n + 1);
       }
     }
-  ), aba === "geral" && /* @__PURE__ */ React9.createElement(ManejoGeral, { key: `g${volta}`, dados, hoje, ownerMode, modoTeste, scriptDesatualizado: !!scriptAntes13, onGravarLote, onDecidirLote }), aba === "vacinas" && /* @__PURE__ */ React9.createElement(Vacinas, { key: `v${volta}`, dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarConfig }));
+  ), aba === "geral" && /* @__PURE__ */ React9.createElement(ManejoGeral, { key: `g${volta}`, dados, hoje, ownerMode, modoTeste, scriptDesatualizado: !!scriptAntes13, onGravarLote, onDecidirLote, onEfetivarNotas }), aba === "vacinas" && /* @__PURE__ */ React9.createElement(Vacinas, { key: `v${volta}`, dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarConfig }));
 }
 
 // src/estilos.js
@@ -5068,6 +5178,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .marca-bt .two span.soon{color:var(--amber)}
 .marca-bt .two span.good{color:var(--green)}
 .tec-bt{flex:none;min-height:38px;min-width:52px;padding:0 10px;border-radius:6px;border:1px solid var(--line);background:var(--s2);color:var(--tx);font:700 13px var(--mono)}
+.marca-topo{display:flex;align-items:stretch}
+.marca-topo .marca-bt{flex:1;min-width:0;width:auto}
+.nota-bt{flex:none;width:52px;border:none;border-left:1px solid var(--line2);background:transparent;color:var(--mut);display:grid;place-items:center}
+.nota-bt.tem{color:var(--amber)}
+.nota-cx{padding:0 12px 10px 54px}
+.nota-txt{padding:0 12px 8px 54px;font-size:13px;color:var(--amber);line-height:1.35;overflow-wrap:anywhere}
+.nota-inp{width:100%;min-height:44px;padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:var(--bg);font-size:15.5px;color:var(--tx)}
+.nota-quem{font-size:13px;color:var(--mut)}
+.nota-corpo{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--amber)}
+.link-lin{display:block;text-align:left;background:none;border:none;padding:0;color:var(--mut);text-decoration:underline;text-decoration-color:var(--line)}
 .ficha-busca{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;background:var(--s2);padding:10px 12px;margin:10px 0}
 .ficha-busca.good{border-left-color:var(--green)}
 .ficha-busca.soon{border-left-color:var(--amber)}
@@ -7407,6 +7527,14 @@ function GestaoPecuaria() {
     gravarCorrecao(r, "confirma\xE7\xE3o de lote");
     return [r.aprovadas ? `${r.aprovadas} animal(is) mudado(s) de lote.` : "", r.recusadas ? `${r.recusadas} continua(m) no lote de antes.` : ""].filter(Boolean).join(" ") + notaFila();
   }
+  function efetivarObservacoes(decisoes) {
+    if (scriptAntes(13)) return MSG_SCRIPT_13;
+    const r = efetivarNotas(dadosRef.current, decisoes);
+    if (!r.mudancas.eventos.length || !r.n) return "Nada para marcar.";
+    gravarCorrecao(r, "observa\xE7\xF5es efetivadas");
+    const feitas = (decisoes || []).filter((d) => d.feito).length;
+    return (feitas ? `${r.n} observa\xE7\xE3o(\xF5es) marcada(s) como efetivada(s).` : `${r.n} observa\xE7\xE3o(\xF5es) voltou(aram) para a lista.`) + notaFila();
+  }
   function postsDeLote(eventos, matrizes, touros) {
     const posts = [];
     for (let i = 0; i < eventos.length; i += 40) posts.push({ action: "appendEventos", itens: eventos.slice(i, i + 40) });
@@ -7565,7 +7693,7 @@ function GestaoPecuaria() {
       onEditarMorte: corrigirMorte,
       onAnularMorte: anularUmaMorte
     }
-  ), tab === "manejo" && /* @__PURE__ */ React27.createElement(Manejo, { dados, hoje, ownerMode, modoTeste: MODO_TESTE, onGravarLote: gravarManejo, onSalvarProtocolo: salvarProtocolo, onSalvarConfig: salvarConfig, scriptAntes13: scriptAntes(13), onDecidirLote: decidirMudancaLote }), tab === "parto" && /* @__PURE__ */ React27.createElement(Parto, { dados, hoje, onLancar: lancarDaVaca, onGravarLote: gravarManejo }), tab === "crias" && /* @__PURE__ */ React27.createElement(
+  ), tab === "manejo" && /* @__PURE__ */ React27.createElement(Manejo, { dados, hoje, ownerMode, modoTeste: MODO_TESTE, onGravarLote: gravarManejo, onSalvarProtocolo: salvarProtocolo, onSalvarConfig: salvarConfig, scriptAntes13: scriptAntes(13), onDecidirLote: decidirMudancaLote, onEfetivarNotas: efetivarObservacoes }), tab === "parto" && /* @__PURE__ */ React27.createElement(Parto, { dados, hoje, onLancar: lancarDaVaca, onGravarLote: gravarManejo }), tab === "crias" && /* @__PURE__ */ React27.createElement(
     Crias,
     {
       dados,
