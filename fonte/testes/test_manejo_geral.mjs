@@ -224,4 +224,101 @@ t('busca: brinco com letra e barra ("E5", "219/1413") acha mesmo digitado em min
   assert.strictEqual(G.buscarAnimais(d3, 'Paridas', 'E5', HOJE)[0].mudar, 'pendente');
 });
 
+
+// ------------------------------------------------------------------ observação por brinco (app 10.6)
+const montarComNotas = () => {
+  const dd = base();
+  const doLote = G.animaisDoLote(dd, 'Paridas', { hoje: HOJE });
+  const [a, b, c] = doLote; // a: marcada com nota, b: marcada sem nota, c: NÃO marcada com nota
+  const outra = dd.matrizes.find((m) => m.lote === 'Solteiras');
+  const fOutra = G.itemFora(G.buscarAnimais(dd, 'Paridas', outra.brinco, HOJE)[0]);
+  const fSem = G.itemFora(G.fichaSemCadastro('77777'));
+  const r = G.aplicarManejoGeral(dd, {
+    data: HOJE, lote: 'Paridas', descricao: 'Pour-on', esperados: doLote.map((x) => x.id), marcados: [a.id, b.id], fora: [fOutra, fSem], dono: false, aprovar: [],
+    notas: { [a.id]: '  cadastrar a cria dela  ', [c.id]: 'não veio, procurar', [outra.id]: 'trocar para o lote Paridas', 'b:77777': 'brinco perdido, cadastrar', [b.id]: '   ' },
+  }, { id: 'ng1' });
+  return { dd, doLote, a, b, c, outra, r };
+};
+
+t('observação por brinco: grava junto no manejo (do lote, de fora, sem cadastro) sem contar como "de fora"', () => {
+  const { r, a, b, c, outra, doLote } = montarComNotas();
+  assert.deepStrictEqual(r.erros, []);
+  const e = r.eventosNovos[0]; const lista = JSON.parse(e.foraDoLote);
+  assert.strictEqual(lista.length, 4); // 2 de fora + 2 do lote com nota (a e c); b tinha nota em branco
+  const por = (f) => lista.find((x) => (f.animal ? x.animal === f.animal : x.brinco === f.brinco));
+  assert.strictEqual(por({ animal: a.id }).nota, 'cadastrar a cria dela'); assert.strictEqual(por({ animal: a.id }).doLote, true);
+  assert.strictEqual(por({ animal: c.id }).nota, 'não veio, procurar');
+  assert.strictEqual(por({ animal: outra.id }).nota, 'trocar para o lote Paridas'); assert.strictEqual(por({ animal: outra.id }).mudar, 'pendente');
+  assert.strictEqual(por({ brinco: '77777' }).nota, 'brinco perdido, cadastrar'); assert.strictEqual(por({ brinco: '77777' }).semCadastro, true);
+  assert.ok(!lista.some((x) => x.animal === b.id), 'nota em branco não grava nada');
+  // quem passou e quem faltou não muda por causa da nota
+  assert.ok(e.presentes.split(',').includes(a.id) && !e.presentes.split(',').includes(c.id));
+  assert.ok(e.ausentes.split(',').includes(c.id));
+  const cf = G.conferencia(r.estado, e);
+  assert.strictEqual(cf.fora.length, 2); assert.strictEqual(cf.semCadastro.length, 1); assert.strictEqual(cf.notas.length, 4);
+  assert.strictEqual(cf.esperados, doLote.length); assert.strictEqual(cf.faltando.length, doLote.length - 2);
+  assert.strictEqual(cf.conferidos.length, 2);
+  // a mudança de lote pendente continua só com o item de fora
+  assert.deepStrictEqual(G.pendenciasLote(r.estado).map((p) => p.animal), [outra.id]);
+});
+
+t('observação por brinco: lista para o proprietário efetivar, marca como feita e desfaz', () => {
+  const { r } = montarComNotas();
+  const est = r.estado;
+  const pend = G.pendenciasNotas(est);
+  assert.strictEqual(pend.length, 4);
+  const sem = pend.find((p) => p.brinco === '77777'); assert.strictEqual(sem.semCadastro, true); assert.strictEqual(sem.nota, 'brinco perdido, cadastrar');
+  const doLoteNota = pend.find((p) => p.nota === 'cadastrar a cria dela'); assert.strictEqual(doLoteNota.semCadastro, false); assert.ok(doLoteNota.sit, 'traz a situação do animal no dia');
+  // efetiva duas
+  const ef = G.efetivarNotas(est, [sem, doLoteNota].map((p) => ({ manejoId: p.manejoId, idx: p.idx, feito: true })), { now: '2026-11-02T10:00:00Z' });
+  assert.strictEqual(ef.n, 2); assert.strictEqual(ef.mudancas.eventos.length, 1); assert.deepStrictEqual(ef.mudancas.matrizes, []);
+  const est2 = { ...est, eventos: est.eventos.map((e) => (e.id === 'ng1' ? { ...e, foraDoLote: ef.mudancas.eventos[0].campos.foraDoLote } : e)) };
+  assert.strictEqual(G.pendenciasNotas(est2).length, 2);
+  const lista2 = JSON.parse(est2.eventos.find((e) => e.id === 'ng1').foraDoLote);
+  assert.strictEqual(lista2.find((x) => x.brinco === '77777').notaOk, '2026-11-02');
+  assert.strictEqual(lista2.find((x) => x.brinco === '77777').nota, 'brinco perdido, cadastrar', 'a nota continua guardada');
+  // nada mais mudou (mudança de lote pendente, sem cadastro...)
+  assert.strictEqual(G.pendenciasLote(est2).length, 1);
+  // desfazer
+  const des = G.efetivarNotas(est2, [{ manejoId: 'ng1', idx: sem.idx, feito: false }]);
+  const est3 = { ...est2, eventos: est2.eventos.map((e) => (e.id === 'ng1' ? { ...e, foraDoLote: des.mudancas.eventos[0].campos.foraDoLote } : e)) };
+  assert.strictEqual(G.pendenciasNotas(est3).length, 3);
+  assert.ok(!JSON.parse(est3.eventos.find((e) => e.id === 'ng1').foraDoLote).find((x) => x.brinco === '77777').notaOk);
+  // manejo que não existe / decisão sem nota: não inventa nada
+  assert.strictEqual(G.efetivarNotas(est, [{ manejoId: 'nao-existe', idx: 0, feito: true }]).mudancas.eventos.length, 0);
+  assert.strictEqual(G.efetivarNotas(est, [{ manejoId: 'ng1', idx: 99, feito: true }]).n, 0);
+});
+
+t('observação por brinco: relatório da conferência traz a seção com a situação e se já foi efetivada', () => {
+  const { r } = montarComNotas();
+  let rel = G.relatorioConferencia(r.estado, 'ng1');
+  const sec = rel.secoes.find((s) => s.titulo === 'Observações por brinco');
+  assert.ok(sec); assert.strictEqual(sec.linhas.length, 4);
+  assert.ok(sec.linhas.every((l) => l.efet === 'pendente'));
+  assert.strictEqual(sec.linhas.find((l) => l.brinco === '77777').animalSit, 'Sem cadastro');
+  assert.strictEqual(rel.resumo.find((k) => k.rotulo === 'Observações').valor, 4);
+  const ef = G.efetivarNotas(r.estado, [{ manejoId: 'ng1', idx: G.pendenciasNotas(r.estado).find((p) => p.brinco === '77777').idx, feito: true }], { now: '2026-11-02T10:00:00Z' });
+  const est2 = { ...r.estado, eventos: r.estado.eventos.map((e) => (e.id === 'ng1' ? { ...e, foraDoLote: ef.mudancas.eventos[0].campos.foraDoLote } : e)) };
+  rel = G.relatorioConferencia(est2, 'ng1');
+  assert.strictEqual(rel.secoes.find((s) => s.titulo === 'Observações por brinco').linhas.find((l) => l.brinco === '77777').efet, 'sim, 02/11/26');
+  // sem nenhuma nota o relatório não ganha KPI nem linhas
+  const semNota = G.aplicarManejoGeral(base(), { data: HOJE, lote: 'Paridas', descricao: 'x', esperados: ['a'], marcados: ['a'], fora: [] }, { id: 'ng2' });
+  assert.deepStrictEqual(semNota.erros, []);
+  const rel2 = G.relatorioConferencia(semNota.estado, 'ng2');
+  assert.ok(!rel2.resumo.some((k) => k.rotulo === 'Observações')); assert.strictEqual(rel2.secoes.find((s) => s.titulo === 'Observações por brinco').linhas.length, 0);
+});
+
+t('observação por brinco: chave é o id do animal, ou "b:<brinco>" quando não tem cadastro', () => {
+  assert.strictEqual(G.chaveNota({ animal: 'm1', brinco: '10' }), 'm1');
+  assert.strictEqual(G.chaveNota({ animal: '', brinco: ' E5 ' }), 'b:E5');
+  assert.strictEqual(G.chaveNota({ brinco: 99 }), 'b:99');
+});
+
+t('observação por brinco: manejos antigos (sem nota) seguem iguais', () => {
+  const e = { id: 'v1', tipo: 'manejo', etapa: 'Geral', data: HOJE, lote: 'Paridas', descricao: 'Antigo', presentes: 'x', ausentes: '', foraDoLote: JSON.stringify([{ animal: '', brinco: '5', tipo: '', obs: 'Não está no banco de dados nem em nenhum lote', mudar: '' }]) };
+  const est = { ...base(), eventos: [e] };
+  assert.strictEqual(G.pendenciasNotas(est).length, 0);
+  const c = G.conferencia(est, e); assert.strictEqual(c.fora.length, 1); assert.strictEqual(c.notas.length, 0);
+});
+
 console.log(`manejo geral: ${ok} ok`);

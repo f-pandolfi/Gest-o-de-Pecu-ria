@@ -59,3 +59,10 @@
 - **Parto > Vazias** (`src/telas/Parto.jsx`): colunas Brinco, Categoria (com "último parto há N dias"), Partos (todas as datas) e Crias (brinco da cria de cada parto, `natim.` para natimorto); ao tocar, detalhe de cada parto (sexo, situação da cria, pai pela IATF/monta, pesos, tipo de parto). Busca pelo brinco da vaca ou da cria. Ajuda `partosPorMatriz` em `logica.js` (também usado no Rebanho).
 - Corrigido: a caixa "Incluir as crias ao pé" ficava espremida (a classe `chk` do CSS tem 26 px de largura; agora `chk-lin`).
 - Testes: `node testes/test_manejo_geral.mjs` (15), `python3 testes/test_navegador_geral.py` (16), `python3 testes/test_parto_vazias.py` (30), mais todos os anteriores.
+
+## App 10.6 (31/10/2026): observação por brinco no Manejo > Geral
+- Cada brinco do manejo (do lote, de outro lote ou sem cadastro) pode levar uma **observação**: campo na ficha que aparece ao digitar o brinco, botão com ícone de nota em cada linha da lista do lote, e campo nas linhas "de fora" e "sem cadastro". O rascunho guarda as observações (`f.notas`, chave = id do animal ou `b:<brinco>`, ver `chaveNota`).
+- Gravação **sem mudar o script (continua v13)**: a observação vai dentro da coluna `foraDoLote` (campo `nota`; `notaOk` = data em que o proprietário efetivou). Animal do lote com observação entra nessa lista com `doLote: true` e **não conta como "de fora"** (`conferencia` filtra); presentes e ausentes não mudam por causa da nota. Observação em animal que não foi marcado também é gravada (ele continua como faltando).
+- Proprietário: cartão **Observações para efetivar** na aba Geral (`pendenciasNotas`), botão Efetivada por linha ou "Marcar todas", Desfazer logo após marcar (`efetivarNotas` → `efetivarObservacoes` em `app.jsx`, mesmo caminho de gravação da confirmação de lote). O número na aba Geral soma mudanças de lote e observações. Funcionário só anota; não vê o cartão.
+- Conferência e PDF: KPI "Observações" e seção "Observações por brinco" (brinco, animal e situação, observação, efetivada).
+- Testes: `node testes/test_manejo_geral.mjs` (20) e `python3 testes/test_navegador_notas.py` (12), mais todos os anteriores.

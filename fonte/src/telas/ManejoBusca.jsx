@@ -3,12 +3,22 @@
 // parto, último parto, cria ao pé, lote). Achou e é do lote: marca. Achou em outro lote: inclui com a observação.
 // Não achou em lugar nenhum: inclui do mesmo jeito, anotado como "não está no banco de dados nem em nenhum lote".
 import React, { useMemo, useRef, useState } from 'react';
-import { Search, Check, Plus, AlertTriangle } from 'lucide-react';
-import { buscarAnimais, fichaSemCadastro } from '../manejoGeral.js';
+import { Search, Check, Plus, AlertTriangle, StickyNote } from 'lucide-react';
+import { buscarAnimais, fichaSemCadastro, chaveNota } from '../manejoGeral.js';
 
 const mesmaInclusao = (i, f) => String(i.brinco) === String(f.brinco) && (i.animal || '') === (f.animal || '');
 
-function Ficha({ f, marcado, incluido, lote, onMarcar, onIncluir }) {
+// Observação do brinco: fica gravada junto no manejo e o proprietário depois efetiva (cadastra, muda de lote, corrige...)
+export function CampoNota({ brinco, valor, onChange, autoFocus, id }) {
+  return (
+    <input
+      id={id} className="nota-inp" value={valor || ''} onChange={(e) => onChange(e.target.value)} maxLength={300} autoFocus={autoFocus} autoComplete="off"
+      aria-label={`Observação do brinco ${brinco}`} placeholder="Observação deste brinco (opcional)" data-testid={`nota-${brinco}`}
+    />
+  );
+}
+
+function Ficha({ f, marcado, incluido, lote, nota, onNota, onMarcar, onIncluir }) {
   const cor = f.naLista ? 'good' : f.obs ? (f.ativo ? 'soon' : 'late') : 'mut';
   return (
     <div className={`ficha-busca ${cor}`} data-testid={`ficha-${f.chave}`}>
@@ -20,6 +30,9 @@ function Ficha({ f, marcado, incluido, lote, onMarcar, onIncluir }) {
       {f.linhas.map((l) => <div key={l} className="fb-lin">{l}</div>)}
       <div className="fb-lin">{f.loteAtual ? <>Lote atual: <b>{f.loteAtual}</b></> : f.tipo === 'cria' ? 'Cria: não tem lote próprio' : 'Sem lote no cadastro'}</div>
       <div className={`fb-obs ${f.naLista ? 'good' : f.ativo ? 'soon' : 'late'}`}>{f.naLista ? `Está na lista do lote ${lote}.` : f.obs}</div>
+      <CampoNota brinco={f.brinco} valor={nota} onChange={(t) => onNota(chaveNota(f), t)} />
+      {nota && !f.naLista && !incluido && <div className="fb-lin" style={{ margin: '3px 0 0' }}>A observação é gravada quando você incluir o brinco no manejo.</div>}
+      <div style={{ height: 8 }} />
       {f.naLista ? (
         <button type="button" className={`btn wide${marcado ? ' quiet' : ''}`} onClick={() => onMarcar(f)} data-testid="ficha-acao">
           <Check size={17} /> {marcado ? 'Marcada. Toque para desmarcar' : 'Marcar como presente'}
@@ -34,8 +47,10 @@ function Ficha({ f, marcado, incluido, lote, onMarcar, onIncluir }) {
 }
 
 // itens: relação do lote [{ id, brinco, linha1, linha2, nivel }]; incluidos: [{ brinco, animal }] (de fora e sem cadastro)
-export default function ConferirBrincos({ dados, lote, hoje, itens, marcados, onToggle, incluidos, onIncluir, indice, esperados, rotuloContador }) {
+export default function ConferirBrincos({ dados, lote, hoje, itens, marcados, onToggle, incluidos, onIncluir, indice, esperados, rotuloContador, notas, onNota }) {
+  const nts = notas || {};
   const [q, setQ] = useState('');
+  const [abertas, setAbertas] = useState({}); // linhas da lista com o campo de observação aberto
   const [msg, setMsg] = useState(null);
   const [letras, setLetras] = useState(false); // a maioria dos brincos é número; alguns têm letra ou barra (E5, 219/1413)
   const entrada = useRef(null);
@@ -78,12 +93,15 @@ export default function ConferirBrincos({ dados, lote, hoje, itens, marcados, on
       {msg && <div className={`hint ${msg.tom}`} role="status" data-testid="msg-marcar" style={{ margin: '6px 2px', fontSize: 13.5 }}>{msg.t}</div>}
 
       {fichas.map((f) => (
-        <Ficha key={f.chave} f={f} lote={lote} marcado={marcadoNaFicha(f)} incluido={incluidos.some((i) => mesmaInclusao(i, f))} onMarcar={marcar} onIncluir={incluir} />
+        <Ficha key={f.chave} f={f} lote={lote} nota={nts[chaveNota(f)]} onNota={onNota} marcado={marcadoNaFicha(f)} incluido={incluidos.some((i) => mesmaInclusao(i, f))} onMarcar={marcar} onIncluir={incluir} />
       ))}
       {b && fichas.length === 0 && filtrados.length === 0 && (
         <div className="ficha-busca late" data-testid="ficha-sem-cadastro">
           <div className="fb-topo"><b className="b">{b}</b><span className="fb-tit"><AlertTriangle size={14} style={{ verticalAlign: -2 }} /> Brinco sem cadastro</span></div>
           <div className="fb-lin">Não está no banco de dados (matrizes, novilhas, crias e touros) nem em nenhum lote.</div>
+          <div style={{ height: 8 }} />
+          <CampoNota brinco={b} valor={nts[`b:${b}`]} onChange={(t) => onNota(`b:${b}`, t)} />
+          <div style={{ height: 8 }} />
           <button type="button" className="btn wide" onClick={() => incluir(fichaSemCadastro(b))} data-testid="incluir-sem-cadastro"><Plus size={17} /> Incluir {b} mesmo assim</button>
         </div>
       )}
@@ -91,13 +109,23 @@ export default function ConferirBrincos({ dados, lote, hoje, itens, marcados, on
       <div className="marcar" data-testid="lista-marcar" hidden={filtrados.length === 0 && !!b}>
         {filtrados.map((x) => {
           const on = marcados.has(x.id);
+          const nota = nts[x.id] || '';
+          const aberta = !!abertas[x.id];
           return (
             <div key={x.id} className={`marca-lin${on ? ' on' : ''}`}>
-              <button type="button" className="marca-bt" aria-pressed={on} aria-label={`${on ? 'Desmarcar' : 'Marcar'} ${x.brinco}`} onClick={() => onToggle(x.id)}>
-                <span className="caixa">{on ? <Check size={18} /> : null}</span>
-                <span className="b">{x.brinco}</span>
-                <span className="two"><b>{x.linha1}</b><span className={x.nivel || 'mut'}>{x.linha2}</span></span>
-              </button>
+              <div className="marca-topo">
+                <button type="button" className="marca-bt" aria-pressed={on} aria-label={`${on ? 'Desmarcar' : 'Marcar'} ${x.brinco}`} onClick={() => onToggle(x.id)}>
+                  <span className="caixa">{on ? <Check size={18} /> : null}</span>
+                  <span className="b">{x.brinco}</span>
+                  <span className="two"><b>{x.linha1}</b><span className={x.nivel || 'mut'}>{x.linha2}</span></span>
+                </button>
+                {onNota && (
+                  <button type="button" className={`nota-bt${nota ? ' tem' : ''}`} aria-expanded={aberta} aria-label={`Observação do brinco ${x.brinco}${nota ? ' (tem observação)' : ''}`} data-testid={`nota-bt-${x.brinco}`}
+                    onClick={() => setAbertas((a) => ({ ...a, [x.id]: !a[x.id] }))}><StickyNote size={19} /></button>
+                )}
+              </div>
+              {onNota && aberta && <div className="nota-cx"><CampoNota brinco={x.brinco} valor={nota} onChange={(t) => onNota(x.id, t)} autoFocus /></div>}
+              {onNota && !aberta && nota && <div className="nota-txt" data-testid={`nota-txt-${x.brinco}`}>{nota}</div>}
             </div>
           );
         })}

@@ -1,10 +1,13 @@
-// manejoGeral.js (app 10.5): manejo geral do curral com conferência do lote.
+// manejoGeral.js (app 10.6): manejo geral do curral com conferência do lote.
 // Pour-on no lombo, brinco mosquicida, vermífugo, carrapaticida, vacina ou só conferência: data, lote, o que foi feito,
 // e a relação de animais do lote (começa DESMARCADA; marca quem passou). Animal que não é do lote entra mesmo assim,
 // com uma observação. Mudar o lote desse animal só acontece quando o PROPRIETÁRIO confirma.
 // 10.5: o brinco digitado é procurado em TUDO (matrizes, novilhas, crias, touros) e mostra a situação do animal na hora
 // (cheia, vazia, previsão de parto, último parto, cria ao pé). Brinco que não existe entra do mesmo jeito, anotado como
 // "não está no banco de dados nem em nenhum lote". Lote novo (sem animais ainda) também grava.
+// 10.6: observação por brinco. Cada brinco (do lote, de fora ou sem cadastro) pode levar uma observação, gravada junto no manejo
+// (dentro da coluna foraDoLote: nota, e notaOk quando o proprietário efetiva). Animal do lote com observação entra com doLote: true
+// e não conta como "de fora". O proprietário vê a lista em "Observações para efetivar" e marca como efetivada.
 // Só regras (sem tela). A tela fica em telas/ManejoGeral.jsx.
 import {
   todayISO, formatarDataBR, novoId, listarCrias, padronizarLote, mesmoLote, lotesExistentes, diasEntre,
@@ -27,7 +30,10 @@ const lista = (v) => String(v || '').split(',').map((x) => x.trim()).filter(Bool
 const ordemBrinco = (a, b) => String(a).localeCompare(String(b), 'pt-BR', { numeric: true });
 const ativa = (m) => m.status !== 'Vendida' && m.status !== 'Morta';
 export const ehManejoGeral = (e) => e && e.tipo === 'manejo' && e.etapa === ETAPA_GERAL;
+// A coluna foraDoLote guarda os animais de fora do lote e também os animais do lote que ganharam observação (doLote: true)
 export const foraDoLoteDe = (e) => json(e && e.foraDoLote, []);
+// Chave da observação de um brinco: o id do animal ou, sem cadastro, "b:<brinco>"
+export const chaveNota = (x) => (x && x.animal) || `b:${String((x && x.brinco) ?? '').trim()}`;
 
 // Lotes para escolher: os que existem no rebanho (com quantos animais)
 export const lotesParaManejo = (estado) => lotesExistentes(estado.matrizes);
@@ -233,7 +239,8 @@ export function resolverInclusoes(estado, lote, incluidos, hoje, op) {
 
 // Grava o manejo geral.
 // form: { data, lote, descricao, responsavel, aplicacoes, esperados: [id], marcados: [id], fora: [itens de animalForaDoLote],
-//         observacoes, incluirCrias, dono (proprietário gravando), aprovar: [id de matriz] (só quando dono) }
+//         observacoes, incluirCrias, dono (proprietário gravando), aprovar: [id de matriz] (só quando dono),
+//         notas: { [id do animal ou "b:<brinco>"]: observação daquele brinco } }
 // Funcionário: a mudança de lote fica "pendente" para o proprietário confirmar. Proprietário: confirma na hora as marcadas.
 export function aplicarManejoGeral(estado, form, opcoes) {
   const op = opcoes || {};
@@ -250,14 +257,28 @@ export function aplicarManejoGeral(estado, form, opcoes) {
   if (erros.length) return { erros };
 
   const aprovar = new Set(form.dono ? form.aprovar || [] : []);
+  const notas = form.notas || {};
   const foraFinal = fora.map((f) => {
     const x = { animal: f.animal || '', brinco: String(f.brinco), tipo: f.tipo || '', loteAtual: f.loteAtual || '', obs: f.obs || '', mudar: f.mudar || '' };
     if (f.sit) x.sit = String(f.sit); // situação do animal no dia do manejo (cheia, vazia, previsão de parto...)
     if (f.semCadastro || !f.animal) { x.semCadastro = true; if (!x.obs) x.obs = OBS_SEM_CADASTRO; }
+    const nota = String(notas[chaveNota(x)] || '').trim();
+    if (nota) x.nota = nota;
     if (x.mudar === 'pendente' && form.dono) {
       x.mudar = aprovar.has(x.animal) ? 'aprovada' : 'recusada';
       x.decididoEm = now.slice(0, 10);
     }
+    return x;
+  });
+  // animal do lote que ganhou observação (passou ou não): entra na lista com doLote: true (não conta como "de fora")
+  const nomes = nomesDosAnimais(estado);
+  const hojeRef = op.hoje || todayISO();
+  const comNota = esperados.filter((id) => String(notas[id] || '').trim()).map((id) => {
+    const n = nomes.get(id) || { brinco: '?' };
+    const m = estado.matrizes.find((x) => x.id === id);
+    const x = { animal: id, brinco: String(n.brinco), tipo: id.startsWith('c:') ? 'cria' : id.startsWith('t:') ? 'touro' : 'matriz', loteAtual: lote, obs: '', mudar: '', doLote: true };
+    if (m) x.sit = situacaoMatriz(estado, m, hojeRef).texto;
+    x.nota = String(notas[id]).trim();
     return x;
   });
   const presentes = [...new Set([...marcados, ...foraFinal.map((f) => f.animal).filter(Boolean)])];
@@ -268,7 +289,7 @@ export function aplicarManejoGeral(estado, form, opcoes) {
     responsavel: String(form.responsavel || '').trim(), descricao: String(form.descricao).trim(),
     aplicacoes: JSON.stringify((form.aplicacoes || []).filter((a) => a && a.tipo)),
     presentes: presentes.join(','), ausentes: ausentes.join(','), observacoes: String(form.observacoes || '').trim(), createdAt: now,
-    lote, foraDoLote: JSON.stringify(foraFinal),
+    lote, foraDoLote: JSON.stringify([...foraFinal, ...comNota]),
   };
   const matrizesAlteradas = foraFinal.filter((f) => f.mudar === 'aprovada')
     .map((f) => estado.matrizes.find((m) => m.id === f.animal)).filter(Boolean)
@@ -329,7 +350,8 @@ export function listarManejosGerais(estado, ano) {
 
 // Conferência de um manejo: quem passou, quem faltou e quem veio de fora
 export function conferencia(estado, e) {
-  const fora = foraDoLoteDe(e);
+  const todos = foraDoLoteDe(e);
+  const fora = todos.filter((f) => !f.doLote);
   const idsFora = new Set(fora.map((f) => f.animal).filter(Boolean));
   const presentes = lista(e.presentes);
   const conferidos = presentes.filter((id) => !idsFora.has(id));
@@ -343,7 +365,41 @@ export function conferencia(estado, e) {
     faltando: ausentes.map((id) => ({ id, ...nome(id) })).sort((a, b) => ordemBrinco(a.brinco, b.brinco)),
     fora: fora.slice().sort((a, b) => ordemBrinco(a.brinco, b.brinco)),
     semCadastro: fora.filter(semCad).sort((a, b) => ordemBrinco(a.brinco, b.brinco)),
+    notas: todos.map((f, idx) => ({ ...f, idx })).filter((f) => f.nota).sort((a, b) => ordemBrinco(a.brinco, b.brinco)),
   };
+}
+
+// Observações por brinco que o proprietário ainda vai efetivar (cadastrar, mudar de lote, corrigir...)
+export function pendenciasNotas(estado) {
+  const out = [];
+  estado.eventos.filter(ehManejoGeral).forEach((e) => {
+    foraDoLoteDe(e).forEach((f, idx) => {
+      if (!f.nota || f.notaOk) return;
+      out.push({ manejoId: e.id, idx, data: e.data, lote: e.lote || '', descricao: e.descricao || '', responsavel: e.responsavel || '', animal: f.animal || '', brinco: f.brinco, tipo: f.tipo || '', sit: f.sit || '', obs: f.obs || '', semCadastro: !f.doLote && semCad(f), nota: f.nota });
+    });
+  });
+  return out.sort((a, b) => (b.data || '').localeCompare(a.data || '') || ordemBrinco(a.brinco, b.brinco));
+}
+
+// Proprietário marca observações como efetivadas (ou desfaz). decisoes: [{ manejoId, idx, feito }]
+// Volta { mudancas: { eventos: [{tipo:'manejo', id, campos:{foraDoLote}}], matrizes: [] }, n } (mesmo formato de decidirLote)
+export function efetivarNotas(estado, decisoes, opcoes) {
+  const hoje = ((opcoes && opcoes.now) || new Date().toISOString()).slice(0, 10);
+  const porManejo = new Map();
+  (decisoes || []).forEach((d) => { if (!porManejo.has(d.manejoId)) porManejo.set(d.manejoId, new Map()); porManejo.get(d.manejoId).set(d.idx, !!d.feito); });
+  const eventos = []; let n = 0;
+  porManejo.forEach((dec, manejoId) => {
+    const e = estado.eventos.find((x) => x.id === manejoId && ehManejoGeral(x));
+    if (!e) return;
+    const lista = foraDoLoteDe(e).map((f, idx) => {
+      if (!f.nota || !dec.has(idx)) return f;
+      n++;
+      const { notaOk, ...resto } = f;
+      return dec.get(idx) ? { ...resto, notaOk: hoje } : resto;
+    });
+    eventos.push({ tipo: 'manejo', id: e.id, campos: { foraDoLote: JSON.stringify(lista) } });
+  });
+  return { mudancas: { eventos, matrizes: [] }, n };
 }
 
 function nomesDosAnimais(estado) {
@@ -375,6 +431,7 @@ export function relatorioConferencia(estado, manejoId) {
       { rotulo: 'Faltando', valor: c.faltando.length },
       { rotulo: 'De outro lote', valor: c.fora.length - c.semCadastro.length },
       { rotulo: 'Sem cadastro', valor: c.semCadastro.length },
+      ...(c.notas.length ? [{ rotulo: 'Observações', valor: c.notas.length }] : []),
     ],
     secoes: [
       { titulo: 'Faltando (não passaram no curral)', colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'tipo', label: 'Animal' }], linhas: c.faltando },
@@ -384,6 +441,11 @@ export function relatorioConferencia(estado, manejoId) {
         linhas: c.fora.filter((f) => !semCad(f)).map((f) => ({ ...f, animalSit: [NOME_TIPO[f.tipo] || '', f.sit].filter(Boolean).join(' · '), sit: textoMudar(f) })),
       },
       { titulo: 'Sem cadastro (não estão no banco de dados nem em nenhum lote)', colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'obs', label: 'Observação' }], linhas: c.semCadastro },
+      {
+        titulo: 'Observações por brinco',
+        colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'animalSit', label: 'Animal e situação' }, { k: 'nota', label: 'Observação' }, { k: 'efet', label: 'Efetivada' }],
+        linhas: c.notas.map((f) => ({ ...f, animalSit: f.semCadastro || !f.animal ? 'Sem cadastro' : [NOME_TIPO[f.tipo] || '', f.sit].filter(Boolean).join(' · '), efet: f.notaOk ? `sim, ${formatarDataBR(f.notaOk)}` : 'pendente' })),
+      },
       { titulo: 'Conferidos', colunas: [{ k: 'brinco', label: 'Brinco', mono: true }, { k: 'tipo', label: 'Animal' }], linhas: c.conferidos },
     ],
   };

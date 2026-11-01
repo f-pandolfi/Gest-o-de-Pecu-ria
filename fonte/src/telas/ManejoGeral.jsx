@@ -7,17 +7,17 @@ import { Save, Loader2, FileDown, Plus, X, Check, ArrowLeft, ClipboardCheck } fr
 import { formatarDataBR, padronizarLote } from '../logica.js';
 import {
   MANEJOS_RAPIDOS, lotesParaManejo, animaisDoLote, temCriasAoPe, aplicarManejoGeral, pendenciasLote,
-  listarManejosGerais, relatorioConferencia, faltasRepetidas, indiceBusca, resolverInclusoes,
+  listarManejosGerais, relatorioConferencia, faltasRepetidas, indiceBusca, resolverInclusoes, pendenciasNotas, chaveNota,
 } from '../manejoGeral.js';
 import { Aviso, Kpis, SecaoRelatorio } from '../ui.jsx';
 import { AplicacoesEditor, Rotulo } from './ManejoComum.jsx';
-import ConferirBrincos from './ManejoBusca.jsx';
+import ConferirBrincos, { CampoNota } from './ManejoBusca.jsx';
 import { lerLocal, gravarNoCelular, apagarLocal } from '../fila.js';
 import { baixarPDF } from '../pdfloader.js';
 
 const CHAVE = 'rascunho-manejo-geral-v1';
 const OUTRO = '__outro__';
-const vazio = (hoje) => ({ data: hoje, lote: '', loteDigitado: '', descricao: '', responsavel: '', aplicacoes: [], incluirCrias: null, marcados: [], incluidos: [], aprovar: [], obs: '' });
+const vazio = (hoje) => ({ data: hoje, lote: '', loteDigitado: '', descricao: '', responsavel: '', aplicacoes: [], incluirCrias: null, marcados: [], incluidos: [], aprovar: [], notas: {}, obs: '' });
 // Rascunho da versão 10.3/10.4 guardava a lista "fora" já pronta; agora guarda só o brinco e o animal escolhido
 const migrarRascunho = (r) => {
   if (!r) return r;
@@ -79,7 +79,43 @@ function PendenciasLote({ dados, onDecidirLote }) {
   );
 }
 
-export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, onGravarLote, onDecidirLote }) {
+// Observações por brinco anotadas nos manejos: o proprietário efetiva (cadastra, muda de lote, corrige...) e marca como feita
+function PendenciasNotas({ dados, onEfetivarNotas, onAbrir }) {
+  const pend = useMemo(() => pendenciasNotas(dados), [dados]);
+  const [msg, setMsg] = useState(null); // { t, desfazer: [decisoes] }
+  if (!pend.length && !msg) return null;
+  const efetivar = (itens) => {
+    const r = onEfetivarNotas(itens.map((p) => ({ manejoId: p.manejoId, idx: p.idx, feito: true })));
+    setMsg(r ? { t: r, desfazer: itens.map((p) => ({ manejoId: p.manejoId, idx: p.idx, feito: false })) } : null);
+  };
+  const desfazer = () => { const r = onEfetivarNotas(msg.desfazer); setMsg(r ? { t: 'Voltou para a lista de observações para efetivar.', desfazer: null } : null); };
+  return (
+    <section className="sheet pad" data-testid="pendencias-notas" style={{ marginBottom: 12 }}>
+      <h2 className="h2" style={{ marginTop: 0 }}>Observações para efetivar<small>{pend.length}</small></h2>
+      {msg && (
+        <Aviso tipo="ok" onClose={() => setMsg(null)}>
+          {msg.t}{msg.desfazer && <button type="button" className="btn quiet sm" style={{ marginLeft: 8 }} onClick={desfazer} data-testid="desfazer-notas">Desfazer</button>}
+        </Aviso>
+      )}
+      {pend.map((p) => (
+        <div key={`${p.manejoId}-${p.idx}`} className="pend-lote" data-testid={`nota-pend-${p.brinco}`}>
+          <div style={{ minWidth: 0 }}>
+            <b className="b">{p.brinco}</b>
+            <span className="nota-quem"> {p.semCadastro || (!p.animal) ? 'sem cadastro' : p.sit || ''}</span>
+            <div className="l2 nota-corpo">{p.nota}</div>
+            <button type="button" className="l3 link-lin" onClick={() => onAbrir(p.manejoId)}>{formatarDataBR(p.data)} · lote {p.lote} · {p.descricao}{p.responsavel ? ` · ${p.responsavel}` : ''}</button>
+          </div>
+          <div className="pend-bts">
+            <button className="btn sm" onClick={() => efetivar([p])} aria-label={`Efetivada a observação do brinco ${p.brinco}`}><Check size={15} /> Efetivada</button>
+          </div>
+        </div>
+      ))}
+      {pend.length > 1 && <button className="btn ghost sm" style={{ marginTop: 10 }} onClick={() => efetivar(pend)} data-testid="efetivar-todas">Marcar todas como efetivadas ({pend.length})</button>}
+    </section>
+  );
+}
+
+export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, onGravarLote, onDecidirLote, onEfetivarNotas }) {
   const [f, setF] = useState(() => ({ ...vazio(hoje), ...(migrarRascunho(lerLocal(CHAVE, null)) || {}) }));
   const [tela, setTela] = useState(() => (lerLocal(CHAVE, null) ? 'form' : 'inicio'));
   const [ver, setVer] = useState(null); // { id, msg }
@@ -109,6 +145,7 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
     return (
       <>
         {ownerMode && <PendenciasLote dados={dados} onDecidirLote={onDecidirLote} />}
+        {ownerMode && onEfetivarNotas && <PendenciasNotas dados={dados} onEfetivarNotas={onEfetivarNotas} onAbrir={(id) => setVer({ id })} />}
         <section className="sheet pad" data-testid="geral-inicio">
           <h2 className="h2" style={{ marginTop: 0 }}>Manejo geral</h2>
           <p className="sub" style={{ marginTop: 0 }}>Pour-on, brinco mosquicida, vermífugo, vacina ou só conferência. Escolha o lote, marque quem passou no curral e o app mostra quem faltou e quem veio de outro lote.</p>
@@ -120,7 +157,7 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
               {feitos.slice(0, 30).map((c) => (
                 <button key={c.id} className="card-prot" onClick={() => setVer({ id: c.id })} data-testid={`manejo-${c.id}`}>
                   <b>{formatarDataBR(c.data)} · {c.descricao}</b>
-                  <div className="l2">Lote {c.lote} · {c.conferidos.length} de {c.esperados} conferidos{c.faltando.length ? ` · ${c.faltando.length} faltando` : ''}{c.fora.length ? ` · ${c.fora.length} de fora` : ''}{c.responsavel ? ` · ${c.responsavel}` : ''}</div>
+                  <div className="l2">Lote {c.lote} · {c.conferidos.length} de {c.esperados} conferidos{c.faltando.length ? ` · ${c.faltando.length} faltando` : ''}{c.fora.length ? ` · ${c.fora.length} de fora` : ''}{c.notas.length ? ` · ${c.notas.length} observação(ões)` : ''}{c.responsavel ? ` · ${c.responsavel}` : ''}</div>
                 </button>
               ))}
             </>
@@ -144,8 +181,12 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
     });
   }
   function tirar(x) {
-    setF((s) => ({ ...s, incluidos: s.incluidos.filter((i) => !(String(i.brinco) === String(x.brinco) && (i.animal || '') === (x.animal || ''))), aprovar: s.aprovar.filter((a) => a !== x.animal) }));
+    setF((s) => {
+      const { [chaveNota(x)]: _tirada, ...notas } = s.notas || {};
+      return { ...s, incluidos: s.incluidos.filter((i) => !(String(i.brinco) === String(x.brinco) && (i.animal || '') === (x.animal || ''))), aprovar: s.aprovar.filter((a) => a !== x.animal), notas };
+    });
   }
+  function anotar(chave, texto) { setErro(''); setF((s) => ({ ...s, notas: { ...(s.notas || {}), [chave]: texto } })); }
 
   function rapido(m) {
     const ja = f.descricao.trim();
@@ -158,7 +199,7 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
     if (gravando) return;
     const r = aplicarManejoGeral(dados, {
       data: f.data, lote, descricao: f.descricao, responsavel: f.responsavel, aplicacoes: f.aplicacoes,
-      esperados: itens.map((x) => x.id), marcados: marcadosTodos, fora, observacoes: f.obs, incluirCrias, dono: ownerMode, aprovar: f.aprovar,
+      esperados: itens.map((x) => x.id), marcados: marcadosTodos, fora, observacoes: f.obs, incluirCrias, dono: ownerMode, aprovar: f.aprovar, notas: f.notas,
     });
     if (r.erros && r.erros.length) { setErro(r.erros.join(' ')); return; }
     setGravando(true);
@@ -170,9 +211,11 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
     apagarLocal(CHAVE);
     const pend = r.eventosNovos[0] ? JSON.parse(e.foraDoLote).filter((x) => x.mudar === 'pendente').length : 0;
     const semCad = JSON.parse(e.foraDoLote).filter((x) => x.semCadastro).length;
+    const nNotas = JSON.parse(e.foraDoLote).filter((x) => x.nota).length;
     const msg = [
       'Manejo gravado.',
       semCad ? `${semCad} brinco(s) sem cadastro anotado(s).` : '',
+      nNotas ? `${nNotas} observação(ões) por brinco gravada(s)${ownerMode ? ' (ficam em "Observações para efetivar")' : ' para o proprietário efetivar'}.` : '',
       r.matrizesAlteradas.length ? `${r.matrizesAlteradas.length} animal(is) mudado(s) para o lote ${lote}.` : '',
       pend ? `${pend} mudança(s) de lote esperando o proprietário confirmar.` : '',
       res.offline ? 'Sem internet: ficou no celular e vai para a planilha quando a internet voltar.' : '',
@@ -226,7 +269,7 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
           )}
           <Rotulo>Conferir os brincos do lote {lote}</Rotulo>
           {itens.length === 0 && <p className="sub" data-testid="lote-sem-animais">Este lote ainda não tem animais no cadastro. Digite o brinco de cada animal que passar: se ele existe em outro lote, o app mostra a situação dele e inclui com a observação; se não existe em lugar nenhum, inclui anotado como "sem cadastro".</p>}
-          <ConferirBrincos dados={dados} lote={lote} hoje={hoje} itens={itens} marcados={marcados} onToggle={toggle} incluidos={f.incluidos} onIncluir={incluir} indice={indice} esperados={esperados} rotuloContador="conferidos" />
+          <ConferirBrincos dados={dados} lote={lote} hoje={hoje} itens={itens} marcados={marcados} onToggle={toggle} incluidos={f.incluidos} onIncluir={incluir} indice={indice} esperados={esperados} rotuloContador="conferidos" notas={f.notas || {}} onNota={anotar} />
 
           {fora.length > 0 && (
             <div className="fora-lote" data-testid="fora-lote">
@@ -239,6 +282,7 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
                     <button type="button" className="x-peq" aria-label={`Tirar ${x.brinco}`} onClick={() => tirar(x)}><X size={16} /></button>
                   </div>
                   {x.sit && <div className="sub fora-sit" style={{ margin: '2px 0 0', fontSize: 13 }}>{x.sit}</div>}
+                  <CampoNota brinco={x.brinco} valor={(f.notas || {})[chaveNota(x)]} onChange={(t) => anotar(chaveNota(x), t)} />
                   {x.mudar === 'pendente' && (ownerMode ? (
                     <label className="chk-lin" style={{ fontSize: 14 }}>
                       <input type="checkbox" checked={f.aprovar.includes(x.animal)} aria-label={`Mudar ${x.brinco} para o lote ${lote}`}
@@ -256,6 +300,7 @@ export default function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptD
                     <span className="late">{x.obs}</span>
                     <button type="button" className="x-peq" aria-label={`Tirar ${x.brinco}`} onClick={() => tirar(x)}><X size={16} /></button>
                   </div>
+                  <CampoNota brinco={x.brinco} valor={(f.notas || {})[chaveNota(x)]} onChange={(t) => anotar(chaveNota(x), t)} />
                 </div>
               ))}
             </div>

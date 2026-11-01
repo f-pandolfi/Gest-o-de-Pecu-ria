@@ -61,6 +61,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .marca-bt .two span.soon{color:var(--amber)}
 .marca-bt .two span.good{color:var(--green)}
 .tec-bt{flex:none;min-height:38px;min-width:52px;padding:0 10px;border-radius:6px;border:1px solid var(--line);background:var(--s2);color:var(--tx);font:700 13px var(--mono)}
+.marca-topo{display:flex;align-items:stretch}
+.marca-topo .marca-bt{flex:1;min-width:0;width:auto}
+.nota-bt{flex:none;width:52px;border:none;border-left:1px solid var(--line2);background:transparent;color:var(--mut);display:grid;place-items:center}
+.nota-bt.tem{color:var(--amber)}
+.nota-cx{padding:0 12px 10px 54px}
+.nota-txt{padding:0 12px 8px 54px;font-size:13px;color:var(--amber);line-height:1.35;overflow-wrap:anywhere}
+.nota-inp{width:100%;min-height:44px;padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:var(--bg);font-size:15.5px;color:var(--tx)}
+.nota-quem{font-size:13px;color:var(--mut)}
+.nota-corpo{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--amber)}
+.link-lin{display:block;text-align:left;background:none;border:none;padding:0;color:var(--mut);text-decoration:underline;text-decoration-color:var(--line)}
 .ficha-busca{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;background:var(--s2);padding:10px 12px;margin:10px 0}
 .ficha-busca.good{border-left-color:var(--green)}
 .ficha-busca.soon{border-left-color:var(--amber)}

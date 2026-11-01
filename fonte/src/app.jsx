@@ -12,7 +12,7 @@ import {
   editarNascimento, editarMorte, anularMorte, postsDeMudancas, aplicarMudancasNoEstado,
 } from './logica.js';
 import { normalizarTudo, aplicarPendentesTudo, protocoloParaPlanilha } from './manejo.js';
-import { decidirLote } from './manejoGeral.js';
+import { decidirLote, efetivarNotas } from './manejoGeral.js';
 import Manejo from './telas/Manejo.jsx';
 import { CSS } from './estilos.js';
 import { MODO_TESTE, lerTudo, postar as postarDireto } from './api.js';
@@ -269,6 +269,16 @@ function GestaoPecuaria() {
     return [r.aprovadas ? `${r.aprovadas} animal(is) mudado(s) de lote.` : '', r.recusadas ? `${r.recusadas} continua(m) no lote de antes.` : ''].filter(Boolean).join(' ') + notaFila();
   }
 
+  // Proprietário marca as observações por brinco como efetivadas (ou desfaz)
+  function efetivarObservacoes(decisoes) {
+    if (scriptAntes(13)) return MSG_SCRIPT_13;
+    const r = efetivarNotas(dadosRef.current, decisoes);
+    if (!r.mudancas.eventos.length || !r.n) return 'Nada para marcar.';
+    gravarCorrecao(r, 'observações efetivadas');
+    const feitas = (decisoes || []).filter((d) => d.feito).length;
+    return (feitas ? `${r.n} observação(ões) marcada(s) como efetivada(s).` : `${r.n} observação(ões) voltou(aram) para a lista.`) + notaFila();
+  }
+
   // eventos em pacotes de 40, depois as matrizes e os touros
   function postsDeLote(eventos, matrizes, touros) {
     const posts = [];
@@ -473,7 +483,7 @@ function GestaoPecuaria() {
           />
         )}
         {tab === 'manejo' && (
-          <Manejo dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE} onGravarLote={gravarManejo} onSalvarProtocolo={salvarProtocolo} onSalvarConfig={salvarConfig} scriptAntes13={scriptAntes(13)} onDecidirLote={decidirMudancaLote} />
+          <Manejo dados={dados} hoje={hoje} ownerMode={ownerMode} modoTeste={MODO_TESTE} onGravarLote={gravarManejo} onSalvarProtocolo={salvarProtocolo} onSalvarConfig={salvarConfig} scriptAntes13={scriptAntes(13)} onDecidirLote={decidirMudancaLote} onEfetivarNotas={efetivarObservacoes} />
         )}
         {tab === 'parto' && <Parto dados={dados} hoje={hoje} onLancar={lancarDaVaca} onGravarLote={gravarManejo} />}
         {tab === 'crias' && (
