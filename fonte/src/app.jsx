@@ -245,6 +245,19 @@ function GestaoPecuaria() {
     enfileirar([{ action: 'upsertMatriz', matriz: m }], `matriz ${m.brinco}`);
   }
 
+  // v11.4: o dono muda a situação de uma cria pela ficha (plano de situacao.js): nascimento, novilha nova e touro/boi novo
+  function alterarSituacaoCria(p) {
+    if (p.mudancas.eventos.length || p.mudancas.matrizes.length) {
+      const d = dadosRef.current;
+      const novas = p.mudancas.matrizes.filter((m) => !d.matrizes.some((x) => x.id === m.id));
+      if (novas.length) salvarNovasMatrizes(novas);
+      const resto = { eventos: p.mudancas.eventos, matrizes: p.mudancas.matrizes.filter((m) => !novas.includes(m)) };
+      if (resto.eventos.length || resto.matrizes.length) gravarCorrecao({ mudancas: resto }, 'situação da cria');
+    }
+    for (const t of p.touros || []) { const e = salvarTouro(t); if (e) return e; }
+    return p.resumo + notaFila();
+  }
+
   // v11.2: matrizes novas de uma vez (Conferência > Confirmar na fazenda)
   function salvarNovasMatrizes(lista) {
     const d = dadosRef.current;
@@ -504,7 +517,8 @@ function GestaoPecuaria() {
 
   definirDadosCadastro(dados);
   return (
-    <FichaProvider dados={dados} hoje={hoje} ownerMode={ownerMode} onEditarMatriz={(m) => setEditMatriz(m)} onEditarBoi={(t) => setEditBoi(t)}>
+    <FichaProvider dados={dados} hoje={hoje} ownerMode={ownerMode} onEditarMatriz={(m) => setEditMatriz(m)} onEditarBoi={(t) => setEditBoi(t)}
+      onSalvarMatriz={salvarMatriz} onCorrigirNascimento={corrigirNascimento} onSalvarTouro={salvarTouro} onAlterarSituacao={alterarSituacaoCria}>
     <div className="app">
       <style>{CSS}</style>
 

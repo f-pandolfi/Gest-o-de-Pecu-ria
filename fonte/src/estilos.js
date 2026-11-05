@@ -534,6 +534,9 @@ button.fx-kpi{cursor:pointer} button.fx-kpi:hover{border-color:var(--line)}
 .pd-defs summary{cursor:pointer;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:8px 0}
 .pd-defs ul{margin:6px 0 0;padding-left:1.1rem;line-height:1.6}
 .pd-defs b{color:var(--tx)}
+.ed-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:0 12px}
+.ed-grid .fld{margin-bottom:10px}
+.ed-grid input,.ed-grid select{width:100%}
 .link{background:none;border:none;padding:0;color:var(--amber);text-decoration:underline;cursor:pointer;font:inherit}
 .inv-tabela td{white-space:nowrap}
 .inv-tabela td.acao{white-space:normal}

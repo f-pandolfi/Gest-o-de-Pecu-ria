@@ -8,6 +8,8 @@ import {
   idadeTexto, idadeCurta, rotuloSit, corSituacao, corStatus, chaveDaCria, ehBoi, pesagensBoi, boiAtivo, situacaoHistorica, nomeTouroEvento, infoAnimalVenda, categoriaBoi,
 } from '../ficha.js';
 import { vistoNoCurral } from '../conferencia.js';
+import { ESCOLHAS_SITUACAO, planoSituacaoCria } from '../situacao.js';
+import EditorCadastro from './EditorCadastro.jsx';
 
 const br = (d) => (d ? formatarDataBR(d) : '—');
 const Ctx = createContext({ abrir: () => {}, buscar: () => {}, ix: null });
@@ -150,6 +152,7 @@ function FichaMatriz({ ix, m }) {
         pills={<><Pill t={m.status} cor={corStatus(m.status)} />{m.lote && <Pill t={m.lote} />}{r.ps.length > 0 && <Pill t={`${r.ps.length} parto${r.ps.length > 1 ? 's' : ''}`} cor="blue" />}{m.destino && <Pill t={`recria: ${m.destino}`} cor="amber" />}</>}
         linha={r.nasc ? `Nascida em ${br(r.nasc)} · ${idadeCurta(r.nasc, ix.hoje)}` : 'Nascimento não informado'}
       />
+      <EditorCadastro key={`m:${m.id}`} k={`m:${m.id}`} />
       {r.alertas.map((a, i) => <div key={i} className={`fx-alerta${a.ruim ? ' ruim' : ''}`}>{a.t}</div>)}
       {m.status !== 'Vendida' && m.status !== 'Morta' && <NoCurral ix={ix} k={`m:${m.id}`} />}
       <div className="fx-grid">
@@ -204,6 +207,46 @@ function FichaMatriz({ ix, m }) {
   );
 }
 
+// v11.4: o dono muda a situação da cria (mesmo vendida, morta ou do histórico): na fazenda, novilha, touro, boi, vendida, morta
+function AlterarSituacao({ ix, c }) {
+  const { ownerMode, alterarSituacao } = useFicha();
+  const [aberto, setAberto] = useState(false);
+  const [esc, setEsc] = useState('');
+  const [data, setData] = useState(ix.hoje);
+  const [lote, setLote] = useState('');
+  const [cat, setCat] = useState('Boi');
+  const [msg, setMsg] = useState('');
+  if (!ownerMode || !alterarSituacao) return null;
+  const opcoes = ESCOLHAS_SITUACAO.filter((e) => !(e.soFemea && c.sexo !== 'Fêmea') && !(e.soMacho && c.sexo === 'Fêmea') && e.id !== c.situacao);
+  const e = ESCOLHAS_SITUACAO.find((x) => x.id === esc);
+  function gravar() {
+    const p = planoSituacaoCria(ix, c.id, esc, { data, lote, categoria: cat });
+    if (p.erro) { setMsg(p.erro); return; }
+    setMsg(alterarSituacao(p) || p.resumo); setAberto(false); setEsc('');
+  }
+  if (!aberto) return (
+    <div style={{ margin: '0 0 12px' }}>
+      <button className="btn sm quiet" onClick={() => { setAberto(true); setMsg(''); }} data-testid="alterar-situacao">Alterar situação (dono)</button>
+      {msg && <span className="sub" style={{ marginLeft: 8, color: 'var(--green)' }} data-testid="alterar-situacao-msg">{msg}</span>}
+    </div>
+  );
+  return (
+    <div className="fx-card" style={{ marginBottom: 12, background: 'var(--s2)' }} data-testid="alterar-situacao-painel">
+      <p className="sub" style={{ marginTop: 0 }}>Hoje: <b>{rotuloSit(c)}</b>. Escolha a situação certa. Fica registrado no nascimento que foi o dono quem alterou.</p>
+      <div className="fx-chips">{opcoes.map((x) => <button key={x.id} className={`fx-cp${esc === x.id ? ' on' : ''}`} aria-pressed={esc === x.id} onClick={() => { setEsc(x.id); setMsg(''); }}>{x.nome}</button>)}</div>
+      {e && e.data && <label className="sub">Data <input type="date" className="fx-cp" value={data} onChange={(ev) => setData(ev.target.value)} aria-label="Data da situação" /></label>}
+      {e && (esc === 'novilha' || esc === 'touro' || esc === 'boi') && <label className="sub" style={{ marginLeft: 8 }}>Lote <input className="fx-cp" value={lote} onChange={(ev) => setLote(ev.target.value)} placeholder={esc === 'novilha' ? 'NOVILHAS' : 'ex.: Touro'} aria-label="Lote" /></label>}
+      {esc === 'boi' && <label className="sub" style={{ marginLeft: 8 }}>Tipo <select className="fx-cp" value={cat} onChange={(ev) => setCat(ev.target.value)} aria-label="Tipo de boi">{['Boi', 'Garrote', 'Rufião', 'Outro'].map((x) => <option key={x}>{x}</option>)}</select></label>}
+      {esc === 'touro' && <p className="sub">Entra em Rebanho &gt; Touros como touro vivo. Os dados de touro (andrológico etc.) você completa por lá.</p>}
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <button className="btn sm" disabled={!esc} onClick={gravar} data-testid="alterar-situacao-gravar">Gravar</button>
+        <button className="btn sm quiet" onClick={() => { setAberto(false); setMsg(''); }}>Cancelar</button>
+      </div>
+      {msg && <p className="sub" style={{ color: 'var(--late)' }}>{msg}</p>}
+    </div>
+  );
+}
+
 function FichaCria({ ix, c }) {
   const n = c.nasc;
   const irmaos = c.matrizId ? (ix.partos.get(c.matrizId) || []).filter((p) => p.id !== c.id) : [];
@@ -224,7 +267,10 @@ function FichaCria({ ix, c }) {
         pills={<><Pill t={rotuloSit(c)} cor={corSituacao(c.situacao)} /><Pill t={c.sexo || 'sexo?'} cor={c.sexo === 'Fêmea' ? 'amber' : 'blue'} />{c.orfa && <Pill t="Órfã" cor="late" />}{c.historico && <Pill t="Histórico" />}</>}
         linha={`Nasceu em ${br(c.nascData)} · ${idadeTexto(c.nascData, ix.hoje)}`}
       />
+      <EditorCadastro key={`c:${c.id}`} k={`c:${c.id}`} />
       {c.situacao === 'confirmar' && <div className="fx-alerta">Situação a confirmar: não se sabe se virou novilha, foi apartada, vendida ou está a meia.</div>}
+      {c.situacaoDono && <div className="fx-alerta ok">Situação definida pelo dono{c.situacaoDono.data ? ` (${br(c.situacaoDono.data)})` : ''}.</div>}
+      <AlterarSituacao ix={ix} c={c} />
       {c.orfa && <div className="fx-alerta ruim">A mãe morreu: cria órfã, mamando.</div>}
       {(c.situacao === 'mamando' || c.situacao === 'desmamado' || c.situacao === 'confirmar') && <NoCurral ix={ix} k={`c:${c.id}`} />}
       <div className="fx-grid">
@@ -271,6 +317,7 @@ function FichaTouro({ ix, t }) {
     <>
       <Cabecalho tipo={`${t.tipo || 'Touro / sêmen'}${t.raca ? ` · ${t.raca}` : ''}`} brinco={t.nome} grande={false}
         pills={<><Pill t={t.tipo === 'Touro vivo' ? 'Touro vivo' : 'Sêmen'} cor="blue" />{t.situacao && <Pill t={t.situacao} />}</>} />
+      {t.tipo === 'Touro vivo' && <EditorCadastro key={`t:${t.id}`} k={`t:${t.id}`} />}
       <div className="fx-grid">
         <Card titulo="Dados">
           <Dl itens={[['Raça', t.raca || '—'], t.tipo !== 'Touro vivo' && ['Doses', t.doses ?? '—'], ['Fornecedor', t.fornecedor || t.vendedor || '—'], t.brinco && ['Brinco', t.brinco], t.lote && ['Lote', t.lote]]} />
@@ -300,6 +347,7 @@ function FichaBoi({ ix, t }) {
       <Cabecalho tipo={`${categoriaBoi(t)}${t.raca ? ` · ${t.raca}` : ''}`} brinco={t.brinco || t.nome}
         pills={<><Pill t={ativo ? 'Na fazenda' : 'Saiu'} cor={ativo ? 'green' : 'gray'} />{t.lote && <Pill t={t.lote} />}</>}
         linha={t.dataNascimento ? `Nascido em ${br(t.dataNascimento)} · ${idadeCurta(t.dataNascimento, ix.hoje)}` : t.dataCompra ? `Entrou em ${br(t.dataCompra)}` : ''} />
+      <EditorCadastro key={`t:${t.id}`} k={`t:${t.id}`} />
       {ativo && <NoCurral ix={ix} k={`t:${t.id}`} />}
       <div className="fx-grid">
         <Card titulo="Identificação">
@@ -318,16 +366,16 @@ function FichaBoi({ ix, t }) {
 }
 
 // ---------------------------------------------------------------- provedor: guarda a pilha de fichas abertas e a busca
-export function FichaProvider({ dados, hoje, ownerMode, children, onEditarMatriz, onEditarBoi }) {
+export function FichaProvider({ dados, hoje, ownerMode, children, onEditarMatriz, onEditarBoi, onAlterarSituacao, onSalvarMatriz, onCorrigirNascimento, onSalvarTouro }) {
   const ix = useMemo(() => indiceRebanho(dados, hoje), [dados, hoje]);
   const [pilha, setPilha] = useState([]);
   const [busca, setBusca] = useState(null);
   const caixa = useRef(null);
   const valor = useMemo(() => ({
-    ix,
+    ix, ownerMode, alterarSituacao: onAlterarSituacao, salvarMatriz: onSalvarMatriz, corrigirNascimento: onCorrigirNascimento, salvarTouro: onSalvarTouro,
     abrir: (k) => { setBusca(null); setPilha((p) => [...p, k]); setTimeout(() => caixa.current && caixa.current.scrollTo(0, 0), 0); },
     buscar: (q) => { setPilha([]); setBusca(q || ''); },
-  }), [ix]);
+  }), [ix, ownerMode, onAlterarSituacao, onSalvarMatriz, onCorrigirNascimento, onSalvarTouro]);
   const aberto = pilha.length > 0 || busca !== null;
   useEffect(() => {
     document.body.style.overflow = aberto ? 'hidden' : '';
@@ -343,14 +391,14 @@ export function FichaProvider({ dados, hoje, ownerMode, children, onEditarMatriz
     if (k[0] === 'm') {
       const m = ix.matPorId.get(id);
       corpo = m ? <FichaMatriz ix={ix} m={m} /> : <Vazio>Animal não encontrado.</Vazio>;
-      if (m && ownerMode && m.status !== 'Vendida' && m.status !== 'Morta') editar = () => onEditarMatriz(m);
+      if (m && ownerMode && !onSalvarMatriz) editar = () => onEditarMatriz(m); // v11.4: com o editor na ficha, o botão some
     } else if (k[0] === 'c') {
       const c = ix.criaPorId.get(id);
       corpo = c ? <FichaCria ix={ix} c={c} /> : <Vazio>Animal não encontrado.</Vazio>;
     } else {
       const t = (dados.touros || []).find((x) => x.id === id);
       corpo = !t ? <Vazio>Animal não encontrado.</Vazio> : ehBoi(t) ? <FichaBoi ix={ix} t={t} /> : <FichaTouro ix={ix} t={t} />;
-      if (t && ehBoi(t) && ownerMode) editar = () => onEditarBoi(t);
+      if (t && ehBoi(t) && ownerMode) editar = () => onEditarBoi(t); // formulário completo do boi (categoria, peso, compra)
     }
   }
 
@@ -380,7 +428,7 @@ export function FichaProvider({ dados, hoje, ownerMode, children, onEditarMatriz
             {k ? (
               <>
                 {corpo}
-                {editar ? <button className="btn wide" style={{ marginTop: 14 }} onClick={editar}>Alterar cadastro</button> : (
+                {editar ? <button className="btn wide" style={{ marginTop: 14 }} onClick={editar}>Alterar cadastro</button> : ownerMode ? null : (
                   <p className="sub" style={{ marginTop: 14, display: 'flex', gap: 8, alignItems: 'center' }}><Lock size={14} /> Todos veem a ficha. Alterar cadastro só com a senha.</p>
                 )}
               </>

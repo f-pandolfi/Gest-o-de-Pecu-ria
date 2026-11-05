@@ -47,9 +47,10 @@ vaca = next(m for m in est['matrizes'] if m['brinco'] == '3005')
 outra = next(m for m in est['matrizes'] if m['brinco'] != '3005' and m['status'] not in ('Vendida', 'Morta'))
 srv('/exec', 'POST', {'action': 'appendEventos', 'itens': [
     {'tipo': 'manejo', 'evento': {'id': 'mjc1', 'tipo': 'manejo', 'etapa': 'Geral', 'data': '2026-10-31', 'lote': 'Teste', 'descricao': 'Vermífugo teste',
-     'presentes': vaca['id'], 'ausentes': outra['id'], 'foraDoLote': json.dumps([
+     'presentes': vaca['id'] + ',c:h3558', 'ausentes': outra['id'], 'foraDoLote': json.dumps([
         {'animal': vaca['id'], 'brinco': '3005', 'tipo': 'matriz', 'mudar': 'pendente', 'nota': 'casco ruim'},
         {'animal': '', 'brinco': '8888', 'semCadastro': True, 'nota': 'brinco novo'}, {'animal': '', 'brinco': '4501', 'semCadastro': True}])}},
+    {'tipo': 'nascimento', 'evento': {'id': 'h3558', 'tipo': 'nascimento', 'data': '2023-08-27', 'sexo': 'Macho', 'brincoBezerro': '3558', 'resultadoParto': 'Vivo', 'observacoes': 'Histórico (planilha REBANHO 2026) · situação: VENDIDO · raça Nelore · mãe 4002 (fora do cadastro)'}},
     {'tipo': 'nascimento', 'evento': {'id': 'hc1', 'tipo': 'nascimento', 'data': '2024-08-10', 'matrizId': outra['id'], 'sexo': 'Fêmea', 'brincoBezerro': '4501', 'resultadoParto': 'Vivo', 'observacoes': 'Histórico (planilha REBANHO 2026) · situação: A CONFIRMAR · raça Nelore'}},
 ]})
 
@@ -96,6 +97,30 @@ with sync_playwright() as p:
         expect(pg.get_by_test_id('confirmar-fazenda')).to_contain_text('4501')
         pg.get_by_test_id('confirmar-fazenda-sim').click()
         esperar(lambda: any(m['id'] == 'cria-hc1' for m in estado()['matrizes']), pg)
+
+    @teste('Dono: ficha abre com o cadastro editável e grava na hora (matriz)')
+    def _():
+        aba(pg, 'Animais'); pg.get_by_label('Buscar brinco no inventário').fill('3005'); pg.get_by_test_id('inv-3005').click()
+        ed = pg.locator('.fx-sobre [data-testid=editor-cadastro]'); expect(ed).to_be_visible()
+        ed.get_by_label('Raça').fill('Sindi'); ed.get_by_label('Lote').fill('Maternidade')
+        ed.get_by_test_id('editor-salvar').click()
+        esperar(lambda: (lambda m: m['raca'] == 'Sindi' and m['lote'] == 'Maternidade')(next(m for m in estado()['matrizes'] if m['id'] == vaca['id'])), pg)
+        expect(ed.get_by_test_id('editor-msg')).to_contain_text('salvo')
+        pg.get_by_role('button', name='Fechar').click()
+        pg.get_by_label('Buscar brinco no inventário').fill('')
+
+    @teste('Dono: 3558 vendido no histórico vira touro da fazenda pela ficha')
+    def _():
+        aba(pg, 'Divergências')
+        pg.locator('[data-testid=inv-divergencias] .fx-li', has_text='3558').first.click()
+        pg.get_by_test_id('alterar-situacao').click()
+        pg.get_by_test_id('alterar-situacao-painel').get_by_role('button', name='Virou touro da fazenda').click()
+        pg.get_by_test_id('alterar-situacao-painel').get_by_label('Lote').fill('Touro')
+        pg.get_by_test_id('alterar-situacao-gravar').click()
+        esperar(lambda: any(str(t.get('brinco')) == '3558' and t.get('tipo') == 'Touro vivo' for t in estado()['touros']), pg)
+        esperar(lambda: 'situação definida pelo dono: TOURO' in next(e for e in estado()['eventos'] if e['id'] == 'h3558').get('observacoes', ''), pg)
+        pg.get_by_role('button', name='Fechar').click()
+        aba(pg, 'Resumo'); expect(pg.get_by_test_id('inv-tabela-cat')).to_contain_text('Touros')
 
     @teste('PDF completo; ficha abre da lista; celular sem rolagem lateral; sem erros')
     def _():

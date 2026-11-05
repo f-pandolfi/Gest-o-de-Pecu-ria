@@ -83,7 +83,9 @@ export function analisarInventario(ix, opcoes) {
     const peso = c && c.pesoAtual && c.pesoData && c.pesoData !== c.nascData ? { peso: c.pesoAtual, data: c.pesoData } : (pesos.get(l.k) || (m && ix.ultimoPeso ? ix.ultimoPeso(m.brinco) : null) || null);
     const notas = vMan.map((v) => v.nota).filter(Boolean);
     const pend = vMan.find((v) => v.mudar === 'pendente');
+    const idade = meses(nasc, hoje);
     return {
+      bezerraVelha: !!(c && c.sexo === 'Fêmea' && idade !== null && idade >= 12 && (l.status === 'Mamando' || l.status === 'Desmamado')),
       k: l.k, brinco: l.brinco, cat, catNome: (CATS_INV.find((x) => x.id === cat) || {}).nome, rot: l.rot, status: l.status,
       sexo: c ? (c.sexo === 'Fêmea' ? 'F' : 'M') : m ? 'F' : 'M',
       raca: m ? (m.raca || '') : c ? (racaDoHistorico(c.nasc) || (c.nasc && c.nasc.raca) || '') : '',

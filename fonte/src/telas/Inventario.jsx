@@ -9,6 +9,7 @@ import { IndexTabs } from '../ui.jsx';
 import { useFicha } from './Ficha.jsx';
 import { confirmarNaFazenda } from '../conferencia.js';
 import { analisarInventario, resumoInventario, lotesInventario, CATS_INV, RESULTADOS } from '../inventario.js';
+import { planoNovilhas12m } from '../ferramentas/novilhas12m.js';
 
 const br = (d) => (d ? formatarDataBR(d) : '');
 const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : '—');
@@ -110,7 +111,7 @@ export default function Inventario({ hoje, ownerMode, onDecidirLote, onConfirmar
   const L = lotesInventario(inv);
   const rod = inv.rodada;
   const periodo = `${rod.nome}: desde ${br(rod.inicio)}${rod.fim ? ` até ${br(rod.fim)}` : ''}`;
-  const divTotal = r.loteDif + r.duplos + r.semCadastro + r.fora + inv.confirmadas.length + r.novilhasQuePariram;
+  const divTotal = r.loteDif + r.duplos + r.semCadastro + r.fora + inv.confirmadas.length + r.novilhasQuePariram + inv.animais.filter((l) => l.bezerraVelha).length;
   const verAnimais = (o) => { setRes(o.res ?? ''); setCat(o.cat ?? ''); setExtra(o.extra ?? ''); setLote(''); setBusca(''); setAba('animais'); };
 
   // ------- lista filtrada (aba Animais)
@@ -329,6 +330,11 @@ export default function Inventario({ hoje, ownerMode, onDecidirLote, onConfirmar
             {ownerMode && onConfirmarNovilhas ? <ConfirmarNaFazenda key={inv.confirmadas.map((s) => s.id).join()} ix={ix} lista={inv.confirmadas} onConfirmar={onConfirmarNovilhas} />
               : <div className="fx-chips">{inv.confirmadas.map((s) => <button key={s.k} className="fx-pill p-green" style={{ border: 'none', cursor: 'pointer' }} onClick={() => abrir(s.k)}>{s.brinco}</button>)}</div>}
             {inv.confirmadas.some((s) => s.sexo !== 'Fêmea') && <p className="sub">Machos: cadastre em Rebanho &gt; Bois.</p>}
+          </section>}
+          {inv.animais.some((l) => l.bezerraVelha) && <section className="fx-card" style={{ marginBottom: 12 }} data-testid="inv-bezerras-velhas">
+            <h3>Fêmeas com mais de 12 meses ainda como bezerra ({inv.animais.filter((l) => l.bezerraVelha).length})</h3>
+            <p className="sub">Regra da fazenda: com mais de 12 meses, a fêmea na fazenda é novilha. {inv.animais.filter((l) => l.bezerraVelha).map((l) => l.brinco).join(', ')}</p>
+            {ownerMode && onConfirmarNovilhas && <button className="btn sm" data-testid="passar-novilhas" onClick={() => { const p = planoNovilhas12m(ix.dados, hoje); if (p.matrizes.length) onConfirmarNovilhas(p.matrizes.map(({ _info, ...m }) => m)); }}><CheckCircle2 size={16} /> Passar para novilha</button>}
           </section>}
           {r.novilhasQuePariram > 0 && <section className="fx-card" style={{ marginBottom: 12 }} data-testid="inv-novilhas-pariram">
             <h3>Novilhas que já pariram ({r.novilhasQuePariram})</h3>

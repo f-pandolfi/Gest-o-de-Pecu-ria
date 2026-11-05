@@ -82,7 +82,7 @@ export function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar, editarDir
             </ul>
           )}
 
-          {m.status === 'Vendida' || m.status === 'Morta' ? (
+          {(m.status === 'Vendida' || m.status === 'Morta') && !ownerMode ? (
             <p className="sub" style={{ marginTop: 16 }}>{m.status === 'Morta' ? 'Animal morto: o cadastro fica guardado só para consulta. Para corrigir a morte, use Lançar > Morte (com a senha).' : 'Animal vendido: o cadastro fica guardado só para consulta.'}</p>
           ) : ownerMode ? (
             <button className="btn wide" style={{ marginTop: 16 }} onClick={() => setEdit(true)}>Alterar cadastro</button>

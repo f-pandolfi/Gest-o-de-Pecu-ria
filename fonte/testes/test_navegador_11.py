@@ -158,13 +158,12 @@ with sync_playwright() as p:
         expect(pg.get_by_role('dialog', name='Boi 701')).to_be_visible(); pg.keyboard.press('Escape')
         pg.get_by_role('button', name='Fechar').click()
 
-    @teste('Dono: ficha da vaca tem "Alterar cadastro" que abre direto a edição')
+    @teste('Dono: ficha da vaca já abre com o cadastro editável (v11.4)')
     def _():
         pg.locator('[data-testid=buscar-animal] >> visible=true').click(); pg.get_by_label('Brinco do animal').fill('3005'); pg.keyboard.press('Enter')
-        pg.get_by_role('button', name='Alterar cadastro').click()
-        expect(pg.get_by_role('button', name='Salvar alterações')).to_be_visible()
-        pg.get_by_role('button', name='Cancelar').click(); pg.keyboard.press('Escape')
-        if pg.locator('.fx-sobre').count(): pg.get_by_role('button', name='Fechar').click()
+        ed = pg.locator('.fx-sobre [data-testid=editor-cadastro]'); expect(ed).to_be_visible()
+        expect(ed.get_by_role('button', name='Salvar alterações')).to_be_disabled()
+        pg.get_by_role('button', name='Fechar').click()
 
     @teste('Cadastros: acrescenta causa de morte, desativa outra, grava na Config e a aba Morte usa a lista')
     def _():

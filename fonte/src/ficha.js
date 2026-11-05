@@ -139,10 +139,10 @@ export function resumoAnimal(ix, k, fmt) {
   };
 }
 export const corStatus = (s) => ({ Cheia: 'green', Vazia: 'amber', Descarte: 'late', Vendida: 'gray', Morta: 'gray' }[s] || 'gray');
-export const corSituacao = (s) => ({ mamando: 'blue', desmamado: 'green', novilha: 'green', matriz: 'green', vendido: 'gray', morto: 'late', confirmar: 'amber' }[s] || 'gray');
+export const corSituacao = (s) => ({ mamando: 'blue', desmamado: 'green', novilha: 'green', matriz: 'green', vendido: 'gray', morto: 'late', confirmar: 'amber', touro: 'blue', boi: 'blue' }[s] || 'gray');
 export function rotuloSit(c) {
   const f = c.sexo === 'Fêmea';
-  return { mamando: 'Mamando', desmamado: f ? 'Desmamada' : 'Desmamado', novilha: 'Novilha', matriz: 'Virou matriz', vendido: f ? 'Vendida' : 'Vendido', morto: f ? 'Morta' : 'Morto', confirmar: 'A confirmar' }[c.situacao] || c.situacao;
+  return { mamando: 'Mamando', desmamado: f ? 'Desmamada' : 'Desmamado', novilha: 'Novilha', matriz: 'Virou matriz', vendido: f ? 'Vendida' : 'Vendido', morto: f ? 'Morta' : 'Morto', confirmar: 'A confirmar', touro: 'Virou touro', boi: 'Virou boi' }[c.situacao] || c.situacao;
 }
 
 // Pesagens de um boi (eventos "pesagem" com o brinco e sem cria/matriz ligada)

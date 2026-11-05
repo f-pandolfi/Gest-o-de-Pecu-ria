@@ -71,15 +71,21 @@ export function avistamentos(ix, desde) {
   const chave = (cru) => {
     const s = String(cru || '').trim(); if (!s) return '';
     if (s.startsWith('t:')) return s;
-    if (s.startsWith('c:')) { const c = ix.criaPorId.get(s.slice(2)); return c && c.novilha ? `m:${c.novilha.id}` : s; }
+    if (s.startsWith('c:')) {
+      const c = ix.criaPorId.get(s.slice(2));
+      if (c && c.novilha) return `m:${c.novilha.id}`;
+      if (c && (c.situacao === 'touro' || c.situacao === 'boi')) { const t = touroDaCria(c); if (t) return `t:${t.id}`; } // virou touro/boi: conta no cadastro de touros e bois
+      return s;
+    }
     return `m:${s}`;
   };
+  const touroDaCria = (c) => (d.touros || []).find((t) => c.brinco && String(t.brinco || '').trim() === String(c.brinco).trim());
   const criaK = (id) => (id ? chave(`c:${id}`) : '');
   // brinco -> chaves de animais (para brinco anotado sem cadastro que foi cadastrado depois)
   const porBrinco = new Map();
   const addB = (b, k) => { const n = num(b); if (!n) return; if (!porBrinco.has(n)) porBrinco.set(n, []); porBrinco.get(n).push(k); };
   d.matrizes.forEach((m) => addB(m.brinco, `m:${m.id}`));
-  ix.crias.forEach((c) => { if (!c.novilha && c.brinco) addB(c.brinco, `c:${c.id}`); });
+  ix.crias.forEach((c) => { if (!c.novilha && c.brinco && c.situacao !== 'touro' && c.situacao !== 'boi') addB(c.brinco, `c:${c.id}`); });
   (d.touros || []).forEach((t) => addB(t.brinco, `t:${t.id}`));
 
   const semCadastro = [];
@@ -163,7 +169,7 @@ export function analisarConferencia(ix, opcoes) {
     const v = vistoDepois(k); if (v.length) fora.push({ k, brinco: String(m.brinco), rot: m.categoria || 'Matriz', situacao: m.status === 'Morta' ? 'Está como morta' : 'Está como vendida', data: v[0].data, manejo: v[0].fonte, lote: v[0].lote || '' });
   });
   ix.crias.forEach((c) => {
-    const k = `c:${c.id}`; if (c.novilha || ativosK.has(k)) return;
+    const k = `c:${c.id}`; if (c.novilha || ativosK.has(k) || c.situacao === 'touro' || c.situacao === 'boi') return;
     const v = vistoDepois(k); if (!v.length) return;
     fora.push({ k, brinco: c.brinco ? String(c.brinco) : 's/ nº', rot: categoriaCria(c), situacao: c.situacao === 'morto' ? 'Está como morta' : 'Está como vendida', data: v[0].data, manejo: v[0].fonte, lote: v[0].lote || '' });
   });
