@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 // src/logica.js
-var VERSAO_APP = "11.3 (05/11/26)";
+var VERSAO_APP = "11.3.1 (05/11/26)";
 var VERSAO_MINIMA_SCRIPT = 12;
 var PERIODO_GESTACAO_DIAS = 285;
 var TIPOS_FUNCIONARIO = ["nascimento", "desmama", "insumo", "descarte", "pesagem", "morte"];
