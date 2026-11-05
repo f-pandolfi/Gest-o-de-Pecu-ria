@@ -1,5 +1,5 @@
 // v11.2: Rebanho > Conferência. Cruza os brincos anotados nos manejos (e toques, pesagens, partos) com o rebanho ativo.
-// Rodada 1 desde 30/10/26; cada toque geral abre uma rodada nova. No fim, quem não passou no curral é avaliado para sair do rebanho.
+// Rodada 1 desde 01/10/26 (manejos de outubro); cada toque geral abre uma rodada nova. No fim, quem não passou no curral é avaliado para sair do rebanho.
 import React, { useMemo, useState } from 'react';
 import { Search, FileDown, Loader2, CheckCircle2 } from 'lucide-react';
 import { baixarPDF } from '../pdfloader.js';

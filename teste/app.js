@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 
 // src/logica.js
-var VERSAO_APP = "11.2.1 (01/11/26)";
+var VERSAO_APP = "11.2.2 (05/11/26)";
 var VERSAO_MINIMA_SCRIPT = 12;
 var PERIODO_GESTACAO_DIAS = 285;
 var TIPOS_FUNCIONARIO = ["nascimento", "desmama", "insumo", "descarte", "pesagem", "morte"];
@@ -5188,7 +5188,7 @@ function resumoProdutividade(linhas) {
 }
 
 // src/conferencia.js
-var INICIO_CONFERENCIA = "2026-10-30";
+var INICIO_CONFERENCIA = "2026-10-01";
 var MIN_TOQUE_GERAL = 10;
 var DIAS_MIN_RODADA = 30;
 var lista4 = (v) => {

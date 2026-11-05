@@ -1,5 +1,5 @@
 // v11.2: Conferência do rebanho. Os brincos anotados nos manejos servem de chamada: quem passou no curral está na fazenda.
-// Rodada 1 começa em 30/10/26 (touros retirados, manejo das Solteiras). Cada toque geral depois disso abre uma rodada nova.
+// Rodada 1 começa em 01/10/26 e pega os manejos de outubro (10/10, 24/10, 30/10: touros retirados), inclusive os lançados depois com data retroativa. Cada toque geral depois disso abre uma rodada nova.
 // Conta como "visto": qualquer manejo (geral, indução, protocolo), toque, IATF, pesagem, desmama e parto (a mãe pariu, a cria nasceu).
 // No fim da rodada, quem não apareceu em nada vira suspeito (pode ter morrido, sumido ou saído sem lançar).
 // Só regras (sem tela). Chaves de animal iguais às da ficha: "m:<matriz>", "c:<nascimento>", "t:<touro/boi>".
@@ -7,7 +7,7 @@ import { formatarDataBR, idNovilha, padronizarLote } from './logica.js';
 import { analisarMatrizes } from './produtividade.js';
 import { ehBoi, boiAtivo, categoriaCria, racaDoHistorico } from './ficha.js';
 
-export const INICIO_CONFERENCIA = '2026-10-30';
+export const INICIO_CONFERENCIA = '2026-10-01';
 const MIN_TOQUE_GERAL = 10; // diagnósticos num mesmo toque para ele contar como toque geral (abre rodada)
 const DIAS_MIN_RODADA = 30; // duas rodadas não começam com menos de 30 dias de diferença
 

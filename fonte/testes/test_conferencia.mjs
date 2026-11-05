@@ -24,7 +24,7 @@ const base = () => ({
   config: {},
 });
 
-t('Rodada 1 começa em 30/10/26; toque geral abre a rodada 2 (toque pequeno não)', () => {
+t('Rodada 1 começa em 01/10/26; toque geral abre a rodada 2 (toque pequeno não)', () => {
   const d = base();
   assert.equal(rodadasConferencia(d).length, 1);
   for (let i = 0; i < 3; i++) d.eventos.push({ id: `pq${i}`, tipo: 'diagnostico', data: '2026-11-10', matrizId: 'm1', toqueId: 'tq0', resultado: 'Vazia' });
@@ -39,7 +39,7 @@ t('Quem passou: manejo, parto, nascimento; sem cadastro achado pelo brinco; vend
   const L = (b) => an.linhas.find((l) => l.brinco === b);
   assert.ok(L('3001').rodadas[0], 'manejo conta'); assert.equal(L('3001').rodadas[0].fonte, 'Vermífugo');
   assert.ok(!L('3002').rodadas[0], 'ausente no manejo não conta');
-  assert.ok(!L('3003').rodadas[0], 'manejo antes de 30/10 não conta na rodada'); assert.equal(L('3003').ultimo.data, '2026-09-01');
+  assert.ok(!L('3003').rodadas[0], 'manejo antes de 01/10 não conta na rodada'); assert.equal(L('3003').ultimo.data, '2026-09-01');
   assert.equal(L('3005').rodadas[0].fonte, 'Pariu'); assert.equal(L('6002').rodadas[0].fonte, 'Nasceu');
   assert.ok(L('5001').rodadas[0], 'brinco anotado sem cadastro mas que está cadastrado conta');
   assert.ok(L('901').rodadas[0], 'boi'); assert.ok(L('777') && !L('777').rodadas[0], 'touro vivo entra, semen não');

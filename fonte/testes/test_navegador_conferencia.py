@@ -60,7 +60,7 @@ with sync_playwright() as p:
     @teste('Rebanho > Conferência: números da rodada 1 e quem passou')
     def _():
         nav(pg, 'Rebanho'); aba(pg, 'Conferência')
-        c = pg.get_by_test_id('conferencia'); expect(c).to_contain_text('Rodada 1: desde 30/10/26')
+        c = pg.get_by_test_id('conferencia'); expect(c).to_contain_text('Rodada 1: desde 01/10/26')
         expect(pg.get_by_test_id('kpi-faltam')).to_be_visible()
         pg.get_by_test_id('f-passaram').click()
         lin = pg.get_by_test_id('conf-3005').inner_text()
