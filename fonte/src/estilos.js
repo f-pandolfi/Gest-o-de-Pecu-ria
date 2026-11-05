@@ -169,6 +169,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .bnav button[aria-current=page]{color:var(--amber);border-top-color:var(--amber);background:var(--bg)}
 .bnav svg{width:21px;height:21px}
 .bnav.mini button{font-size:9.5px;letter-spacing:.02em}
+.bnav.micro button{font:600 9px var(--body);letter-spacing:0;text-transform:none;padding:0 1px;overflow:hidden;white-space:nowrap}
+.bnav.micro svg{width:19px;height:19px}
 .sel-row .two b{white-space:nowrap}
 .sel-row .two span{font-size:13px;line-height:1.25}
 
@@ -532,6 +534,9 @@ button.fx-kpi{cursor:pointer} button.fx-kpi:hover{border-color:var(--line)}
 .pd-defs summary{cursor:pointer;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:8px 0}
 .pd-defs ul{margin:6px 0 0;padding-left:1.1rem;line-height:1.6}
 .pd-defs b{color:var(--tx)}
+.link{background:none;border:none;padding:0;color:var(--amber);text-decoration:underline;cursor:pointer;font:inherit}
+.inv-tabela td{white-space:nowrap}
+.inv-tabela td.acao{white-space:normal}
 .pd-pdf{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
 .pd-alerta{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;border-left:3px solid var(--late);background:var(--late-bg);border-radius:8px;padding:10px 12px;margin:0 0 12px;font-size:14px}
 .pd-alerta b{font-family:var(--mono)}

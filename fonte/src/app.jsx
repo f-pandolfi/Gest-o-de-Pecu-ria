@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Plus, ClipboardCheck, List, LayoutDashboard, FileText, Lock, Unlock, Loader2, ChevronDown, Baby, CloudOff, AlertTriangle, RefreshCw, Trash2, Syringe, Search, Settings, TrendingUp,
+  Plus, ClipboardCheck, List, LayoutDashboard, FileText, Lock, Unlock, Loader2, ChevronDown, Baby, CloudOff, AlertTriangle, RefreshCw, Trash2, Syringe, Search, Settings, TrendingUp, ClipboardList,
 } from 'lucide-react';
 import {
   VERSAO_APP, VERSAO_MINIMA_SCRIPT, todayISO, anoDe, anosDisponiveis, filtrarPorAno,
@@ -30,6 +30,7 @@ import Rebanho from './telas/Rebanho.jsx';
 import Painel from './telas/Painel.jsx';
 import Relatorios from './telas/Relatorios.jsx';
 import Cadastros from './telas/Cadastros.jsx';
+import Inventario from './telas/Inventario.jsx';
 import Produtividade from './telas/Produtividade.jsx';
 import { FichaProvider, useFicha } from './telas/Ficha.jsx';
 import { ModalMatriz, ModalBoi } from './telas/Rebanho.jsx';
@@ -475,11 +476,12 @@ function GestaoPecuaria() {
     ownerMode && { id: 'painel', label: 'Painel', Icon: LayoutDashboard },
     { id: 'lancar', label: 'Lançar', Icon: Plus },
     { id: 'manejo', label: 'Manejo', Icon: Syringe },
-    { id: 'parto', label: 'Diagnóstico', curto: 'Diagnóst.', Icon: ClipboardCheck },
+    { id: 'parto', label: 'Diagnóstico', curto: 'Diagnóst.', micro: 'Diagn.', Icon: ClipboardCheck },
     { id: 'crias', label: 'Nascimentos', curto: 'Nascim.', Icon: Baby },
     { id: 'rebanho', label: 'Rebanho', Icon: List },
-    { id: 'produtividade', label: 'Produtividade', curto: 'Produtiv.', Icon: TrendingUp },
-    { id: 'relatorios', label: 'Relatórios', curto: 'Relatór.', Icon: FileText },
+    { id: 'inventario', label: 'Inventário', curto: 'Invent.', micro: 'Invent.', Icon: ClipboardList },
+    { id: 'produtividade', label: 'Produtividade', curto: 'Produtiv.', micro: 'Produt.', Icon: TrendingUp },
+    { id: 'relatorios', label: 'Relatórios', curto: 'Relatór.', micro: 'Relat.', Icon: FileText },
   ].filter(Boolean);
 
   const anoSel = <SeletorAno ano={ano} anos={anos} onChange={setAno} />;
@@ -556,6 +558,7 @@ function GestaoPecuaria() {
             onMontarProtocolo={(ids) => { setNovoProt({ tipo: 'IATF', animais: ids, nome: '', n: Date.now() }); setTab('manejo'); }}
             onAbrirProdutividade={(f) => { setProdFiltro(`${f}:${Date.now()}`); setTab('produtividade'); }} />
         )}
+        {tab === 'inventario' && <Inventario hoje={hoje} ownerMode={ownerMode} onDecidirLote={decidirMudancaLote} onConfirmarNovilhas={salvarNovasMatrizes} />}
         {tab === 'produtividade' && <Produtividade dados={dados} hoje={hoje} filtroInicial={prodFiltro} />}
         {tab === 'cadastros' && ownerMode && <Cadastros dados={dados} onSalvarCadastros={salvarCadastros} scriptAntigo={scriptAntes(15)} />}
         {tab === 'crias' && (
@@ -587,9 +590,9 @@ function GestaoPecuaria() {
         </div>
       </div>
 
-      <nav className={`bnav${itensNav.length > 5 ? ' mini' : ''}`} aria-label="Telas (celular)">
-        {itensNav.map(({ id, label, curto, Icon }) => (
-          <button key={id} aria-current={tab === id ? 'page' : undefined} aria-label={label} onClick={() => mudarTab(id)}><Icon /> {itensNav.length > 6 && curto ? curto : label}</button>
+      <nav className={`bnav${itensNav.length > 5 ? ' mini' : ''}${itensNav.length > 8 ? ' micro' : ''}`} aria-label="Telas (celular)">
+        {itensNav.map(({ id, label, curto, micro, Icon }) => (
+          <button key={id} aria-current={tab === id ? 'page' : undefined} aria-label={label} onClick={() => mudarTab(id)}><Icon /> {itensNav.length > 8 ? (micro || curto || label) : itensNav.length > 6 && curto ? curto : label}</button>
         ))}
       </nav>
 

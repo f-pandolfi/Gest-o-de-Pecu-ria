@@ -8,8 +8,6 @@ import {
 import { IndexTabs, Modal, Tag, Campo, Lead, Aviso } from '../ui.jsx';
 import { descreverEvento } from '../util.js';
 import Touros from './Touros.jsx';
-import Conferencia from './Conferencia.jsx';
-import { analisarConferencia, resumoConferencia } from '../conferencia.js';
 import { useFicha, ListaAnimais } from './Ficha.jsx';
 import { boisDe, boiAtivo, naFazenda, CATEGORIAS_BOI, categoriaBoi, opcoesAtuais, TIPO_BOI } from '../ficha.js';
 import { todayISO, novoId } from '../logica.js';
@@ -207,7 +205,6 @@ export default function Rebanho({ dados, hoje, ownerMode, onSalvarTouro, onNovas
   } else if (aba === 'bois') {
     chaves = (verSaiu ? bois : boisAtivos).filter((t) => fb(t.brinco)).sort(ordem).map((t) => `t:${t.id}`);
   }
-  const faltamConf = useMemo(() => { try { return ix ? resumoConferencia(analisarConferencia(ix)).faltam : 0; } catch (e) { return 0; } }, [ix]);
   const contar = (s) => dados.matrizes.filter((m) => m.status === s).length;
   const Chip = ({ on, onClick, children }) => <button className={`fx-cp${on ? ' on' : ''}`} aria-pressed={on} onClick={onClick}>{children}</button>;
 
@@ -233,11 +230,10 @@ export default function Rebanho({ dados, hoje, ownerMode, onSalvarTouro, onNovas
           { id: 'crias', label: 'Crias', count: ix ? ix.crias.length : 0 },
           { id: 'touros', label: 'Touros', count: touros.length },
           { id: 'bois', label: 'Bois', count: boisAtivos.length },
-          { id: 'conferencia', label: 'Conferência', count: faltamConf },
         ]}
       />
 
-      {aba !== 'touros' && aba !== 'conferencia' && (
+      {aba !== 'touros' && (
         <label className="search fx-search">
           <Search />
           <input placeholder="Filtrar pelo brinco" aria-label="Filtrar pelo brinco" inputMode="numeric" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -272,7 +268,7 @@ export default function Rebanho({ dados, hoje, ownerMode, onSalvarTouro, onNovas
         </div>
       )}
 
-      {aba === 'conferencia' ? <Conferencia hoje={hoje} ownerMode={ownerMode} onConfirmarNovilhas={onNovasMatrizes} /> : aba === 'touros' ? <Touros dados={dados} ownerMode={ownerMode} onSalvarTouro={onSalvarTouro} /> : (
+      {aba === 'touros' ? <Touros dados={dados} ownerMode={ownerMode} onSalvarTouro={onSalvarTouro} /> : (
         <ListaAnimais chaves={chaves} vazio={aba === 'bois' ? (ownerMode ? 'Nenhum boi cadastrado ainda. Toque em "Cadastrar boi".' : 'Nenhum boi cadastrado ainda.') : undefined} />
       )}
 

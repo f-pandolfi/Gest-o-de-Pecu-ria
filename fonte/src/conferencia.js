@@ -66,7 +66,8 @@ export function rebanhoAtivo(ix) {
 export function avistamentos(ix, desde) {
   const d = ix.dados;
   const vistos = new Map();
-  const add = (k, data, fonte, id) => { if (!k || !data) return; if (!vistos.has(k)) vistos.set(k, []); vistos.get(k).push({ data, fonte, id }); };
+  // extra (só manejo): lote do manejo, observação anotada no brinco e pedido de mudança de lote
+  const add = (k, data, fonte, id, extra) => { if (!k || !data) return; if (!vistos.has(k)) vistos.set(k, []); vistos.get(k).push({ data, fonte, id, ...(extra || {}) }); };
   const chave = (cru) => {
     const s = String(cru || '').trim(); if (!s) return '';
     if (s.startsWith('t:')) return s;
@@ -87,11 +88,13 @@ export function avistamentos(ix, desde) {
     const data = dia(e.data);
     if (e.tipo === 'manejo') {
       const nome = e.descricao || e.etapa || 'Manejo';
-      ids(e.presentes).forEach((x) => add(chave(x), data, nome, e.id));
-      lista(e.foraDoLote).forEach((f) => {
+      const fl = lista(e.foraDoLote);
+      const porAnimal = new Map(fl.filter((f) => f.animal).map((f) => [f.animal, f]));
+      ids(e.presentes).forEach((x) => { const f = porAnimal.get(x); add(chave(x), data, nome, e.id, { manejo: true, lote: e.lote || '', nota: (f && f.nota) || '', mudar: (f && f.mudar) || '', animalCru: x }); });
+      fl.forEach((f) => {
         if (f.animal) return; // com cadastro: já está em presentes
         const achados = porBrinco.get(num(f.brinco)) || [];
-        if (achados.length === 1) add(achados[0], data, `${nome} (anotado sem cadastro)`, e.id);
+        if (achados.length === 1) add(achados[0], data, `${nome} (anotado sem cadastro)`, e.id, { manejo: true, lote: e.lote || '', nota: f.nota || '', semCadastro: true });
         else if (!desde || data >= desde) semCadastro.push({ brinco: String(f.brinco ?? '').trim(), data, manejo: nome, lote: e.lote || '', nota: f.nota || f.obs || '', manejoId: e.id, repetido: achados.length > 1 });
       });
     } else if (e.tipo === 'diagnostico') add(chave(e.matrizId), data, `Toque (${e.resultado || 'diagnóstico'})`, e.id);
@@ -169,7 +172,7 @@ export function analisarConferencia(ix, opcoes) {
     const v = vistoDepois(k); if (v.length) fora.push({ k, brinco: String(t.brinco || t.nome || ''), rot: ehBoi(t) ? 'Boi' : 'Touro', situacao: 'Está como saído do rebanho', data: v[0].data, manejo: v[0].fonte });
   });
 
-  return { rodadas, atual, inicio, linhas, aConfirmar, confirmadas: confirmadas.sort((a, b) => ordemBrinco(a.brinco, b.brinco)), semCadastro: semCadastro.sort((a, b) => b.data.localeCompare(a.data) || ordemBrinco(a.brinco, b.brinco)), fora: fora.sort((a, b) => ordemBrinco(a.brinco, b.brinco)) };
+  return { rodadas, atual, inicio, linhas, vistos, aConfirmar, confirmadas: confirmadas.sort((a, b) => ordemBrinco(a.brinco, b.brinco)), semCadastro: semCadastro.sort((a, b) => b.data.localeCompare(a.data) || ordemBrinco(a.brinco, b.brinco)), fora: fora.sort((a, b) => ordemBrinco(a.brinco, b.brinco)) };
 }
 
 // Números de uma rodada, no total e por categoria
