@@ -110,7 +110,7 @@ export default function Inventario({ hoje, ownerMode, onDecidirLote, onConfirmar
   const L = lotesInventario(inv);
   const rod = inv.rodada;
   const periodo = `${rod.nome}: desde ${br(rod.inicio)}${rod.fim ? ` até ${br(rod.fim)}` : ''}`;
-  const divTotal = r.loteDif + r.duplos + r.semCadastro + r.fora + inv.confirmadas.length;
+  const divTotal = r.loteDif + r.duplos + r.semCadastro + r.fora + inv.confirmadas.length + r.novilhasQuePariram;
   const verAnimais = (o) => { setRes(o.res ?? ''); setCat(o.cat ?? ''); setExtra(o.extra ?? ''); setLote(''); setBusca(''); setAba('animais'); };
 
   // ------- lista filtrada (aba Animais)
@@ -162,6 +162,7 @@ export default function Inventario({ hoje, ownerMode, onDecidirLote, onConfirmar
             { titulo: 'Brincos anotados sem cadastro', colunas: [{ k: 'brinco', label: 'Brinco' }, { k: 'data', label: 'Data' }, { k: 'lote', label: 'Lote' }, { k: 'manejo', label: 'Manejo' }, { k: 'nota', label: 'Observação' }], linhas: inv.semCadastro.map((s) => ({ ...s, data: br(s.data) })) },
             { titulo: 'Passaram no curral mas estão fora do rebanho no sistema', colunas: [{ k: 'brinco', label: 'Brinco' }, { k: 'rot', label: 'Animal' }, { k: 'situacao', label: 'No sistema' }, { k: 'data', label: 'Visto em' }], linhas: inv.fora.map((s) => ({ ...s, data: br(s.data) })) },
             { titulo: 'Crias a confirmar que passaram no curral', colunas: [{ k: 'brinco', label: 'Brinco' }, { k: 'rot', label: 'Animal' }, { k: 'mae', label: 'Mãe' }, { k: 'nasc', label: 'Nascimento' }, { k: 'lote', label: 'Lote conferido' }], linhas: inv.confirmadas.map((s) => ({ ...s, nasc: br(s.nasc) })) },
+            { titulo: 'Novilhas que já pariram (categoria a corrigir)', colunas: COLS, linhas: inv.animais.filter((l) => l.novilhaQuePariu).map(linhaPDF) },
             { titulo: 'Não conferidos', colunas: COLS, linhas: inv.animais.filter((l) => l.resultado === 'nao').map(linhaPDF) },
           ].filter((s) => s.linhas.length),
         }, { paisagem: true, arquivo: `inventario-divergencias-${hoje}.pdf` });
@@ -178,7 +179,7 @@ export default function Inventario({ hoje, ownerMode, onDecidirLote, onConfirmar
     <div className="wrap" data-testid="inventario">
       <div className="head"><div><small>Rebanho vivo x sistema</small><h1>Inventário</h1></div></div>
       <p className="sub pd-lead">
-        <b>{periodo}</b>. Dos <b>{r.total}</b> animais do sistema, <b>{r.vivos}</b> foram conferidos vivos ({pct(r.vivos, r.total)}): {r.brinco} pelo brinco e {r.mae} bezerros pela mãe.
+        <b>{periodo}</b>. Dos <b>{r.total + r.aConfirmar}</b> animais ({r.total} no sistema{r.aConfirmar ? ` + ${r.aConfirmar} a confirmar que passou` : ''}), <b>{r.vivos}</b> foram conferidos vivos ({pct(r.vivos, r.total + r.aConfirmar)}): {r.brinco} pelo brinco e {r.mae} bezerros pela mãe.
         {' '}Faltam <b>{r.nao}</b>. A data da conferência é a data do manejo.
       </p>
       {inv.rodadas.length > 1 && <div className="fx-chips">{inv.rodadas.map((x, i) => <Chip key={x.n} on={inv.iRodada === i} onClick={() => setIR(i)} testid={`rodada-${x.n}`}>{x.nome} · {br(x.inicio)}</Chip>)}</div>}
@@ -278,12 +279,13 @@ export default function Inventario({ hoje, ownerMode, onDecidirLote, onConfirmar
         <div style={{ marginTop: 14 }} data-testid="inv-lotes">
           <p className="sub">Os lotes do sistema ainda usam os nomes antigos. Abaixo, cada lote do curral com quantos animais passaram e de qual lote do sistema eles vieram.</p>
           <div className="pd-tabela-box" style={{ maxHeight: 'none', marginBottom: 14 }}>
-            <table className="pd-tabela"><thead><tr><th>Lote conferido</th><th className="num">Passaram</th><th className="num">Mesmo lote no sistema</th><th>No sistema estão em</th><th>Categorias</th></tr></thead>
+            <table className="pd-tabela"><thead><tr><th>Lote conferido</th><th className="num">Passaram</th><th className="num">Mesmo lote no sistema</th><th>No sistema estão em</th><th>Categorias</th><th className="num">Sem cadastro</th><th className="num">Fora do rebanho</th></tr></thead>
               <tbody>{L.conferidos.map((x) => (
                 <tr key={x.lote} onClick={() => { verAnimais({}); setTipoLote('conferido'); setLote(x.lote); }}>
-                  <td><b>{x.lote}</b></td><td className="num">{x.n}</td><td className="num" style={{ color: x.igual === x.n ? 'var(--green)' : undefined }}>{x.igual}</td>
+                  <td><b>{x.lote}</b>{x.aoPe ? <small>{x.aoPe} bezerro(s) ao pé</small> : null}</td><td className="num">{x.n}</td><td className="num" style={{ color: x.igual && !x.dif ? 'var(--green)' : undefined }}>{x.igual}{x.n - (x.aoPe || 0) ? <small>de {x.n - (x.aoPe || 0)}</small> : null}</td>
                   <td>{Object.entries(x.de).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} (${n})`).join(', ') || '—'}</td>
                   <td className="acao">{Object.entries(x.porCat).map(([k, n]) => `${k} ${n}`).join(' · ')}</td>
+                  <td className="num" style={{ color: x.semCad ? 'var(--late)' : undefined }}>{x.semCad || ''}</td><td className="num" style={{ color: x.fora ? 'var(--late)' : undefined }}>{x.fora || ''}</td>
                 </tr>))}</tbody></table>
           </div>
           <div className="pd-tabela-box" style={{ maxHeight: 'none' }}>
@@ -327,6 +329,11 @@ export default function Inventario({ hoje, ownerMode, onDecidirLote, onConfirmar
             {ownerMode && onConfirmarNovilhas ? <ConfirmarNaFazenda key={inv.confirmadas.map((s) => s.id).join()} ix={ix} lista={inv.confirmadas} onConfirmar={onConfirmarNovilhas} />
               : <div className="fx-chips">{inv.confirmadas.map((s) => <button key={s.k} className="fx-pill p-green" style={{ border: 'none', cursor: 'pointer' }} onClick={() => abrir(s.k)}>{s.brinco}</button>)}</div>}
             {inv.confirmadas.some((s) => s.sexo !== 'Fêmea') && <p className="sub">Machos: cadastre em Rebanho &gt; Bois.</p>}
+          </section>}
+          {r.novilhasQuePariram > 0 && <section className="fx-card" style={{ marginBottom: 12 }} data-testid="inv-novilhas-pariram">
+            <h3>Novilhas que já pariram ({r.novilhasQuePariram})</h3>
+            <p className="sub">Estão como Novilha no cadastro, mas têm parto registrado. Pela ficha, troque a categoria (primípara ou vaca).</p>
+            {inv.animais.filter((l) => l.novilhaQuePariu).map((l) => <button key={l.k} className="fx-li" onClick={() => abrir(l.k)}><span className="fx-bb">{l.brinco}<small>{l.rot}</small></span><span className="fx-two"><b>{l.nPartos} parto(s), último em {br(l.ultimoParto)}</b><span>lote conferido: {l.loteConferido || '—'}</span></span></button>)}
           </section>}
           <section className="fx-card">
             <h3>Não conferidos ({r.nao})</h3>

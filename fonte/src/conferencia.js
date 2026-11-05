@@ -160,16 +160,16 @@ export function analisarConferencia(ix, opcoes) {
   const vistoDepois = (k) => (vistos.get(k) || []).filter((v) => v.data >= inicio && v.fonte !== 'Pariu' && v.fonte !== 'Nasceu');
   ix.dados.matrizes.forEach((m) => {
     const k = `m:${m.id}`; if (ativosK.has(k)) return;
-    const v = vistoDepois(k); if (v.length) fora.push({ k, brinco: String(m.brinco), rot: m.categoria || 'Matriz', situacao: m.status === 'Morta' ? 'Está como morta' : 'Está como vendida', data: v[0].data, manejo: v[0].fonte });
+    const v = vistoDepois(k); if (v.length) fora.push({ k, brinco: String(m.brinco), rot: m.categoria || 'Matriz', situacao: m.status === 'Morta' ? 'Está como morta' : 'Está como vendida', data: v[0].data, manejo: v[0].fonte, lote: v[0].lote || '' });
   });
   ix.crias.forEach((c) => {
     const k = `c:${c.id}`; if (c.novilha || ativosK.has(k)) return;
     const v = vistoDepois(k); if (!v.length) return;
-    fora.push({ k, brinco: c.brinco ? String(c.brinco) : 's/ nº', rot: categoriaCria(c), situacao: c.situacao === 'morto' ? 'Está como morta' : 'Está como vendida', data: v[0].data, manejo: v[0].fonte });
+    fora.push({ k, brinco: c.brinco ? String(c.brinco) : 's/ nº', rot: categoriaCria(c), situacao: c.situacao === 'morto' ? 'Está como morta' : 'Está como vendida', data: v[0].data, manejo: v[0].fonte, lote: v[0].lote || '' });
   });
   (ix.dados.touros || []).forEach((t) => {
     const k = `t:${t.id}`; if (ativosK.has(k)) return;
-    const v = vistoDepois(k); if (v.length) fora.push({ k, brinco: String(t.brinco || t.nome || ''), rot: ehBoi(t) ? 'Boi' : 'Touro', situacao: 'Está como saído do rebanho', data: v[0].data, manejo: v[0].fonte });
+    const v = vistoDepois(k); if (v.length) fora.push({ k, brinco: String(t.brinco || t.nome || ''), rot: ehBoi(t) ? 'Boi' : 'Touro', situacao: 'Está como saído do rebanho', data: v[0].data, manejo: v[0].fonte, lote: v[0].lote || '' });
   });
 
   return { rodadas, atual, inicio, linhas, vistos, aConfirmar, confirmadas: confirmadas.sort((a, b) => ordemBrinco(a.brinco, b.brinco)), semCadastro: semCadastro.sort((a, b) => b.data.localeCompare(a.data) || ordemBrinco(a.brinco, b.brinco)), fora: fora.sort((a, b) => ordemBrinco(a.brinco, b.brinco)) };

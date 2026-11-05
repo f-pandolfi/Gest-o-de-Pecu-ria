@@ -93,12 +93,14 @@ export function analisarInventario(ix, opcoes) {
       previsao: prev && prev.data ? prev.data : '', nPartos: partos.length, ultimoParto: partos[0] ? partos[0].data : '',
       peso: peso && peso.peso ? peso : null,
       loteSistema, loteConferido, lotesConf,
-      loteDif: !!(loteConferido && !mesmoLote(loteSistema, loteConferido)),
+      // bezerro mamando acompanha a mãe: a divergência de lote fica só na mãe
+      loteDif: !!(cat !== 'mamando' && loteConferido && !mesmoLote(loteSistema, loteConferido)),
       semLote: !loteSistema,
       duplo: lotesConf.length > 1,
       resultado, conf, notas, motivos: l.motivos, suspeita: resultado === 'nao' && l.motivos.length > 0,
       ultimoAntes: !vRod.length && l.ultimo ? l.ultimo : null, confirmada: !!l.confirmada, faltouTodas: an.rodadas.length > 1 && l.faltouTodas,
       pendencia: pend && m ? { manejoId: pend.id, animal: m.id } : null,
+      novilhaQuePariu: !!(m && m.categoria === 'Novilha' && partos.length > 0),
     };
   });
 
@@ -119,6 +121,7 @@ export function resumoInventario(inv) {
     ...tot, porCat, vivos: tot.brinco + tot.mae, semCadastro: inv.semCadastro.length, fora: inv.fora.length,
     duplos: inv.animais.filter((l) => l.duplo).length, suspeitas: inv.animais.filter((l) => l.suspeita).length,
     pendLote: inv.animais.filter((l) => l.pendencia && l.loteDif).length,
+    novilhasQuePariram: inv.animais.filter((l) => l.novilhaQuePariu).length,
   };
 }
 
@@ -129,11 +132,20 @@ export function lotesInventario(inv) {
   inv.animais.forEach((l) => {
     if (!l.loteConferido) return;
     const k = padronizarLote(l.loteConferido, []);
-    if (!conf.has(k)) conf.set(k, { lote: l.loteConferido, n: 0, igual: 0, dif: 0, porCat: {}, de: {} });
+    if (!conf.has(k)) conf.set(k, { lote: l.loteConferido, n: 0, igual: 0, dif: 0, porCat: {}, de: {}, semCad: 0, fora: 0 });
     const x = conf.get(k); x.n++;
-    if (l.loteDif) { x.dif++; const de = l.loteSistema || '(sem lote)'; x.de[de] = (x.de[de] || 0) + 1; } else x.igual++;
+    if (l.cat === 'mamando') x.aoPe = (x.aoPe || 0) + 1; // bezerro acompanha a mãe: não entra na comparação de lote
+    else if (l.loteDif) { x.dif++; const de = l.loteSistema || '(sem lote)'; x.de[de] = (x.de[de] || 0) + 1; } else x.igual++;
     x.porCat[l.catNome] = (x.porCat[l.catNome] || 0) + 1;
   });
+  // anotados sem cadastro e baixados que passaram também contam no lote em que foram anotados (ex.: lote Touro)
+  const extra = (lt, campo) => {
+    if (!lt) return; const k = padronizarLote(lt, []);
+    if (!conf.has(k)) conf.set(k, { lote: lt, n: 0, igual: 0, dif: 0, porCat: {}, de: {}, semCad: 0, fora: 0 });
+    conf.get(k)[campo]++;
+  };
+  inv.semCadastro.forEach((x) => extra(x.lote, 'semCad'));
+  inv.fora.forEach((x) => extra(x.lote, 'fora'));
   const sis = new Map();
   inv.animais.forEach((l) => {
     if (l.confirmada) return;
@@ -143,7 +155,7 @@ export function lotesInventario(inv) {
     if (l.resultado === 'nao') x.nao++; else x.conferidos++;
   });
   return {
-    conferidos: [...conf.values()].sort((a, b) => b.n - a.n),
+    conferidos: [...conf.values()].sort((a, b) => (b.n + b.semCad + b.fora) - (a.n + a.semCad + a.fora)),
     sistema: [...sis.values()].sort((a, b) => b.n - a.n),
   };
 }

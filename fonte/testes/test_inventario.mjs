@@ -41,6 +41,7 @@ t('Lote: sistema x conferido, dois lotes (último vale), observação e pendênc
   assert.equal(L('5001').loteConferido, 'Solteiras', 'manejo mais recente'); assert.ok(L('5001').duplo);
   assert.equal(L('6002').loteSistema, 'Paridas', 'bezerro mamando: lote da mãe');
   assert.ok(!L('3003').loteDif, 'não conferido não tem lote diferente');
+  assert.ok(!L('6002').loteDif, 'bezerro mamando acompanha a mãe');
 });
 
 t('Resumo e lotes', () => {
@@ -50,7 +51,7 @@ t('Resumo e lotes', () => {
   assert.equal(r.duplos, 1);
   assert.equal(r.porCat.find((c) => c.id === 'mamando').total, 3);
   const Lt = lotesInventario(inv);
-  const mat = Lt.conferidos.find((x) => x.lote === 'Maternidade'); assert.equal(mat.n, 4); assert.equal(mat.de.Paridas, 4);
+  const mat = Lt.conferidos.find((x) => x.lote === 'Maternidade'); assert.equal(mat.n, 4); assert.equal(mat.de.Paridas, 2); assert.equal(mat.aoPe, 2); assert.equal(mat.igual, 0);
   assert.equal(Lt.sistema.find((x) => x.lote === 'Leiteiras').nao, 2);
 });
 
