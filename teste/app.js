@@ -1,5 +1,5 @@
 // src/app.jsx
-import React33, { useState as useState32, useEffect as useEffect14, useMemo as useMemo28, useRef as useRef11 } from "react";
+import React34, { useState as useState33, useEffect as useEffect14, useMemo as useMemo29, useRef as useRef11 } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Plus as Plus12,
@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 // src/logica.js
-var VERSAO_APP = "11.3.1 (05/11/26)";
+var VERSAO_APP = "11.4 (05/11/26)";
 var VERSAO_MINIMA_SCRIPT = 12;
 var PERIODO_GESTACAO_DIAS = 285;
 var TIPOS_FUNCIONARIO = ["nascimento", "desmama", "insumo", "descarte", "pesagem", "morte"];
@@ -53,7 +53,7 @@ var CAMPOS_EDICAO_MATRIZ = [
   { key: "lote", label: "Lote / piquete", type: "text", cadastro: "lotes" },
   { key: "dataNascimento", label: "Data de nascimento", type: "date" },
   { key: "partosAnteriores", label: "Partos antes de entrar na fazenda", type: "number" },
-  { key: "status", label: "Status", type: "select", options: ["Vazia", "Cheia", "Descarte", "Vendida"] }
+  { key: "status", label: "Status", type: "select", options: ["Vazia", "Cheia", "Descarte", "Vendida", "Morta"] }
 ];
 var CAMPOS = {
   cadastro: [
@@ -199,9 +199,9 @@ function mesCurto(aaaamm) {
 function parseDataFlex(txt2, hoje) {
   hoje = hoje || todayISO();
   if (txt2 === null || txt2 === void 0) return "";
-  const s = String(txt2).trim();
-  if (!s) return "";
-  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const s2 = String(txt2).trim();
+  if (!s2) return "";
+  let m = s2.match(/^(\d{4})-(\d{2})-(\d{2})/);
   let ano;
   let mes;
   let dia2;
@@ -210,7 +210,7 @@ function parseDataFlex(txt2, hoje) {
     mes = +m[2];
     dia2 = +m[3];
   } else {
-    m = s.match(/^(\d{1,2})[/.\-](\d{1,2})(?:[/.\-](\d{2}|\d{4}))?$/);
+    m = s2.match(/^(\d{1,2})[/.\-](\d{1,2})(?:[/.\-](\d{2}|\d{4}))?$/);
     if (!m) return "";
     dia2 = +m[1];
     mes = +m[2];
@@ -381,18 +381,18 @@ function calcularKPIs(todasMatrizes, eventos) {
   const taxaDesmama = nascimentos.length ? desmamas.length / nascimentos.length * 100 : 0;
   const emRecria = todasMatrizes.filter((m) => m.status !== "Vendida" && m.status !== "Morta" && m.categoria === "Novilha" && m.status !== "Descarte").length;
   const vendas = eventos.filter((e) => e.tipo === "venda");
-  const receitaTotal = vendas.reduce((s, v) => s + (parseFloat(v.valorTotal) || 0), 0);
-  const custoFrete = vendas.reduce((s, v) => s + (parseFloat(v.frete) || 0), 0);
+  const receitaTotal = vendas.reduce((s2, v) => s2 + (parseFloat(v.valorTotal) || 0), 0);
+  const custoFrete = vendas.reduce((s2, v) => s2 + (parseFloat(v.frete) || 0), 0);
   const iatfs = eventos.filter((e) => e.tipo === "iatf");
-  const custoIatf = iatfs.reduce((s, e) => s + (parseFloat(e.custo) || 0), 0);
-  const custoDiag = diagnosticos.reduce((s, e) => s + (parseFloat(e.custo) || 0), 0);
-  const custoInsumo = eventos.filter((e) => e.tipo === "insumo").reduce((s, e) => s + (parseFloat(e.custo) || 0), 0);
+  const custoIatf = iatfs.reduce((s2, e) => s2 + (parseFloat(e.custo) || 0), 0);
+  const custoDiag = diagnosticos.reduce((s2, e) => s2 + (parseFloat(e.custo) || 0), 0);
+  const custoInsumo = eventos.filter((e) => e.tipo === "insumo").reduce((s2, e) => s2 + (parseFloat(e.custo) || 0), 0);
   const custoTotal = custoIatf + custoDiag + custoInsumo + custoFrete;
   const custoPorBezerro = nascimentos.length ? custoTotal / nascimentos.length : 0;
   const margem = receitaTotal - custoTotal;
   const machos = nascimentos.filter((n) => n.sexo === "Macho").length;
   const femeas = nascimentos.filter((n) => n.sexo === "F\xEAmea").length;
-  const pesoMedioDesmama = desmamas.length ? desmamas.reduce((s, d) => s + (parseFloat(d.pesoDesmama) || 0), 0) / desmamas.length : 0;
+  const pesoMedioDesmama = desmamas.length ? desmamas.reduce((s2, d) => s2 + (parseFloat(d.pesoDesmama) || 0), 0) / desmamas.length : 0;
   return {
     total: matrizes.length,
     cheias,
@@ -488,8 +488,8 @@ function origemPelaMonta(nasc, touros, protocolos) {
   const pai = nomes.length ? nomes.join(" ou ") : "Monta natural";
   return { origem: "Monta", pai, iatfData: "", rotulo: nomes.length ? `Monta \xB7 ${pai}` : `Monta (${montas[0].nome})` };
 }
-var semAcento = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "");
-var chave = (s) => semAcento(s).toLowerCase().trim();
+var semAcento = (s2) => String(s2 ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "");
+var chave = (s2) => semAcento(s2).toLowerCase().trim();
 var LOTE_NOVILHAS = "NOVILHAS";
 var chaveLote = (t) => String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 function mesmoLote(a, b) {
@@ -527,8 +527,8 @@ function camposFaltando(tipo, form) {
   const vazio2 = (c) => !form[c.key] || typeof form[c.key] === "string" && !form[c.key].trim();
   return (CAMPOS[tipo] || []).filter((c) => c.required && (!c.showIf || c.showIf(form)) && vazio2(c));
 }
-function aplicarLancamento(estado, tipo, form, opcoes) {
-  const op = opcoes || {};
+function aplicarLancamento(estado, tipo, form, opcoes2) {
+  const op = opcoes2 || {};
   const id = op.id || novoId();
   const now = op.now || (/* @__PURE__ */ new Date()).toISOString();
   const { matrizes, touros, eventos } = estado;
@@ -683,22 +683,22 @@ function aplicarLancamento(estado, tipo, form, opcoes) {
   return { estado: { ...estado, matrizes: m, touros: t, eventos: ev }, ...out };
 }
 function normSexo(v) {
-  const s = chave(v);
-  if (["m", "macho", "boi", "bezerro", "garrote"].includes(s)) return "Macho";
-  if (["f", "femea", "bezerra", "novilha"].includes(s)) return "F\xEAmea";
+  const s2 = chave(v);
+  if (["m", "macho", "boi", "bezerro", "garrote"].includes(s2)) return "Macho";
+  if (["f", "femea", "bezerra", "novilha"].includes(s2)) return "F\xEAmea";
   return "";
 }
 function normResultadoDiag(v) {
-  const s = chave(v);
-  if (["prenhe", "prenha", "p", "+", "positivo", "cheia", "gestante"].includes(s)) return "Prenhe";
-  if (["vazia", "v", "-", "negativo", "falhada", "falhou"].includes(s)) return "Vazia";
-  if (["descarte", "d", "descartar"].includes(s)) return "Descarte";
+  const s2 = chave(v);
+  if (["prenhe", "prenha", "p", "+", "positivo", "cheia", "gestante"].includes(s2)) return "Prenhe";
+  if (["vazia", "v", "-", "negativo", "falhada", "falhou"].includes(s2)) return "Vazia";
+  if (["descarte", "d", "descartar"].includes(s2)) return "Descarte";
   return "";
 }
 function normResultadoParto(v) {
-  const s = chave(v);
-  if (!s || ["vivo", "viva", "v", "nasceu vivo"].includes(s)) return "Vivo";
-  if (["natimorto", "morto", "morta", "n", "nasceu morto"].includes(s)) return "Natimorto";
+  const s2 = chave(v);
+  if (!s2 || ["vivo", "viva", "v", "nasceu vivo"].includes(s2)) return "Vivo";
+  if (["natimorto", "morto", "morta", "n", "nasceu morto"].includes(s2)) return "Natimorto";
   return "";
 }
 function acharTouro(touros, nome) {
@@ -840,8 +840,8 @@ function jaExiste(tipo, form, estado) {
   if (["iatf", "descarte", "recria"].includes(tipo)) return eventos.some((e) => e.tipo === tipo && e.matrizId === form.matrizId && e.data === form.data);
   return false;
 }
-function aplicarLote(estado, itens2, opcoes) {
-  const op = opcoes || {};
+function aplicarLote(estado, itens2, opcoes2) {
+  const op = opcoes2 || {};
   const hoje = op.hoje || todayISO();
   const now = op.now || (/* @__PURE__ */ new Date()).toISOString();
   let atual = estado;
@@ -913,8 +913,8 @@ var idNovilha = (nascId) => `cria-${nascId}`;
 function numPeso(v) {
   if (typeof v === "number") return v;
   if (v === null || v === void 0) return NaN;
-  const s = String(v).trim().replace(",", ".");
-  return s === "" ? NaN : Number(s);
+  const s2 = String(v).trim().replace(",", ".");
+  return s2 === "" ? NaN : Number(s2);
 }
 var arred = (n, casas) => {
   const f = 10 ** (casas === void 0 ? 1 : casas);
@@ -1030,7 +1030,19 @@ function pontosDePeso(idx, { nasc, matriz }) {
 }
 function rotuloSituacao(c) {
   const f = c.sexo === "F\xEAmea";
-  return { mamando: "Mamando", desmamado: f ? "Desmamada" : "Desmamado", novilha: "Novilha", matriz: "Virou matriz", vendido: f ? "Vendida" : "Vendido", morto: f ? "Morta" : "Morto", confirmar: "Situa\xE7\xE3o a confirmar" }[c.situacao] || c.situacao;
+  return { mamando: "Mamando", desmamado: f ? "Desmamada" : "Desmamado", novilha: "Novilha", matriz: "Virou matriz", vendido: f ? "Vendida" : "Vendido", morto: f ? "Morta" : "Morto", confirmar: "Situa\xE7\xE3o a confirmar", touro: "Virou touro da fazenda", boi: "Virou boi/garrote" }[c.situacao] || c.situacao;
+}
+var SITUACOES_DONO = { MAMANDO: "mamando", "NA FAZENDA": "desmamado", VENDIDO: "vendido", MORTO: "morto", "A CONFIRMAR": "confirmar", TOURO: "touro", BOI: "boi" };
+var RE_DONO = /\[situa[çc][ãa]o definida pelo dono: (MAMANDO|NA FAZENDA|VENDIDO|MORTO|A CONFIRMAR|TOURO|BOI)(?: em (\d{2})\/(\d{2})\/(\d{4}))?[^\]]*\]/i;
+function situacaoDono(n) {
+  const m = RE_DONO.exec(String(n && n.observacoes || ""));
+  return m ? { sit: m[1].toUpperCase(), data: m[2] ? `${m[4]}-${m[3]}-${m[2]}` : "" } : null;
+}
+function marcarSituacaoDono(obs, sit, dataISO, hoje) {
+  const limpo = String(obs || "").replace(/\s*(·\s*)?\[situa[çc][ãa]o definida pelo dono:[^\]]*\]/gi, "").trim();
+  const dt = (d) => d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : "";
+  const tag = `[situa\xE7\xE3o definida pelo dono: ${sit}${dataISO ? ` em ${dt(dataISO)}` : ""} \xB7 alterada em ${dt(hoje || todayISO())}]`;
+  return limpo ? `${limpo} \xB7 ${tag}` : tag;
 }
 function listarCrias(estado, hoje) {
   hoje = hoje || todayISO();
@@ -1056,6 +1068,8 @@ function listarCrias(estado, hoje) {
     else if (hist && hist.sit === "MORTO") situacao = "morto";
     else if (hist && hist.sit === "A CONFIRMAR") situacao = "confirmar";
     else if (desm || hist && hist.sit === "NA FAZENDA") situacao = "desmamado";
+    const dono = situacaoDono(n);
+    if (dono && !novilha) situacao = SITUACOES_DONO[dono.sit] || situacao;
     const baixa = itensVenda[0] || null;
     const mae = n.matrizId ? matrizPorId.get(n.matrizId) || null : null;
     const maeMorta = !!(mae && mae.status === "Morta");
@@ -1079,11 +1093,12 @@ function listarCrias(estado, hoje) {
       situacao,
       desmamaData: desm ? desm.data : "",
       novilha,
-      vendaData: baixa ? baixa.data : novilha && novilha.dataBaixa || (hist && hist.sit === "VENDIDO" ? hist.data : "") || "",
+      vendaData: situacao !== "vendido" ? "" : dono && dono.sit === "VENDIDO" && dono.data || (baixa ? baixa.data : novilha && novilha.dataBaixa || (hist && hist.sit === "VENDIDO" ? hist.data : "") || ""),
       historico: !!hist,
-      ativa: situacao !== "vendido" && situacao !== "morto",
-      mortoData: morte ? morte.data : novilha && novilha.status === "Morta" && novilha.dataBaixa || (hist && hist.sit === "MORTO" ? hist.data : "") || "",
-      causaMorte: morte ? morte.causa : "",
+      situacaoDono: dono,
+      ativa: situacao !== "vendido" && situacao !== "morto" && situacao !== "touro" && situacao !== "boi",
+      mortoData: situacao !== "morto" ? "" : dono && dono.sit === "MORTO" && dono.data || (morte ? morte.data : novilha && novilha.status === "Morta" && novilha.dataBaixa || (hist && hist.sit === "MORTO" ? hist.data : "") || ""),
+      causaMorte: morte && situacao === "morto" ? morte.causa : "",
       maeMorta,
       maeMortaData: maeMorta ? mae.dataBaixa || "" : "",
       orfa: maeMorta && situacao === "mamando"
@@ -1134,7 +1149,7 @@ function analiseMachos(crias, cfg) {
   const linhas = machos.map((x) => ({ cria: x, dias: diasAteAlvo(x), pronto: !!c.metaPesoMacho && x.pesoAtual !== null && x.pesoAtual >= c.metaPesoMacho })).sort((a, b) => (b.cria.pesoAtual ?? -1) - (a.cria.pesoAtual ?? -1) || String(a.cria.brinco).localeCompare(String(b.cria.brinco), "pt-BR", { numeric: true }));
   const prontos = linhas.filter((l) => l.pronto);
   const prox = (n) => linhas.filter((l) => !l.pronto && l.dias !== null && l.dias <= n).length;
-  const kgProntos = prontos.reduce((s, l) => s + l.cria.pesoAtual, 0);
+  const kgProntos = prontos.reduce((s2, l) => s2 + l.cria.pesoAtual, 0);
   let diasParaMetaQtd = null;
   if (c.metaPesoMacho && c.metaQtdMacho) {
     const ordem = linhas.filter((l) => l.dias !== null).map((l) => l.dias).sort((a, b) => a - b);
@@ -1150,7 +1165,7 @@ function analiseMachos(crias, cfg) {
     metaQtdAtingida: c.metaQtdMacho ? prontos.length >= c.metaQtdMacho : null,
     kgProntos: arred(kgProntos),
     pesoMedioProntos: prontos.length ? arred(kgProntos / prontos.length) : null,
-    pesoMedio: comPeso.length ? arred(comPeso.reduce((s, x) => s + x.pesoAtual, 0) / comPeso.length) : null,
+    pesoMedio: comPeso.length ? arred(comPeso.reduce((s2, x) => s2 + x.pesoAtual, 0) / comPeso.length) : null,
     prox30: prox(30),
     prox60: prox(60),
     diasParaMetaQtd
@@ -1239,7 +1254,7 @@ function infoAnimalVenda(estado, brinco, hoje, crias) {
 }
 function totaisVenda(itens2, valorKg, frete) {
   const validos = (itens2 || []).filter((i) => numPeso(i.peso) > 0);
-  const kg = validos.reduce((s, i) => s + numPeso(i.peso), 0);
+  const kg = validos.reduce((s2, i) => s2 + numPeso(i.peso), 0);
   const vkg = numPeso(valorKg);
   const valor = vkg > 0 ? arred(kg * vkg, 2) : 0;
   const fr = numPeso(frete) > 0 ? numPeso(frete) : 0;
@@ -1290,8 +1305,8 @@ function validarVenda(estado, form, hoje) {
   });
   return { erros, avisos, linhas };
 }
-function aplicarVenda(estado, form, opcoes) {
-  const op = opcoes || {};
+function aplicarVenda(estado, form, opcoes2) {
+  const op = opcoes2 || {};
   const hoje = op.hoje || todayISO();
   const now = op.now || (/* @__PURE__ */ new Date()).toISOString();
   const vendaId = op.id || novoId();
@@ -1358,30 +1373,30 @@ function definirDestinoNovilha(matriz, destino) {
 }
 var morteAtiva = (e) => e.tipo === "morte" && String(e.anulada ?? "").trim().toLowerCase() !== "sim";
 function normCausaMorte(v) {
-  const s = chave(v);
-  if (!s) return "";
-  const exata = CAUSAS_MORTE.find((c) => chave(c) === s);
+  const s2 = chave(v);
+  if (!s2) return "";
+  const exata = CAUSAS_MORTE.find((c) => chave(c) === s2);
   if (exata) return exata;
-  if (/cobra/.test(s)) return "Picada de cobra";
-  if (/raio|trovao/.test(s)) return "Raio";
-  if (/parto/.test(s)) return "Parto dif\xEDcil";
-  if (/^(nao sabe|nao se sabe|desconhecida|ignorada)/.test(s)) return "N\xE3o sabe";
-  if (/^doenc|^doente/.test(s)) return "Doen\xE7a";
-  if (/^acident/.test(s)) return "Acidente";
-  if (/^outr/.test(s)) return "Outra";
+  if (/cobra/.test(s2)) return "Picada de cobra";
+  if (/raio|trovao/.test(s2)) return "Raio";
+  if (/parto/.test(s2)) return "Parto dif\xEDcil";
+  if (/^(nao sabe|nao se sabe|desconhecida|ignorada)/.test(s2)) return "N\xE3o sabe";
+  if (/^doenc|^doente/.test(s2)) return "Doen\xE7a";
+  if (/^acident/.test(s2)) return "Acidente";
+  if (/^outr/.test(s2)) return "Outra";
   return "";
 }
 function normTipoAnimalMorte(v) {
-  const s = chave(v);
-  if (!s) return "";
-  const exata = TIPOS_ANIMAL_MORTE.find((t) => chave(t) === s);
+  const s2 = chave(v);
+  if (!s2) return "";
+  const exata = TIPOS_ANIMAL_MORTE.find((t) => chave(t) === s2);
   if (exata) return exata;
-  if (/^(bezerr|cria)/.test(s)) return "Cria";
-  if (/^(vaca|matriz)/.test(s)) return "Matriz";
-  if (/^(garrote|boi)/.test(s)) return "Boi";
-  if (/^novilh/.test(s)) return "Novilha";
-  if (/^(touro|reprodutor)/.test(s)) return "Touro";
-  if (/^outr/.test(s)) return "Outro";
+  if (/^(bezerr|cria)/.test(s2)) return "Cria";
+  if (/^(vaca|matriz)/.test(s2)) return "Matriz";
+  if (/^(garrote|boi)/.test(s2)) return "Boi";
+  if (/^novilh/.test(s2)) return "Novilha";
+  if (/^(touro|reprodutor)/.test(s2)) return "Touro";
+  if (/^outr/.test(s2)) return "Outro";
   return "";
 }
 function infoAnimalMorte(estado, brinco) {
@@ -1748,7 +1763,7 @@ function gestacoesDe(matrizId, eventos) {
 }
 function mediaOuNull(nums) {
   const v = nums.filter((n) => n !== null && n !== void 0 && !isNaN(n));
-  return v.length ? Math.round(v.reduce((s, n) => s + n, 0) / v.length) : null;
+  return v.length ? Math.round(v.reduce((s2, n) => s2 + n, 0) / v.length) : null;
 }
 function relatorioMelhoresVacas(matrizes, eventos, ano) {
   const noPeriodo = (d) => ano === "todos" || anoDe(d) === ano;
@@ -1858,7 +1873,7 @@ function relatorioIATF(matrizes, eventos, touros, ano) {
   const porTouro = agrupar((e) => nomeTouroEvento(e, touros) || "Touro/s\xEAmen n\xE3o informado");
   const porTipo = agrupar((e) => e.tipoServico || "IATF");
   const total = contar(itens2);
-  const custo = doAno.reduce((s, e) => s + (parseFloat(e.custo) || 0), 0);
+  const custo = doAno.reduce((s2, e) => s2 + (parseFloat(e.custo) || 0), 0);
   return {
     titulo: `IATF \xB7 ${rotuloAno(ano)}`,
     resumo: [
@@ -1996,7 +2011,7 @@ function relatorioCrias(estado, cfg, ano, hoje) {
     const l = ativas.filter((c) => c.idadeDias >= a && c.idadeDias <= b);
     const med = (sx) => {
       const x = l.filter((c) => c.sexo === sx);
-      return x.length ? `${kg1(x.reduce((s, c) => s + c.pesoAtual, 0) / x.length)} (${x.length})` : "\u2014";
+      return x.length ? `${kg1(x.reduce((s2, c) => s2 + c.pesoAtual, 0) / x.length)} (${x.length})` : "\u2014";
     };
     return { faixa: rot, machos: med("Macho"), femeas: med("F\xEAmea") };
   });
@@ -2079,9 +2094,9 @@ function relatorioCrias(estado, cfg, ano, hoje) {
 function relatorioVendas(estado, ano) {
   const vendas = listarVendas(estado).filter((v) => ano === "todos" || anoDe(v.venda.data) === ano);
   const todosItens = vendas.flatMap((v) => v.itens);
-  const kgItens = todosItens.reduce((s, i) => s + (numPeso(i.peso) || 0), 0);
-  const receita = vendas.reduce((s, v) => s + (parseFloat(v.venda.valorTotal) || 0), 0);
-  const kgVendas = vendas.reduce((s, v) => s + (parseFloat(v.venda.pesoTotal) || 0), 0);
+  const kgItens = todosItens.reduce((s2, i) => s2 + (numPeso(i.peso) || 0), 0);
+  const receita = vendas.reduce((s2, v) => s2 + (parseFloat(v.venda.valorTotal) || 0), 0);
+  const kgVendas = vendas.reduce((s2, v) => s2 + (parseFloat(v.venda.pesoTotal) || 0), 0);
   const agrupar = (chaveFn) => {
     const mapa = /* @__PURE__ */ new Map();
     todosItens.forEach((i) => {
@@ -2092,8 +2107,8 @@ function relatorioVendas(estado, ano) {
     return [...mapa.entries()].map(([k, l]) => ({
       chave: k,
       qtd: l.length,
-      kg: kg1(l.reduce((s, i) => s + (numPeso(i.peso) || 0), 0)),
-      valor: arred(l.reduce((s, i) => s + (parseFloat(i.valor) || 0), 0), 2).toFixed(2)
+      kg: kg1(l.reduce((s2, i) => s2 + (numPeso(i.peso) || 0), 0)),
+      valor: arred(l.reduce((s2, i) => s2 + (parseFloat(i.valor) || 0), 0), 2).toFixed(2)
     }));
   };
   const colAgr = [{ k: "qtd", label: "Animais", align: "right", mono: true }, { k: "kg", label: "Kg", align: "right", mono: true }, { k: "valor", label: "Valor (R$)", align: "right", mono: true }];
@@ -2516,7 +2531,7 @@ function relatorioPesagemDia(estado, data, hoje) {
   });
   linhas.sort((a, b) => String(a.brinco).localeCompare(String(b.brinco), "pt-BR", { numeric: true }));
   const pesos = linhas.map((l) => l.peso).filter((p) => p > 0);
-  const media = (arr) => arr.length ? arr.reduce((s, x) => s + x, 0) / arr.length : null;
+  const media = (arr) => arr.length ? arr.reduce((s2, x) => s2 + x, 0) / arr.length : null;
   const fmtMedia = (arr) => {
     const v = media(arr);
     return v === null ? "\u2014" : `${v.toFixed(1).replace(".", ",")} kg`;
@@ -2527,7 +2542,7 @@ function relatorioPesagemDia(estado, data, hoje) {
     resumo: [
       { rotulo: "Pesagens", valor: linhas.length },
       { rotulo: "Animais", valor: porAnimal.size },
-      { rotulo: "Peso total", valor: `${pesos.reduce((s, x) => s + x, 0).toLocaleString("pt-BR")} kg` },
+      { rotulo: "Peso total", valor: `${pesos.reduce((s2, x) => s2 + x, 0).toLocaleString("pt-BR")} kg` },
       { rotulo: "Peso m\xE9dio", valor: fmtMedia(pesos) },
       { rotulo: "M\xE9dia dos machos", valor: fmtMedia(linhas.filter((l) => l.sexo === "Macho").map((l) => l.peso)) },
       { rotulo: "M\xE9dia das f\xEAmeas", valor: fmtMedia(linhas.filter((l) => l.sexo === "F\xEAmea").map((l) => l.peso)) },
@@ -2671,14 +2686,14 @@ function situacaoMatriz(estado, m, hoje, indice) {
   if (st === "Descarte") return { ...base, texto: "Descarte", curto: "descarte", nivel: "late" };
   return { ...base, texto: maiusc1(st || "Sem situa\xE7\xE3o no cadastro") + recria, curto: (st || "sem situa\xE7\xE3o").toLowerCase(), nivel: "mut" };
 }
-function animaisDoLote(estado, lote, opcoes) {
-  const op = opcoes || {};
+function animaisDoLote(estado, lote, opcoes2) {
+  const op = opcoes2 || {};
   if (!lote) return [];
   const hoje = op.hoje || todayISO();
   const indice = op.indice || indiceBusca(estado, hoje);
   const matrizes = estado.matrizes.filter((m) => ativa(m) && mesmoLote(m.lote, lote)).map((m) => {
-    const s = situacaoMatriz(estado, m, hoje, indice);
-    return { id: m.id, brinco: String(m.brinco), tipo: "matriz", linha1: m.categoria || "Matriz", linha2: [s.curto, m.raca].filter(Boolean).join(" \xB7 "), nivel: s.nivel };
+    const s2 = situacaoMatriz(estado, m, hoje, indice);
+    return { id: m.id, brinco: String(m.brinco), tipo: "matriz", linha1: m.categoria || "Matriz", linha2: [s2.curto, m.raca].filter(Boolean).join(" \xB7 "), nivel: s2.nivel };
   });
   const touros = (estado.touros || []).filter((t) => t.tipo === "Touro vivo" && t.situacao !== "Inativo" && String(t.brinco || "").trim() && mesmoLote(t.lote, lote)).map((t) => ({
     id: `t:${t.id}`,
@@ -2807,8 +2822,8 @@ function resolverInclusoes(estado, lote, incluidos, hoje, op) {
   });
   return { fora, marcadosExtra, fichas };
 }
-function aplicarManejoGeral(estado, form, opcoes) {
-  const op = opcoes || {};
+function aplicarManejoGeral(estado, form, opcoes2) {
+  const op = opcoes2 || {};
   const now = op.now || (/* @__PURE__ */ new Date()).toISOString();
   const lote = padronizarLote(form.lote, estado.matrizes);
   const erros = [];
@@ -2931,10 +2946,10 @@ var mesmoCampo = (k, a, b) => {
   if (k === "data") return String(a || "").slice(0, 10) === String(b || "").slice(0, 10);
   return String(a ?? "") === String(b ?? "");
 };
-function editarManejoGeral(estado, id, form, opcoes) {
+function editarManejoGeral(estado, id, form, opcoes2) {
   const e = estado.eventos.find((x) => x.id === id && ehManejoGeral(x));
   if (!e) return { erros: ["N\xE3o achei esse manejo."] };
-  const dono = !!(opcoes && opcoes.dono);
+  const dono = !!(opcoes2 && opcoes2.dono);
   const sem = { ...estado, eventos: estado.eventos.filter((x) => x.id !== id) };
   const gravados = foraDoLoteDe(e);
   let f2 = { ...form, dono, anterior: gravados };
@@ -2956,7 +2971,7 @@ function editarManejoGeral(estado, id, form, opcoes) {
       fora: [...forasGravados, ...(form.fora || []).filter((x) => !x.manter && !forasGravados.some((g) => mesmo2(g, x)))]
     };
   }
-  const r = aplicarManejoGeral(sem, f2, { ...opcoes || {}, id });
+  const r = aplicarManejoGeral(sem, f2, { ...opcoes2 || {}, id });
   if (r.erros && r.erros.length) return { erros: r.erros };
   const novo = { ...e, ...r.eventosNovos[0], id: e.id, createdAt: e.createdAt, tipo: "manejo", etapa: ETAPA_GERAL, protocoloId: e.protocoloId || "" };
   if (!dono) novo.lote = e.lote;
@@ -3011,8 +3026,8 @@ function pendenciasLote(estado) {
   });
   return out.sort((a, b) => (b.data || "").localeCompare(a.data || "") || ordemBrinco(a.brinco, b.brinco));
 }
-function decidirLote(estado, decisoes, opcoes) {
-  const hoje = (opcoes && opcoes.now || (/* @__PURE__ */ new Date()).toISOString()).slice(0, 10);
+function decidirLote(estado, decisoes, opcoes2) {
+  const hoje = (opcoes2 && opcoes2.now || (/* @__PURE__ */ new Date()).toISOString()).slice(0, 10);
   const porManejo = /* @__PURE__ */ new Map();
   (decisoes || []).forEach((d) => {
     if (!porManejo.has(d.manejoId)) porManejo.set(d.manejoId, /* @__PURE__ */ new Map());
@@ -3078,8 +3093,8 @@ function pendenciasNotas(estado) {
   });
   return out.sort((a, b) => (b.data || "").localeCompare(a.data || "") || ordemBrinco(a.brinco, b.brinco));
 }
-function efetivarNotas(estado, decisoes, opcoes) {
-  const hoje = (opcoes && opcoes.now || (/* @__PURE__ */ new Date()).toISOString()).slice(0, 10);
+function efetivarNotas(estado, decisoes, opcoes2) {
+  const hoje = (opcoes2 && opcoes2.now || (/* @__PURE__ */ new Date()).toISOString()).slice(0, 10);
   const porManejo = /* @__PURE__ */ new Map();
   (decisoes || []).forEach((d) => {
     if (!porManejo.has(d.manejoId)) porManejo.set(d.manejoId, /* @__PURE__ */ new Map());
@@ -3152,9 +3167,9 @@ function relatorioManejosGerais(estado, ano) {
     titulo: `Manejos gerais ${ano || ""}`.trim(),
     resumo: [
       { rotulo: "Manejos", valor: l.length },
-      { rotulo: "Animais conferidos", valor: l.reduce((s, c) => s + c.conferidos.length, 0) },
-      { rotulo: "Faltas", valor: l.reduce((s, c) => s + c.faltando.length, 0) },
-      { rotulo: "De outro lote", valor: l.reduce((s, c) => s + c.fora.length, 0) }
+      { rotulo: "Animais conferidos", valor: l.reduce((s2, c) => s2 + c.conferidos.length, 0) },
+      { rotulo: "Faltas", valor: l.reduce((s2, c) => s2 + c.faltando.length, 0) },
+      { rotulo: "De outro lote", valor: l.reduce((s2, c) => s2 + c.fora.length, 0) }
     ],
     secoes: [{
       titulo: "Manejos",
@@ -3337,8 +3352,8 @@ function prepararProtocolo(p, existente) {
     atualizadoEm: agora
   };
 }
-function montaDeRepasse(estado, p, opcoes) {
-  const op = opcoes || {};
+function montaDeRepasse(estado, p, opcoes2) {
+  const op = opcoes2 || {};
   const ia = dataIA(p) || p.dataInicio;
   const entrada = op.dataEntrada || addDias(ia, DIAS_REPASSE_DEPOIS_IA);
   const vivas = new Set(estado.matrizes.filter((m) => m.status !== "Morta" && m.status !== "Vendida" && m.status !== "Descarte").map((m) => m.id));
@@ -3408,8 +3423,8 @@ function avisosParaProtocolo(estado, info, cfg, outroProtocoloAtivo) {
   if (outroProtocoloAtivo) a.push(`J\xE1 est\xE1 em ${outroProtocoloAtivo.nome}`);
   return a;
 }
-function aplicarManejo(estado, form, opcoes) {
-  const op = opcoes || {};
+function aplicarManejo(estado, form, opcoes2) {
+  const op = opcoes2 || {};
   const now = op.now || (/* @__PURE__ */ new Date()).toISOString();
   const p = form.protocolo || null;
   const m = form.manejo || null;
@@ -3513,8 +3528,8 @@ function avisosToque(estado, m, marca, data, cfg) {
   if (parto && diasEntre(parto, data) < min && (!marca || marca.resultado !== "Cheia")) a.push(`Parida h\xE1 s\xF3 ${diasEntre(parto, data)} dias.`);
   return a;
 }
-function aplicarToque(estado, sessao, marcas, opcoes) {
-  const op = opcoes || {};
+function aplicarToque(estado, sessao, marcas, opcoes2) {
+  const op = opcoes2 || {};
   const now = op.now || (/* @__PURE__ */ new Date()).toISOString();
   let atual = estado;
   const eventosParaGravar = [];
@@ -3728,16 +3743,16 @@ function pendenciasVacinas(estado, cfg, hoje) {
   cal.forEach((r) => {
     if (r.id === "reprodutiva") {
       plantel.forEach((m) => {
-        const s = situacaoVacinaVaca(estado, m, hoje, cache);
-        if (!s.inicial && m.status !== "Descarte") out.push({ regra: r, animalId: m.id, brinco: m.brinco, tipo: m.categoria, situacao: "Sem registro neste ciclo", nivel: "pendente", confirmar: true, status: m.status });
+        const s2 = situacaoVacinaVaca(estado, m, hoje, cache);
+        if (!s2.inicial && m.status !== "Descarte") out.push({ regra: r, animalId: m.id, brinco: m.brinco, tipo: m.categoria, situacao: "Sem registro neste ciclo", nivel: "pendente", confirmar: true, status: m.status });
       });
     } else if (r.id === "lepto") {
       plantel.filter((m) => m.status === "Cheia").forEach((m) => {
-        const s = situacaoVacinaVaca(estado, m, hoje, cache);
-        if (!s.reforco || s.reforco.feito) return;
-        const faltam = s.reforco.faltam;
-        if (s.reforco.atrasoDias) out.push({ regra: r, animalId: m.id, brinco: m.brinco, tipo: m.categoria, prazo: s.reforco.prazo, situacao: `Atrasado h\xE1 ${s.reforco.atrasoDias} dias`, nivel: "atrasada", status: m.status });
-        else out.push({ regra: r, animalId: m.id, brinco: m.brinco, tipo: m.categoria, prazo: s.reforco.prazo, situacao: faltam <= 30 ? `Vence em ${faltam} dias` : `Em ${formatarDataBR(s.reforco.prazo)}`, nivel: faltam <= 30 ? "pendente" : "futura", status: m.status });
+        const s2 = situacaoVacinaVaca(estado, m, hoje, cache);
+        if (!s2.reforco || s2.reforco.feito) return;
+        const faltam = s2.reforco.faltam;
+        if (s2.reforco.atrasoDias) out.push({ regra: r, animalId: m.id, brinco: m.brinco, tipo: m.categoria, prazo: s2.reforco.prazo, situacao: `Atrasado h\xE1 ${s2.reforco.atrasoDias} dias`, nivel: "atrasada", status: m.status });
+        else out.push({ regra: r, animalId: m.id, brinco: m.brinco, tipo: m.categoria, prazo: s2.reforco.prazo, situacao: faltam <= 30 ? `Vence em ${faltam} dias` : `Em ${formatarDataBR(s2.reforco.prazo)}`, nivel: faltam <= 30 ? "pendente" : "futura", status: m.status });
       });
     } else if (r.tipo === "idade") {
       const min = num(r.idadeMin) ?? 3;
@@ -3766,8 +3781,8 @@ function pendenciasVacinas(estado, cfg, hoje) {
   const peso = { atrasada: 0, pendente: 1, futura: 2 };
   return out.sort((a, b) => peso[a.nivel] - peso[b.nivel] || ordemBrinco2(a.brinco, b.brinco));
 }
-function manejoConfirmacaoVacina(matrizIds, data, tipo, opcoes) {
-  const now = opcoes && opcoes.now || (/* @__PURE__ */ new Date()).toISOString();
+function manejoConfirmacaoVacina(matrizIds, data, tipo, opcoes2) {
+  const now = opcoes2 && opcoes2.now || (/* @__PURE__ */ new Date()).toISOString();
   return {
     id: `vac-${novoId()}`,
     tipo: "manejo",
@@ -3883,7 +3898,7 @@ function relatorioPesagens(estado, ano, hoje) {
     const chaves = l.map(chavePesagem);
     const sb = l.filter(ehSemBrinco).length;
     const dup = chaves.filter((k, i) => chaves.indexOf(k) !== i).length;
-    return { data: formatarDataBR(d), qtd: l.length, total: `${pesos.reduce((s, x) => s + x, 0)} kg`, media: pesos.length ? `${(pesos.reduce((s, x) => s + x, 0) / pesos.length).toFixed(1).replace(".", ",")} kg` : "\u2014", dup: [dup ? `${dup} pesado(s) 2x` : "", sb ? `${sb} sem brinco` : ""].filter(Boolean).join(" \xB7 ") };
+    return { data: formatarDataBR(d), qtd: l.length, total: `${pesos.reduce((s2, x) => s2 + x, 0)} kg`, media: pesos.length ? `${(pesos.reduce((s2, x) => s2 + x, 0) / pesos.length).toFixed(1).replace(".", ",")} kg` : "\u2014", dup: [dup ? `${dup} pesado(s) 2x` : "", sb ? `${sb} sem brinco` : ""].filter(Boolean).join(" \xB7 ") };
   });
   return {
     titulo: `Pesagens \xB7 ${ano === "todos" ? "todos os anos" : ano}`,
@@ -4000,11 +4015,11 @@ function semValores(rel) {
   return {
     ...rel,
     resumo: (rel.resumo || []).filter((r) => !ehValor(r.rotulo)),
-    secoes: (rel.secoes || []).map((s) => ({ ...s, colunas: s.colunas.filter((c) => !ehValor(c.label) && c.k !== "vkg" && c.k !== "total" && c.k !== "valor") }))
+    secoes: (rel.secoes || []).map((s2) => ({ ...s2, colunas: s2.colunas.filter((c) => !ehValor(c.label) && c.k !== "vkg" && c.k !== "total" && c.k !== "valor") }))
   };
 }
-function montarRelatorioApp(id, dados, ano, hoje, opcoes) {
-  const dono = !!(opcoes && opcoes.dono);
+function montarRelatorioApp(id, dados, ano, hoje, opcoes2) {
+  const dono = !!(opcoes2 && opcoes2.dono);
   let rel;
   if (id === "crias-sexo") rel = relatorioCriasPorSexo(dados, ano, hoje);
   else if (id === "vazias") rel = relatorioVacasPorStatus(dados, "Vazia", hoje);
@@ -4026,7 +4041,7 @@ function montarRelatorioApp(id, dados, ano, hoje, opcoes) {
 }
 
 // src/telas/Manejo.jsx
-import React10, { useState as useState10 } from "react";
+import React11, { useState as useState11 } from "react";
 
 // src/ui.jsx
 import React, { useState, useMemo, useEffect, useRef } from "react";
@@ -4196,11 +4211,11 @@ function resumoAnimal(ix, k, fmt) {
     pill: { t: tt.tipo === "Touro vivo" ? "Touro vivo" : "S\xEAmen", cor: "blue" }
   };
 }
-var corStatus = (s) => ({ Cheia: "green", Vazia: "amber", Descarte: "late", Vendida: "gray", Morta: "gray" })[s] || "gray";
-var corSituacao = (s) => ({ mamando: "blue", desmamado: "green", novilha: "green", matriz: "green", vendido: "gray", morto: "late", confirmar: "amber" })[s] || "gray";
+var corStatus = (s2) => ({ Cheia: "green", Vazia: "amber", Descarte: "late", Vendida: "gray", Morta: "gray" })[s2] || "gray";
+var corSituacao = (s2) => ({ mamando: "blue", desmamado: "green", novilha: "green", matriz: "green", vendido: "gray", morto: "late", confirmar: "amber", touro: "blue", boi: "blue" })[s2] || "gray";
 function rotuloSit(c) {
   const f = c.sexo === "F\xEAmea";
-  return { mamando: "Mamando", desmamado: f ? "Desmamada" : "Desmamado", novilha: "Novilha", matriz: "Virou matriz", vendido: f ? "Vendida" : "Vendido", morto: f ? "Morta" : "Morto", confirmar: "A confirmar" }[c.situacao] || c.situacao;
+  return { mamando: "Mamando", desmamado: f ? "Desmamada" : "Desmamado", novilha: "Novilha", matriz: "Virou matriz", vendido: f ? "Vendida" : "Vendido", morto: f ? "Morta" : "Morto", confirmar: "A confirmar", touro: "Virou touro", boi: "Virou boi" }[c.situacao] || c.situacao;
 }
 function pesagensBoi(dados, t) {
   if (!t.brinco) return [];
@@ -4283,7 +4298,7 @@ function lerCadastros(config) {
     return {};
   }
 }
-var norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+var norm = (s2) => String(s2 || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 function itensCadastro(dados, id, usados) {
   const def = LISTAS_CADASTRO.find((l) => l.id === id) || { padrao: [] };
   const salvo = lerCadastros(dados.config)[id] || [];
@@ -4306,37 +4321,37 @@ function opcoesCadastro(dados, id, atual) {
   return l;
 }
 function valoresUsados(dados, id) {
-  const s = /* @__PURE__ */ new Set();
+  const s2 = /* @__PURE__ */ new Set();
   const ev = dados.eventos || [];
   if (id === "produtos") {
     ev.forEach((e) => {
-      if (e.tipo === "insumo" && e.produto) s.add(e.produto);
-      if (e.tipo === "manejo") lista3(e.aplicacoes).forEach((a) => a.produto && s.add(a.produto));
+      if (e.tipo === "insumo" && e.produto) s2.add(e.produto);
+      if (e.tipo === "manejo") lista3(e.aplicacoes).forEach((a) => a.produto && s2.add(a.produto));
     });
   }
   if (id === "aplicacoes") ev.forEach((e) => {
-    if (e.tipo === "manejo") lista3(e.aplicacoes).forEach((a) => a.tipo && s.add(a.tipo));
+    if (e.tipo === "manejo") lista3(e.aplicacoes).forEach((a) => a.tipo && s2.add(a.tipo));
   });
   if (id === "unidades") ev.forEach((e) => {
-    if (e.tipo === "insumo" && e.unidade) s.add(e.unidade);
+    if (e.tipo === "insumo" && e.unidade) s2.add(e.unidade);
   });
   if (id === "causasMorte") ev.forEach((e) => {
-    if (e.tipo === "morte" && e.causa) s.add(e.causa);
+    if (e.tipo === "morte" && e.causa) s2.add(e.causa);
   });
-  if (id === "lotes") lotesExistentes(dados.matrizes).forEach((x) => s.add(x.lote));
+  if (id === "lotes") lotesExistentes(dados.matrizes).forEach((x) => s2.add(x.lote));
   if (id === "racas") {
-    dados.matrizes.forEach((m) => m.raca && s.add(m.raca));
+    dados.matrizes.forEach((m) => m.raca && s2.add(m.raca));
   }
   if (id === "pelagens") ev.forEach((e) => {
-    if (e.tipo === "nascimento" && e.pelagem) s.add(e.pelagem);
+    if (e.tipo === "nascimento" && e.pelagem) s2.add(e.pelagem);
   });
   if (id === "pessoas") ev.forEach((e) => ["veterinario", "tecnico", "responsavel"].forEach((k) => {
-    if (e[k]) s.add(String(e[k]).trim());
+    if (e[k]) s2.add(String(e[k]).trim());
   }));
   if (id === "compradores") ev.forEach((e) => {
-    if (e.tipo === "venda" && e.comprador) s.add(e.comprador);
+    if (e.tipo === "venda" && e.comprador) s2.add(e.comprador);
   });
-  return [...s];
+  return [...s2];
 }
 function cadastrosParaSalvar(dados, id, itens2) {
   const atual = lerCadastros(dados.config);
@@ -4362,7 +4377,7 @@ function categoriaBoi(t) {
 var naFazenda = (c) => !c.novilha && (c.situacao === "mamando" || c.situacao === "desmamado");
 
 // src/ui.jsx
-var corStatus2 = (s) => s === "Cheia" ? "var(--green)" : s === "Vazia" ? "var(--amber)" : s === "Vendida" || s === "Morta" ? "var(--mut)" : "var(--late)";
+var corStatus2 = (s2) => s2 === "Cheia" ? "var(--green)" : s2 === "Vazia" ? "var(--amber)" : s2 === "Vendida" || s2 === "Morta" ? "var(--mut)" : "var(--late)";
 function Tag({ status }) {
   return /* @__PURE__ */ React.createElement("span", { className: "tag", style: { color: corStatus2(status) } }, status);
 }
@@ -4503,13 +4518,13 @@ import { Plus as Plus2, Trash2 as Trash22, Save as Save2, ArrowLeft as ArrowLeft
 
 // src/pdfloader.js
 var VERSAO_ARQ = VERSAO_APP.split(" ")[0];
-async function baixarPDF(rel, opcoes) {
+async function baixarPDF(rel, opcoes2) {
   const url = new URL(`./pdf.js?v=${VERSAO_ARQ}`, import.meta.url).href;
   const mod = await import(
     /* @vite-ignore */
     url
   );
-  return mod.gerarPDF(rel, opcoes);
+  return mod.gerarPDF(rel, opcoes2);
 }
 
 // src/telas/ManejoComum.jsx
@@ -4588,11 +4603,11 @@ function erroDeRede(msg) {
   e.rede = true;
   return e;
 }
-async function buscar(url, opcoes, limiteMs) {
+async function buscar(url, opcoes2, limiteMs) {
   const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
   const t = ctl ? setTimeout(() => ctl.abort(), limiteMs) : null;
   try {
-    return await fetch(url, { ...opcoes || {}, ...ctl ? { signal: ctl.signal } : {} });
+    return await fetch(url, { ...opcoes2 || {}, ...ctl ? { signal: ctl.signal } : {} });
   } catch (e) {
     throw erroDeRede(e && e.name === "AbortError" ? "a internet est\xE1 lenta demais (sem resposta)" : "sem internet");
   } finally {
@@ -4819,8 +4834,8 @@ function ManejoCurral({
   function toggle(id) {
     setOk("");
     setErro("");
-    setMarcados((s) => {
-      const n = new Set(s);
+    setMarcados((s2) => {
+      const n = new Set(s2);
       if (n.has(id)) n.delete(id);
       else n.add(id);
       return n;
@@ -4883,7 +4898,7 @@ function ManejoCurral({
       marcados,
       onToggle: toggle,
       onDigitarFora: fora,
-      extraDaLinha: ehIA ? (x) => /* @__PURE__ */ React3.createElement("select", { "aria-label": `S\xEAmen da vaca ${x.brinco}`, value: semen[x.id] || "", onChange: (e) => setSemen((s) => ({ ...s, [x.id]: e.target.value })) }, /* @__PURE__ */ React3.createElement("option", { value: "" }, semenPadrao ? `Mesmo do alto` : "Escolha o s\xEAmen"), semens.map((t) => /* @__PURE__ */ React3.createElement("option", { key: t.id, value: t.id }, t.nome))) : null
+      extraDaLinha: ehIA ? (x) => /* @__PURE__ */ React3.createElement("select", { "aria-label": `S\xEAmen da vaca ${x.brinco}`, value: semen[x.id] || "", onChange: (e) => setSemen((s2) => ({ ...s2, [x.id]: e.target.value })) }, /* @__PURE__ */ React3.createElement("option", { value: "" }, semenPadrao ? `Mesmo do alto` : "Escolha o s\xEAmen"), semens.map((t) => /* @__PURE__ */ React3.createElement("option", { key: t.id, value: t.id }, t.nome))) : null
     }
   ), /* @__PURE__ */ React3.createElement("div", { className: "fld", style: { marginTop: 12 } }, /* @__PURE__ */ React3.createElement("label", { htmlFor: "mj-obs" }, "Observa\xE7\xE3o"), /* @__PURE__ */ React3.createElement("input", { id: "mj-obs", value: obs, onChange: (e) => setObs(e.target.value) })), erro && /* @__PURE__ */ React3.createElement(Aviso, null, erro), ok && /* @__PURE__ */ React3.createElement(Aviso, { tipo: "ok" }, ok), /* @__PURE__ */ React3.createElement("button", { className: "btn wide", style: { marginTop: 8 }, onClick: gravar, disabled: gravando || marcados.size === 0 }, gravando ? /* @__PURE__ */ React3.createElement(Loader2, { size: 18, className: "spin" }) : /* @__PURE__ */ React3.createElement(Save, { size: 18 }), " Gravar ", marcados.size, " presente(s)"));
 }
@@ -5063,11 +5078,11 @@ function Protocolos({ dados, hoje, ownerMode, modoTeste, onSalvarProtocolo, onGr
 }
 
 // src/telas/Inducao.jsx
-import React6, { useMemo as useMemo6, useState as useState6 } from "react";
-import { Plus as Plus3, Save as Save3, Loader2 as Loader23, Search as Search3 } from "lucide-react";
+import React7, { useMemo as useMemo7, useState as useState7 } from "react";
+import { Plus as Plus3, Save as Save4, Loader2 as Loader23, Search as Search3 } from "lucide-react";
 
 // src/telas/Ficha.jsx
-import React5, { createContext, useContext, useEffect as useEffect3, useMemo as useMemo5, useRef as useRef3, useState as useState5 } from "react";
+import React6, { createContext, useContext, useEffect as useEffect3, useMemo as useMemo6, useRef as useRef3, useState as useState6 } from "react";
 import { Search as Search2, X as X2, ChevronLeft, Lock } from "lucide-react";
 
 // src/produtividade.js
@@ -5203,8 +5218,8 @@ var lista4 = (v) => {
 var ids2 = (v) => String(v || "").split(",").map((x) => x.trim()).filter(Boolean);
 var dia = (d) => String(d || "").slice(0, 10);
 var num2 = (b) => {
-  const s = String(b ?? "").trim();
-  return /^\d+$/.test(s) ? String(Number(s)) : s.toLowerCase();
+  const s2 = String(b ?? "").trim();
+  return /^\d+$/.test(s2) ? String(Number(s2)) : s2.toLowerCase();
 };
 var diasEntre2 = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
 var ordemBrinco3 = (a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true });
@@ -5260,15 +5275,21 @@ function avistamentos(ix, desde) {
     vistos.get(k).push({ data, fonte, id, ...extra || {} });
   };
   const chave2 = (cru) => {
-    const s = String(cru || "").trim();
-    if (!s) return "";
-    if (s.startsWith("t:")) return s;
-    if (s.startsWith("c:")) {
-      const c = ix.criaPorId.get(s.slice(2));
-      return c && c.novilha ? `m:${c.novilha.id}` : s;
+    const s2 = String(cru || "").trim();
+    if (!s2) return "";
+    if (s2.startsWith("t:")) return s2;
+    if (s2.startsWith("c:")) {
+      const c = ix.criaPorId.get(s2.slice(2));
+      if (c && c.novilha) return `m:${c.novilha.id}`;
+      if (c && (c.situacao === "touro" || c.situacao === "boi")) {
+        const t = touroDaCria(c);
+        if (t) return `t:${t.id}`;
+      }
+      return s2;
     }
-    return `m:${s}`;
+    return `m:${s2}`;
   };
+  const touroDaCria = (c) => (d.touros || []).find((t) => c.brinco && String(t.brinco || "").trim() === String(c.brinco).trim());
   const criaK = (id) => id ? chave2(`c:${id}`) : "";
   const porBrinco = /* @__PURE__ */ new Map();
   const addB = (b, k) => {
@@ -5279,7 +5300,7 @@ function avistamentos(ix, desde) {
   };
   d.matrizes.forEach((m) => addB(m.brinco, `m:${m.id}`));
   ix.crias.forEach((c) => {
-    if (!c.novilha && c.brinco) addB(c.brinco, `c:${c.id}`);
+    if (!c.novilha && c.brinco && c.situacao !== "touro" && c.situacao !== "boi") addB(c.brinco, `c:${c.id}`);
   });
   (d.touros || []).forEach((t) => addB(t.brinco, `t:${t.id}`));
   const semCadastro = [];
@@ -5314,8 +5335,8 @@ function avistamentos(ix, desde) {
   vistos.forEach((l) => l.sort((a, b) => b.data.localeCompare(a.data)));
   return { vistos, semCadastro };
 }
-function analisarConferencia(ix, opcoes) {
-  const op = opcoes || {};
+function analisarConferencia(ix, opcoes2) {
+  const op = opcoes2 || {};
   const hoje = ix.hoje;
   const rodadas = rodadasConferencia(ix.dados, op.inicio);
   const inicio = rodadas[0].inicio;
@@ -5371,7 +5392,7 @@ function analisarConferencia(ix, opcoes) {
   });
   ix.crias.forEach((c) => {
     const k = `c:${c.id}`;
-    if (c.novilha || ativosK.has(k)) return;
+    if (c.novilha || ativosK.has(k) || c.situacao === "touro" || c.situacao === "boi") return;
     const v = vistoDepois(k);
     if (!v.length) return;
     fora.push({ k, brinco: c.brinco ? String(c.brinco) : "s/ n\xBA", rot: categoriaCria(c), situacao: c.situacao === "morto" ? "Est\xE1 como morta" : "Est\xE1 como vendida", data: v[0].data, manejo: v[0].fonte, lote: v[0].lote || "" });
@@ -5438,6 +5459,214 @@ function confirmarNaFazenda(ix, idsNasc, lote, agora) {
   return out;
 }
 
+// src/situacao.js
+var ESCOLHAS_SITUACAO = [
+  { id: "mamando", nome: "Na fazenda, mamando", sit: "MAMANDO" },
+  { id: "desmamado", nome: "Na fazenda, desmamado(a)", sit: "NA FAZENDA" },
+  { id: "novilha", nome: "Virou novilha (entra nas matrizes)", soFemea: true },
+  { id: "touro", nome: "Virou touro da fazenda", sit: "TOURO", soMacho: true },
+  { id: "boi", nome: "Virou boi / garrote / rufi\xE3o", sit: "BOI", soMacho: true },
+  { id: "vendido", nome: "Vendido(a)", sit: "VENDIDO", data: true },
+  { id: "morto", nome: "Morto(a)", sit: "MORTO", data: true },
+  { id: "confirmar", nome: "A confirmar", sit: "A CONFIRMAR" }
+];
+function planoSituacaoCria(ix, nascId, escolha, op) {
+  const o = op || {};
+  const c = ix.criaPorId.get(nascId);
+  if (!c) return { erro: "Cria n\xE3o encontrada." };
+  const e = ESCOLHAS_SITUACAO.find((x) => x.id === escolha);
+  if (!e) return { erro: "Escolha a nova situa\xE7\xE3o." };
+  if (e.soFemea && c.sexo !== "F\xEAmea") return { erro: "S\xF3 f\xEAmea vira novilha." };
+  if (e.soMacho && c.sexo === "F\xEAmea") return { erro: "F\xEAmea n\xE3o vira touro ou boi." };
+  if (e.data && !o.data) return { erro: "Informe a data." };
+  if (c.novilha && escolha !== "novilha") return { erro: `Esta cria j\xE1 est\xE1 no cadastro de matrizes (brinco ${c.novilha.brinco}). Altere pelo cadastro da matriz.` };
+  const d = ix.dados;
+  const hoje = o.hoje || ix.hoje;
+  const now = o.agora || (/* @__PURE__ */ new Date()).toISOString();
+  const brinco = String(c.brinco || "").trim();
+  const out = { mudancas: { eventos: [], matrizes: [] }, touros: [], resumo: "" };
+  const lote = String(o.lote || "").trim();
+  if (escolha === "novilha") {
+    if (c.novilha) return { erro: "J\xE1 \xE9 novilha no cadastro." };
+    if (!brinco) return { erro: "A cria n\xE3o tem brinco." };
+    if (d.matrizes.some((m) => String(m.brinco).trim() === brinco && m.status !== "Vendida" && m.status !== "Morta")) return { erro: `J\xE1 existe matriz ativa com o brinco ${brinco}.` };
+    out.mudancas.matrizes.push({
+      id: idNovilha(nascId),
+      brinco: /^\d+$/.test(brinco) ? Number(brinco) : brinco,
+      categoria: "Novilha",
+      raca: racaDoHistorico(c.nasc) || "",
+      lote: padronizarLote(lote || "NOVILHAS", d.matrizes),
+      dataNascimento: c.nascData || "",
+      partosAnteriores: 0,
+      status: "Vazia",
+      destino: "",
+      dataBaixa: "",
+      motivoBaixa: "",
+      createdAt: now
+    });
+    if (c.situacaoDono) out.mudancas.eventos.push({ tipo: "nascimento", id: nascId, campos: { observacoes: String(c.nasc.observacoes || "").replace(/\s*(·\s*)?\[situa[çc][ãa]o definida pelo dono:[^\]]*\]/gi, "").trim() } });
+    out.resumo = `${brinco} virou novilha no lote ${out.mudancas.matrizes[0].lote}.`;
+    return out;
+  }
+  out.mudancas.eventos.push({ tipo: "nascimento", id: nascId, campos: { observacoes: marcarSituacaoDono(c.nasc.observacoes, e.sit, e.data ? o.data : "", hoje) } });
+  if (escolha === "touro" || escolha === "boi") {
+    const ja = (d.touros || []).find((t) => String(t.brinco || "").trim() === brinco && brinco);
+    if (!ja) {
+      const cat = escolha === "boi" ? CATEGORIAS_BOI.includes(o.categoria) ? o.categoria : "Boi" : "";
+      out.touros.push({
+        id: `${escolha === "touro" ? "tou" : "boi"}-cria-${nascId}`,
+        tipo: escolha === "touro" ? "Touro vivo" : "Boi",
+        nome: escolha === "touro" ? `Touro ${brinco || "s/ n\xBA"}` : `${cat} ${brinco || "s/ n\xBA"}`,
+        brinco,
+        raca: racaDoHistorico(c.nasc) || "",
+        dataNascimento: c.nascData || "",
+        lote,
+        origem: "Nascido na fazenda",
+        situacao: "",
+        mae: c.maeBrinco || "",
+        observacoes: `Cria ${brinco} nascida em ${c.nascData}${c.maeBrinco ? `, m\xE3e ${c.maeBrinco}` : ""}`,
+        createdAt: now
+      });
+    }
+    out.resumo = `${brinco} ${escolha === "touro" ? "virou touro da fazenda" : "virou boi"}${ja ? " (j\xE1 estava no cadastro de touros e bois)" : ", cadastrado em Rebanho"}.`;
+  } else {
+    out.resumo = `${brinco || "Cria"}: situa\xE7\xE3o alterada para "${e.nome}".`;
+  }
+  return out;
+}
+
+// src/telas/EditorCadastro.jsx
+import React5, { useMemo as useMemo5, useState as useState5 } from "react";
+import { Save as Save3 } from "lucide-react";
+var opcoes = (k) => (CAMPOS_EDICAO_MATRIZ.find((c) => c.key === k) || {}).options || [];
+var s = (v) => String(v ?? "").trim();
+function Campo2({ id, rot, valor, onChange, tipo = "text", lista: lista5, opc, extra }) {
+  return /* @__PURE__ */ React5.createElement("div", { className: "fld" }, /* @__PURE__ */ React5.createElement("label", { htmlFor: `ed-${id}` }, rot), opc ? /* @__PURE__ */ React5.createElement("select", { id: `ed-${id}`, value: valor ?? "", onChange: (e) => onChange(e.target.value) }, opc.map((o) => /* @__PURE__ */ React5.createElement("option", { key: o, value: o }, o || "(em branco)"))) : /* @__PURE__ */ React5.createElement("input", { id: `ed-${id}`, type: tipo, value: valor ?? "", list: lista5, inputMode: tipo === "number" ? "numeric" : void 0, onChange: (e) => onChange(e.target.value), ...extra }));
+}
+function EditorCadastro({ k }) {
+  const { ix, ownerMode, salvarMatriz, corrigirNascimento, salvarTouro } = useFicha();
+  const tipo = k[0];
+  const id = k.slice(2);
+  const orig = useMemo5(() => {
+    if (!ix) return null;
+    if (tipo === "m") return ix.matPorId.get(id) || null;
+    if (tipo === "c") {
+      const c = ix.criaPorId.get(id);
+      return c ? c.nasc : null;
+    }
+    return (ix.dados.touros || []).find((t) => t.id === id) || null;
+  }, [ix, tipo, id]);
+  const [f, setF] = useState5(() => ({ ...orig || {}, maeBrinco: tipo === "c" && orig && orig.matrizId ? s((ix.matPorId.get(orig.matrizId) || {}).brinco) : "" }));
+  const [msg, setMsg] = useState5(null);
+  const [gravando, setGravando] = useState5(false);
+  const listas = useMemo5(() => {
+    if (!ix) return { lotes: [], racas: [], maes: [] };
+    const d = ix.dados;
+    return {
+      lotes: [...new Set(d.matrizes.map((m) => m.lote).concat((d.touros || []).map((t) => t.lote)).filter(Boolean))].sort(),
+      racas: [...new Set(d.matrizes.map((m) => m.raca).filter(Boolean))].sort(),
+      maes: d.matrizes.map((m) => s(m.brinco)).filter(Boolean)
+    };
+  }, [ix]);
+  if (!ownerMode || !orig || !salvarMatriz && !corrigirNascimento && !salvarTouro) return null;
+  const set = (campo) => (v) => {
+    setF((x) => ({ ...x, [campo]: v }));
+    setMsg(null);
+  };
+  let campos;
+  if (tipo === "m") {
+    campos = [
+      ["brinco", "Brinco"],
+      ["categoria", "Categoria", null, opcoes("categoria")],
+      ["raca", "Ra\xE7a", "text", "ed-racas"],
+      ["lote", "Lote", "text", "ed-lotes"],
+      ["dataNascimento", "Nascimento", "date"],
+      ["partosAnteriores", "Partos antes da fazenda", "number"],
+      ["status", "Status", null, opcoes("status")]
+    ];
+    if (f.status === "Vendida" || f.status === "Morta") campos.push(["dataBaixa", f.status === "Morta" ? "Data da morte" : "Data da venda", "date"], ["motivoBaixa", "Motivo / causa"]);
+  } else if (tipo === "c") {
+    campos = [
+      ["brincoBezerro", "Brinco da cria"],
+      ["sexo", "Sexo", null, ["Macho", "F\xEAmea"]],
+      ["data", "Nascimento", "date"],
+      ["maeBrinco", "Brinco da m\xE3e", "text", "ed-maes"],
+      ["resultadoParto", "Resultado do parto", null, ["Vivo", "Natimorto"]],
+      ["pelagem", "Pelagem"],
+      ["tipoParto", "Tipo de parto", null, ["", "Normal", "Dist\xF3cico (com dificuldade)"]],
+      ["observacoes", "Observa\xE7\xF5es"]
+    ];
+  } else {
+    campos = [
+      ["nome", "Nome"],
+      ["brinco", "Brinco"],
+      ["raca", "Ra\xE7a", "text", "ed-racas"],
+      ["lote", "Lote", "text", "ed-lotes"],
+      ["dataNascimento", "Nascimento", "date"],
+      ["situacao", "Situa\xE7\xE3o", null, ["", "Vendido", "Morto"]],
+      ["dataSaida", "Data de sa\xEDda", "date"]
+    ];
+  }
+  const mudou = campos.some(([c]) => s(f[c]) !== s(c === "maeBrinco" ? orig.matrizId ? (ix.matPorId.get(orig.matrizId) || {}).brinco : "" : orig[c]));
+  async function salvar2() {
+    setGravando(true);
+    try {
+      if (tipo === "m") {
+        if (!s(f.brinco)) {
+          setMsg({ erro: true, t: "O brinco n\xE3o pode ficar vazio." });
+          return;
+        }
+        const outra = ix.dados.matrizes.find((m2) => m2.id !== orig.id && s(m2.brinco) === s(f.brinco) && m2.status !== "Vendida" && m2.status !== "Morta");
+        if (outra && f.status !== "Vendida" && f.status !== "Morta") {
+          setMsg({ erro: true, t: `J\xE1 existe outra matriz ativa com o brinco ${s(f.brinco)}.` });
+          return;
+        }
+        const ativa2 = f.status !== "Vendida" && f.status !== "Morta";
+        const m = {
+          ...orig,
+          brinco: /^\d+$/.test(s(f.brinco)) ? Number(s(f.brinco)) : s(f.brinco),
+          categoria: f.categoria,
+          raca: s(f.raca),
+          lote: padronizarLote(s(f.lote), ix.dados.matrizes.filter((x) => x.id !== orig.id)),
+          dataNascimento: s(f.dataNascimento),
+          partosAnteriores: parseInt(f.partosAnteriores, 10) || 0,
+          status: f.status,
+          dataBaixa: ativa2 ? "" : s(f.dataBaixa),
+          motivoBaixa: ativa2 ? "" : s(f.motivoBaixa)
+        };
+        salvarMatriz(m);
+        setMsg({ t: `Cadastro da ${m.brinco} salvo.${ativa2 && (orig.status === "Vendida" || orig.status === "Morta") ? " Voltou para o rebanho." : ""}` });
+      } else if (tipo === "c") {
+        const campos2 = {};
+        ["brincoBezerro", "sexo", "data", "resultadoParto", "pelagem", "tipoParto", "observacoes"].forEach((c) => {
+          if (s(f[c]) !== s(orig[c])) campos2[c] = f[c];
+        });
+        const maeAntes = orig.matrizId ? s((ix.matPorId.get(orig.matrizId) || {}).brinco) : "";
+        if (s(f.maeBrinco) !== maeAntes) {
+          const mae = ix.dados.matrizes.filter((m) => s(m.brinco) === s(f.maeBrinco));
+          if (!mae.length) {
+            setMsg({ erro: true, t: `A m\xE3e ${s(f.maeBrinco)} n\xE3o est\xE1 no cadastro. Cadastre a vaca primeiro.` });
+            return;
+          }
+          campos2.matrizId = (mae.find((m) => m.status !== "Vendida" && m.status !== "Morta") || mae[0]).id;
+        }
+        const r = await corrigirNascimento(orig.id, campos2);
+        setMsg({ erro: !r.ok, t: r.msg });
+      } else {
+        const t = { ...orig, nome: s(f.nome) || orig.nome, brinco: s(f.brinco), raca: s(f.raca), lote: s(f.lote), dataNascimento: s(f.dataNascimento), situacao: f.situacao || "", dataSaida: s(f.dataSaida) };
+        const e = salvarTouro(t);
+        setMsg(e ? { erro: true, t: e } : { t: `${t.nome} salvo.` });
+      }
+    } finally {
+      setGravando(false);
+    }
+  }
+  return /* @__PURE__ */ React5.createElement("section", { className: "fx-card full ed-card", "data-testid": "editor-cadastro", style: { marginBottom: 12 } }, /* @__PURE__ */ React5.createElement("h3", null, "Cadastro \xB7 corrigir aqui"), /* @__PURE__ */ React5.createElement("div", { className: "ed-grid" }, campos.map(([c, rot, tp, l]) => /* @__PURE__ */ React5.createElement(Campo2, { key: c, id: c, rot, valor: f[c], onChange: set(c), tipo: tp || "text", lista: Array.isArray(l) ? void 0 : l, opc: Array.isArray(l) ? l : void 0 }))), /* @__PURE__ */ React5.createElement("datalist", { id: "ed-lotes" }, listas.lotes.map((x) => /* @__PURE__ */ React5.createElement("option", { key: x, value: x }))), /* @__PURE__ */ React5.createElement("datalist", { id: "ed-racas" }, listas.racas.map((x) => /* @__PURE__ */ React5.createElement("option", { key: x, value: x }))), /* @__PURE__ */ React5.createElement("datalist", { id: "ed-maes" }, listas.maes.slice(0, 400).map((x) => /* @__PURE__ */ React5.createElement("option", { key: x, value: x }))), /* @__PURE__ */ React5.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 8 } }, /* @__PURE__ */ React5.createElement("button", { className: "btn sm", disabled: !mudou || gravando, onClick: salvar2, "data-testid": "editor-salvar" }, /* @__PURE__ */ React5.createElement(Save3, { size: 16 }), " Salvar altera\xE7\xF5es"), mudou && /* @__PURE__ */ React5.createElement("button", { className: "btn sm quiet", onClick: () => {
+    setF({ ...orig, maeBrinco: tipo === "c" && orig.matrizId ? s((ix.matPorId.get(orig.matrizId) || {}).brinco) : "" });
+    setMsg(null);
+  } }, "Desfazer"), msg && /* @__PURE__ */ React5.createElement("span", { className: "sub", style: { margin: 0, color: msg.erro ? "var(--late)" : "var(--green)" }, "data-testid": "editor-msg" }, msg.t)));
+}
+
 // src/telas/Ficha.jsx
 var br = (d) => d ? formatarDataBR(d) : "\u2014";
 var Ctx = createContext({ abrir: () => {
@@ -5445,36 +5674,36 @@ var Ctx = createContext({ abrir: () => {
 }, ix: null });
 var useFicha = () => useContext(Ctx);
 function Pill({ t, cor }) {
-  return /* @__PURE__ */ React5.createElement("span", { className: `fx-pill p-${cor || "gray"}` }, t);
+  return /* @__PURE__ */ React6.createElement("span", { className: `fx-pill p-${cor || "gray"}` }, t);
 }
 function LinhaAnimal({ k, extra }) {
   const { abrir, ix } = useFicha();
   const r = ix && resumoAnimal(ix, k, br);
   if (!r) return null;
-  return /* @__PURE__ */ React5.createElement("button", { className: "fx-li", onClick: () => abrir(k), "data-testid": `animal-${r.brinco}`, "aria-label": `Abrir ficha do ${r.rot} ${r.brinco}` }, /* @__PURE__ */ React5.createElement("span", { className: "fx-bb" }, r.brinco, /* @__PURE__ */ React5.createElement("small", null, r.rot)), /* @__PURE__ */ React5.createElement("span", { className: "fx-two" }, /* @__PURE__ */ React5.createElement("b", { style: r.cor ? { color: `var(--${r.cor === "late" ? "late" : r.cor})` } : void 0 }, r.titulo), /* @__PURE__ */ React5.createElement("span", null, r.linha)), extra || /* @__PURE__ */ React5.createElement(Pill, { t: r.pill.t, cor: r.pill.cor }));
+  return /* @__PURE__ */ React6.createElement("button", { className: "fx-li", onClick: () => abrir(k), "data-testid": `animal-${r.brinco}`, "aria-label": `Abrir ficha do ${r.rot} ${r.brinco}` }, /* @__PURE__ */ React6.createElement("span", { className: "fx-bb" }, r.brinco, /* @__PURE__ */ React6.createElement("small", null, r.rot)), /* @__PURE__ */ React6.createElement("span", { className: "fx-two" }, /* @__PURE__ */ React6.createElement("b", { style: r.cor ? { color: `var(--${r.cor === "late" ? "late" : r.cor})` } : void 0 }, r.titulo), /* @__PURE__ */ React6.createElement("span", null, r.linha)), extra || /* @__PURE__ */ React6.createElement(Pill, { t: r.pill.t, cor: r.pill.cor }));
 }
 function ListaAnimais({ chaves, vazio: vazio2, passo = 60 }) {
-  const [lim, setLim] = useState5(passo);
+  const [lim, setLim] = useState6(passo);
   useEffect3(() => setLim(passo), [chaves.length, passo]);
-  if (!chaves.length) return /* @__PURE__ */ React5.createElement("div", { className: "fx-lista" }, /* @__PURE__ */ React5.createElement("div", { className: "empty" }, vazio2 || "Nenhum animal com esse filtro."));
-  return /* @__PURE__ */ React5.createElement("div", { className: "fx-lista" }, chaves.slice(0, lim).map((k) => /* @__PURE__ */ React5.createElement(LinhaAnimal, { key: k, k })), chaves.length > lim && /* @__PURE__ */ React5.createElement("button", { className: "fx-mais", onClick: () => setLim((n) => n + 200) }, "Mostrar mais (", chaves.length - lim, ")"));
+  if (!chaves.length) return /* @__PURE__ */ React6.createElement("div", { className: "fx-lista" }, /* @__PURE__ */ React6.createElement("div", { className: "empty" }, vazio2 || "Nenhum animal com esse filtro."));
+  return /* @__PURE__ */ React6.createElement("div", { className: "fx-lista" }, chaves.slice(0, lim).map((k) => /* @__PURE__ */ React6.createElement(LinhaAnimal, { key: k, k })), chaves.length > lim && /* @__PURE__ */ React6.createElement("button", { className: "fx-mais", onClick: () => setLim((n) => n + 200) }, "Mostrar mais (", chaves.length - lim, ")"));
 }
 function Card({ titulo, n, children, full }) {
-  return /* @__PURE__ */ React5.createElement("section", { className: `fx-card${full ? " full" : ""}` }, /* @__PURE__ */ React5.createElement("h3", null, titulo, n !== void 0 && /* @__PURE__ */ React5.createElement("span", null, n)), children);
+  return /* @__PURE__ */ React6.createElement("section", { className: `fx-card${full ? " full" : ""}` }, /* @__PURE__ */ React6.createElement("h3", null, titulo, n !== void 0 && /* @__PURE__ */ React6.createElement("span", null, n)), children);
 }
 function Dl({ itens: itens2 }) {
-  return /* @__PURE__ */ React5.createElement("dl", { className: "fx-dl" }, itens2.filter(Boolean).map(([a, b], i) => /* @__PURE__ */ React5.createElement(React5.Fragment, { key: i }, /* @__PURE__ */ React5.createElement("dt", null, a), /* @__PURE__ */ React5.createElement("dd", null, b))));
+  return /* @__PURE__ */ React6.createElement("dl", { className: "fx-dl" }, itens2.filter(Boolean).map(([a, b], i) => /* @__PURE__ */ React6.createElement(React6.Fragment, { key: i }, /* @__PURE__ */ React6.createElement("dt", null, a), /* @__PURE__ */ React6.createElement("dd", null, b))));
 }
 function Link({ k, children }) {
   const { abrir } = useFicha();
-  return k ? /* @__PURE__ */ React5.createElement("button", { className: "fx-link", onClick: () => abrir(k) }, children) : /* @__PURE__ */ React5.createElement(React5.Fragment, null, children);
+  return k ? /* @__PURE__ */ React6.createElement("button", { className: "fx-link", onClick: () => abrir(k) }, children) : /* @__PURE__ */ React6.createElement(React6.Fragment, null, children);
 }
 function Vazio({ children }) {
-  return /* @__PURE__ */ React5.createElement("div", { className: "fx-vazio" }, children);
+  return /* @__PURE__ */ React6.createElement("div", { className: "fx-vazio" }, children);
 }
 function Peso({ pontos, gmd }) {
   const pts = (pontos || []).filter((p) => p.peso > 0);
-  if (!pts.length) return /* @__PURE__ */ React5.createElement(Card, { titulo: "Peso" }, /* @__PURE__ */ React5.createElement(Vazio, null, "Ainda n\xE3o foi pesado."));
+  if (!pts.length) return /* @__PURE__ */ React6.createElement(Card, { titulo: "Peso" }, /* @__PURE__ */ React6.createElement(Vazio, null, "Ainda n\xE3o foi pesado."));
   const W = 300;
   const H = 100;
   const pad = 8;
@@ -5488,25 +5717,25 @@ function Peso({ pontos, gmd }) {
   const Y = (y) => H - pad - (y1 === y0 ? (H - 2 * pad) / 2 : (y - y0) / (y1 - y0) * (H - 2 * pad));
   const d = pts.map((p, i) => `${i ? "L" : "M"}${X6(xs[i]).toFixed(1)},${Y(p.peso).toFixed(1)}`).join(" ");
   const u = pts[pts.length - 1];
-  return /* @__PURE__ */ React5.createElement(Card, { titulo: "Peso", n: `${pts.length} pesagem(ns)` }, /* @__PURE__ */ React5.createElement("div", { className: "fx-dest" }, /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("small", null, "\xDAltimo peso"), /* @__PURE__ */ React5.createElement("b", null, u.peso, " kg")), /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("small", null, "Em"), /* @__PURE__ */ React5.createElement("b", null, br(u.data))), gmd ? /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("small", null, "Ganho por dia"), /* @__PURE__ */ React5.createElement("b", null, String(Number(gmd).toFixed(2)).replace(".", ","), " kg")) : null), pts.length > 1 && /* @__PURE__ */ React5.createElement("svg", { className: "fx-spark", viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "none", role: "img", "aria-label": "Evolu\xE7\xE3o do peso" }, /* @__PURE__ */ React5.createElement("path", { d, fill: "none", stroke: "var(--green)", strokeWidth: "2.5", vectorEffect: "non-scaling-stroke" }), pts.map((p, i) => /* @__PURE__ */ React5.createElement("circle", { key: i, cx: X6(xs[i]), cy: Y(p.peso), r: "3.5", fill: "var(--green)" }))));
+  return /* @__PURE__ */ React6.createElement(Card, { titulo: "Peso", n: `${pts.length} pesagem(ns)` }, /* @__PURE__ */ React6.createElement("div", { className: "fx-dest" }, /* @__PURE__ */ React6.createElement("div", null, /* @__PURE__ */ React6.createElement("small", null, "\xDAltimo peso"), /* @__PURE__ */ React6.createElement("b", null, u.peso, " kg")), /* @__PURE__ */ React6.createElement("div", null, /* @__PURE__ */ React6.createElement("small", null, "Em"), /* @__PURE__ */ React6.createElement("b", null, br(u.data))), gmd ? /* @__PURE__ */ React6.createElement("div", null, /* @__PURE__ */ React6.createElement("small", null, "Ganho por dia"), /* @__PURE__ */ React6.createElement("b", null, String(Number(gmd).toFixed(2)).replace(".", ","), " kg")) : null), pts.length > 1 && /* @__PURE__ */ React6.createElement("svg", { className: "fx-spark", viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "none", role: "img", "aria-label": "Evolu\xE7\xE3o do peso" }, /* @__PURE__ */ React6.createElement("path", { d, fill: "none", stroke: "var(--green)", strokeWidth: "2.5", vectorEffect: "non-scaling-stroke" }), pts.map((p, i) => /* @__PURE__ */ React6.createElement("circle", { key: i, cx: X6(xs[i]), cy: Y(p.peso), r: "3.5", fill: "var(--green)" }))));
 }
 function Manejos({ dados, ids: ids4, brinco }) {
   const ms = manejosDoAnimal(dados, ids4, brinco);
-  return /* @__PURE__ */ React5.createElement(Card, { titulo: "Sanidade e manejos", n: ms.length }, !ms.length ? /* @__PURE__ */ React5.createElement(Vazio, null, "Nenhum manejo registrado para este animal.") : ms.slice(0, 10).map((m) => /* @__PURE__ */ React5.createElement("div", { className: "fx-row", key: m.id }, /* @__PURE__ */ React5.createElement("span", { className: "d" }, br(m.data)), /* @__PURE__ */ React5.createElement("span", null, m.titulo, m.aplic && /* @__PURE__ */ React5.createElement("small", null, m.aplic), m.nota && /* @__PURE__ */ React5.createElement("small", { style: { color: "var(--amber)" } }, "Obs.: ", m.nota)), /* @__PURE__ */ React5.createElement("span", null, m.lote ? /* @__PURE__ */ React5.createElement(Pill, { t: m.lote }) : null))));
+  return /* @__PURE__ */ React6.createElement(Card, { titulo: "Sanidade e manejos", n: ms.length }, !ms.length ? /* @__PURE__ */ React6.createElement(Vazio, null, "Nenhum manejo registrado para este animal.") : ms.slice(0, 10).map((m) => /* @__PURE__ */ React6.createElement("div", { className: "fx-row", key: m.id }, /* @__PURE__ */ React6.createElement("span", { className: "d" }, br(m.data)), /* @__PURE__ */ React6.createElement("span", null, m.titulo, m.aplic && /* @__PURE__ */ React6.createElement("small", null, m.aplic), m.nota && /* @__PURE__ */ React6.createElement("small", { style: { color: "var(--amber)" } }, "Obs.: ", m.nota)), /* @__PURE__ */ React6.createElement("span", null, m.lote ? /* @__PURE__ */ React6.createElement(Pill, { t: m.lote }) : null))));
 }
 function Linha({ itens: itens2 }) {
   const l = itens2.filter((x) => x.data).sort((a, b) => b.data.localeCompare(a.data));
   if (!l.length) return null;
-  return /* @__PURE__ */ React5.createElement(Card, { titulo: "Linha do tempo", n: l.length, full: true }, /* @__PURE__ */ React5.createElement("div", { className: "fx-tl" }, l.slice(0, 50).map((x, i) => /* @__PURE__ */ React5.createElement("div", { className: "ev", key: i, style: { "--c": `var(--${x.c || "mut"})` } }, /* @__PURE__ */ React5.createElement("small", null, br(x.data)), x.t, x.s ? /* @__PURE__ */ React5.createElement("span", null, " \xB7 ", x.s) : null))));
+  return /* @__PURE__ */ React6.createElement(Card, { titulo: "Linha do tempo", n: l.length, full: true }, /* @__PURE__ */ React6.createElement("div", { className: "fx-tl" }, l.slice(0, 50).map((x, i) => /* @__PURE__ */ React6.createElement("div", { className: "ev", key: i, style: { "--c": `var(--${x.c || "mut"})` } }, /* @__PURE__ */ React6.createElement("small", null, br(x.data)), x.t, x.s ? /* @__PURE__ */ React6.createElement("span", null, " \xB7 ", x.s) : null))));
 }
 function NoCurral({ ix, k }) {
   const v = vistoNoCurral(ix, k);
   const r = v.rodada;
-  if (v.naRodada) return /* @__PURE__ */ React5.createElement("div", { className: "fx-alerta ok", "data-testid": "no-curral" }, "Passou no curral em ", br(v.naRodada.data), " \xB7 ", v.naRodada.fonte, " (", r.nome, " da confer\xEAncia)");
-  return /* @__PURE__ */ React5.createElement("div", { className: "fx-alerta", "data-testid": "no-curral" }, "Ainda n\xE3o passou no curral na ", r.nome.toLowerCase(), " da confer\xEAncia (desde ", br(r.inicio), "). ", v.ultimo ? `\xDAltima vez: ${br(v.ultimo.data)} \xB7 ${v.ultimo.fonte}.` : "Nenhum manejo, toque ou pesagem registrado.");
+  if (v.naRodada) return /* @__PURE__ */ React6.createElement("div", { className: "fx-alerta ok", "data-testid": "no-curral" }, "Passou no curral em ", br(v.naRodada.data), " \xB7 ", v.naRodada.fonte, " (", r.nome, " da confer\xEAncia)");
+  return /* @__PURE__ */ React6.createElement("div", { className: "fx-alerta", "data-testid": "no-curral" }, "Ainda n\xE3o passou no curral na ", r.nome.toLowerCase(), " da confer\xEAncia (desde ", br(r.inicio), "). ", v.ultimo ? `\xDAltima vez: ${br(v.ultimo.data)} \xB7 ${v.ultimo.fonte}.` : "Nenhum manejo, toque ou pesagem registrado.");
 }
 function Cabecalho({ tipo, brinco, pills, linha, grande = true }) {
-  return /* @__PURE__ */ React5.createElement("div", { className: "fx-head" }, /* @__PURE__ */ React5.createElement("div", { className: "tipo" }, tipo), /* @__PURE__ */ React5.createElement("div", { className: "brinco", style: grande ? void 0 : { fontSize: 34 } }, brinco), /* @__PURE__ */ React5.createElement("div", { className: "pills" }, pills), linha && /* @__PURE__ */ React5.createElement("div", { className: "linha" }, linha));
+  return /* @__PURE__ */ React6.createElement("div", { className: "fx-head" }, /* @__PURE__ */ React6.createElement("div", { className: "tipo" }, tipo), /* @__PURE__ */ React6.createElement("div", { className: "brinco", style: grande ? void 0 : { fontSize: 34 } }, brinco), /* @__PURE__ */ React6.createElement("div", { className: "pills" }, pills), linha && /* @__PURE__ */ React6.createElement("div", { className: "linha" }, linha));
 }
 function FichaMatriz({ ix, m }) {
   const r = reproducaoDaMatriz(ix, m);
@@ -5525,31 +5754,64 @@ function FichaMatriz({ ix, m }) {
     ...evs.filter((e) => e.tipo === "descarte").map((e) => ({ data: e.data, t: "Descarte", s: e.motivo, c: "late" })),
     ...m.status === "Vendida" && m.dataBaixa ? [{ data: m.dataBaixa, t: "Vendida", c: "mut" }] : []
   ];
-  return /* @__PURE__ */ React5.createElement(React5.Fragment, null, /* @__PURE__ */ React5.createElement(
+  return /* @__PURE__ */ React6.createElement(React6.Fragment, null, /* @__PURE__ */ React6.createElement(
     Cabecalho,
     {
       tipo: `${m.categoria || "Matriz"}${m.raca ? ` \xB7 ${m.raca}` : ""}`,
       brinco: m.brinco,
-      pills: /* @__PURE__ */ React5.createElement(React5.Fragment, null, /* @__PURE__ */ React5.createElement(Pill, { t: m.status, cor: corStatus(m.status) }), m.lote && /* @__PURE__ */ React5.createElement(Pill, { t: m.lote }), r.ps.length > 0 && /* @__PURE__ */ React5.createElement(Pill, { t: `${r.ps.length} parto${r.ps.length > 1 ? "s" : ""}`, cor: "blue" }), m.destino && /* @__PURE__ */ React5.createElement(Pill, { t: `recria: ${m.destino}`, cor: "amber" })),
+      pills: /* @__PURE__ */ React6.createElement(React6.Fragment, null, /* @__PURE__ */ React6.createElement(Pill, { t: m.status, cor: corStatus(m.status) }), m.lote && /* @__PURE__ */ React6.createElement(Pill, { t: m.lote }), r.ps.length > 0 && /* @__PURE__ */ React6.createElement(Pill, { t: `${r.ps.length} parto${r.ps.length > 1 ? "s" : ""}`, cor: "blue" }), m.destino && /* @__PURE__ */ React6.createElement(Pill, { t: `recria: ${m.destino}`, cor: "amber" })),
       linha: r.nasc ? `Nascida em ${br(r.nasc)} \xB7 ${idadeCurta(r.nasc, ix.hoje)}` : "Nascimento n\xE3o informado"
     }
-  ), r.alertas.map((a, i) => /* @__PURE__ */ React5.createElement("div", { key: i, className: `fx-alerta${a.ruim ? " ruim" : ""}` }, a.t)), m.status !== "Vendida" && m.status !== "Morta" && /* @__PURE__ */ React5.createElement(NoCurral, { ix, k: `m:${m.id}` }), /* @__PURE__ */ React5.createElement("div", { className: "fx-grid" }, /* @__PURE__ */ React5.createElement(Card, { titulo: "Identifica\xE7\xE3o" }, /* @__PURE__ */ React5.createElement(Dl, { itens: [
+  ), /* @__PURE__ */ React6.createElement(EditorCadastro, { key: `m:${m.id}`, k: `m:${m.id}` }), r.alertas.map((a, i) => /* @__PURE__ */ React6.createElement("div", { key: i, className: `fx-alerta${a.ruim ? " ruim" : ""}` }, a.t)), m.status !== "Vendida" && m.status !== "Morta" && /* @__PURE__ */ React6.createElement(NoCurral, { ix, k: `m:${m.id}` }), /* @__PURE__ */ React6.createElement("div", { className: "fx-grid" }, /* @__PURE__ */ React6.createElement(Card, { titulo: "Identifica\xE7\xE3o" }, /* @__PURE__ */ React6.createElement(Dl, { itens: [
     ["Nascimento", br(r.nasc)],
     ["Idade", idadeCurta(r.nasc, ix.hoje) || "\u2014"],
     ["Ra\xE7a", m.raca || cria && racaDoHistorico(cria.nasc) || "\u2014"],
-    ["M\xE3e", cria && cria.matrizId ? /* @__PURE__ */ React5.createElement(Link, { k: `m:${cria.matrizId}` }, cria.maeBrinco) : cria && cria.maeBrinco || "\u2014"],
+    ["M\xE3e", cria && cria.matrizId ? /* @__PURE__ */ React6.createElement(Link, { k: `m:${cria.matrizId}` }, cria.maeBrinco) : cria && cria.maeBrinco || "\u2014"],
     ["Pai / origem", cria && cria.origem ? cria.origem.rotulo : "\u2014"],
     ["Lote", m.lote || "\u2014"],
     ["Partos antes de entrar", m.partosAnteriores || 0],
     (m.status === "Vendida" || m.status === "Morta") && ["Baixa", `${br(m.dataBaixa)} ${m.motivoBaixa || ""}`]
-  ] })), /* @__PURE__ */ React5.createElement(Card, { titulo: "Reprodu\xE7\xE3o agora" }, /* @__PURE__ */ React5.createElement("div", { className: "fx-dest" }, /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("small", null, "\xDAltimo toque"), /* @__PURE__ */ React5.createElement("b", null, ult ? ult.resultado : "\u2014"), /* @__PURE__ */ React5.createElement("small", null, ult ? `${br(ult.data)}${ult.dg ? ` \xB7 ${ult.dg} d` : ""}` : "")), /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("small", null, "Previs\xE3o de parto"), /* @__PURE__ */ React5.createElement("b", null, r.prev && r.prev.data ? br(r.prev.data) : "\u2014"), /* @__PURE__ */ React5.createElement("small", null, r.prev ? `pelo ${r.prev.origem}` : ""))), /* @__PURE__ */ React5.createElement(Dl, { itens: [
+  ] })), /* @__PURE__ */ React6.createElement(Card, { titulo: "Reprodu\xE7\xE3o agora" }, /* @__PURE__ */ React6.createElement("div", { className: "fx-dest" }, /* @__PURE__ */ React6.createElement("div", null, /* @__PURE__ */ React6.createElement("small", null, "\xDAltimo toque"), /* @__PURE__ */ React6.createElement("b", null, ult ? ult.resultado : "\u2014"), /* @__PURE__ */ React6.createElement("small", null, ult ? `${br(ult.data)}${ult.dg ? ` \xB7 ${ult.dg} d` : ""}` : "")), /* @__PURE__ */ React6.createElement("div", null, /* @__PURE__ */ React6.createElement("small", null, "Previs\xE3o de parto"), /* @__PURE__ */ React6.createElement("b", null, r.prev && r.prev.data ? br(r.prev.data) : "\u2014"), /* @__PURE__ */ React6.createElement("small", null, r.prev ? `pelo ${r.prev.origem}` : ""))), /* @__PURE__ */ React6.createElement(Dl, { itens: [
     ["\xDAltima IATF", r.iatfs[0] ? `${br(r.iatfs[0].data)}${r.touroIatf ? ` \xB7 ${r.touroIatf}` : ""}` : "\u2014"],
     ["\xDAltimo parto", r.ps[0] ? br(r.ps[0].data) : "\u2014"],
     ["Intervalo entre partos", r.ipp ? `${Math.round(r.ipp / 30.4)} meses (${r.ipp} d)` : "\u2014"]
-  ] })), m.categoria === "Novilha" && /* @__PURE__ */ React5.createElement(Card, { titulo: "Indu\xE7\xE3o", n: r.inds.length ? "induzida" : "n\xE3o induzida", full: true }, !r.inds.length ? /* @__PURE__ */ React5.createElement(Vazio, null, "Nenhuma indu\xE7\xE3o registrada. Fa\xE7a em Manejo > Indu\xE7\xE3o.") : r.inds.map((x) => /* @__PURE__ */ React5.createElement("div", { className: "fx-row", key: x.id }, /* @__PURE__ */ React5.createElement("span", { className: "d" }, br(x.data)), /* @__PURE__ */ React5.createElement("span", null, x.etapa, x.produtos.length > 0 && /* @__PURE__ */ React5.createElement("small", null, x.produtos.join(" + "))), /* @__PURE__ */ React5.createElement("span", null, x.res ? /* @__PURE__ */ React5.createElement(Pill, { t: x.res, cor: x.res === "Ciclando" ? "green" : "late" }) : null)))), /* @__PURE__ */ React5.createElement(Card, { titulo: "Partos e crias", n: r.ps.length, full: true }, !r.ps.length ? /* @__PURE__ */ React5.createElement(Vazio, null, "Nenhum parto registrado.") : r.ps.map((p) => {
+  ] })), m.categoria === "Novilha" && /* @__PURE__ */ React6.createElement(Card, { titulo: "Indu\xE7\xE3o", n: r.inds.length ? "induzida" : "n\xE3o induzida", full: true }, !r.inds.length ? /* @__PURE__ */ React6.createElement(Vazio, null, "Nenhuma indu\xE7\xE3o registrada. Fa\xE7a em Manejo > Indu\xE7\xE3o.") : r.inds.map((x) => /* @__PURE__ */ React6.createElement("div", { className: "fx-row", key: x.id }, /* @__PURE__ */ React6.createElement("span", { className: "d" }, br(x.data)), /* @__PURE__ */ React6.createElement("span", null, x.etapa, x.produtos.length > 0 && /* @__PURE__ */ React6.createElement("small", null, x.produtos.join(" + "))), /* @__PURE__ */ React6.createElement("span", null, x.res ? /* @__PURE__ */ React6.createElement(Pill, { t: x.res, cor: x.res === "Ciclando" ? "green" : "late" }) : null)))), /* @__PURE__ */ React6.createElement(Card, { titulo: "Partos e crias", n: r.ps.length, full: true }, !r.ps.length ? /* @__PURE__ */ React6.createElement(Vazio, null, "Nenhum parto registrado.") : r.ps.map((p) => {
     const c = ix.criaPorId.get(p.id);
-    return /* @__PURE__ */ React5.createElement("div", { className: "fx-row", key: p.id }, /* @__PURE__ */ React5.createElement("span", { className: "d" }, br(p.data)), /* @__PURE__ */ React5.createElement("span", null, c ? /* @__PURE__ */ React5.createElement(Link, { k: chaveDaCria(c) }, c.brinco || "s/ n\xBA") : p.brincoBezerro || "s/ n\xBA", " \xB7 ", p.sexo || "?", c && c.origem && /* @__PURE__ */ React5.createElement("small", null, c.origem.rotulo)), /* @__PURE__ */ React5.createElement("span", null, c ? /* @__PURE__ */ React5.createElement(Pill, { t: rotuloSit(c), cor: corSituacao(c.situacao) }) : p.resultadoParto === "Natimorto" ? /* @__PURE__ */ React5.createElement(Pill, { t: "Natimorto", cor: "late" }) : null));
-  })), /* @__PURE__ */ React5.createElement(Peso, { pontos: info.pontos }), /* @__PURE__ */ React5.createElement(Manejos, { dados: ix.dados, ids: [m.id], brinco: m.brinco }), /* @__PURE__ */ React5.createElement(Linha, { itens: tl })));
+    return /* @__PURE__ */ React6.createElement("div", { className: "fx-row", key: p.id }, /* @__PURE__ */ React6.createElement("span", { className: "d" }, br(p.data)), /* @__PURE__ */ React6.createElement("span", null, c ? /* @__PURE__ */ React6.createElement(Link, { k: chaveDaCria(c) }, c.brinco || "s/ n\xBA") : p.brincoBezerro || "s/ n\xBA", " \xB7 ", p.sexo || "?", c && c.origem && /* @__PURE__ */ React6.createElement("small", null, c.origem.rotulo)), /* @__PURE__ */ React6.createElement("span", null, c ? /* @__PURE__ */ React6.createElement(Pill, { t: rotuloSit(c), cor: corSituacao(c.situacao) }) : p.resultadoParto === "Natimorto" ? /* @__PURE__ */ React6.createElement(Pill, { t: "Natimorto", cor: "late" }) : null));
+  })), /* @__PURE__ */ React6.createElement(Peso, { pontos: info.pontos }), /* @__PURE__ */ React6.createElement(Manejos, { dados: ix.dados, ids: [m.id], brinco: m.brinco }), /* @__PURE__ */ React6.createElement(Linha, { itens: tl })));
+}
+function AlterarSituacao({ ix, c }) {
+  const { ownerMode, alterarSituacao } = useFicha();
+  const [aberto, setAberto] = useState6(false);
+  const [esc, setEsc] = useState6("");
+  const [data, setData] = useState6(ix.hoje);
+  const [lote, setLote] = useState6("");
+  const [cat, setCat] = useState6("Boi");
+  const [msg, setMsg] = useState6("");
+  if (!ownerMode || !alterarSituacao) return null;
+  const opcoes2 = ESCOLHAS_SITUACAO.filter((e2) => !(e2.soFemea && c.sexo !== "F\xEAmea") && !(e2.soMacho && c.sexo === "F\xEAmea") && e2.id !== c.situacao);
+  const e = ESCOLHAS_SITUACAO.find((x) => x.id === esc);
+  function gravar() {
+    const p = planoSituacaoCria(ix, c.id, esc, { data, lote, categoria: cat });
+    if (p.erro) {
+      setMsg(p.erro);
+      return;
+    }
+    setMsg(alterarSituacao(p) || p.resumo);
+    setAberto(false);
+    setEsc("");
+  }
+  if (!aberto) return /* @__PURE__ */ React6.createElement("div", { style: { margin: "0 0 12px" } }, /* @__PURE__ */ React6.createElement("button", { className: "btn sm quiet", onClick: () => {
+    setAberto(true);
+    setMsg("");
+  }, "data-testid": "alterar-situacao" }, "Alterar situa\xE7\xE3o (dono)"), msg && /* @__PURE__ */ React6.createElement("span", { className: "sub", style: { marginLeft: 8, color: "var(--green)" }, "data-testid": "alterar-situacao-msg" }, msg));
+  return /* @__PURE__ */ React6.createElement("div", { className: "fx-card", style: { marginBottom: 12, background: "var(--s2)" }, "data-testid": "alterar-situacao-painel" }, /* @__PURE__ */ React6.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Hoje: ", /* @__PURE__ */ React6.createElement("b", null, rotuloSit(c)), ". Escolha a situa\xE7\xE3o certa. Fica registrado no nascimento que foi o dono quem alterou."), /* @__PURE__ */ React6.createElement("div", { className: "fx-chips" }, opcoes2.map((x) => /* @__PURE__ */ React6.createElement("button", { key: x.id, className: `fx-cp${esc === x.id ? " on" : ""}`, "aria-pressed": esc === x.id, onClick: () => {
+    setEsc(x.id);
+    setMsg("");
+  } }, x.nome))), e && e.data && /* @__PURE__ */ React6.createElement("label", { className: "sub" }, "Data ", /* @__PURE__ */ React6.createElement("input", { type: "date", className: "fx-cp", value: data, onChange: (ev) => setData(ev.target.value), "aria-label": "Data da situa\xE7\xE3o" })), e && (esc === "novilha" || esc === "touro" || esc === "boi") && /* @__PURE__ */ React6.createElement("label", { className: "sub", style: { marginLeft: 8 } }, "Lote ", /* @__PURE__ */ React6.createElement("input", { className: "fx-cp", value: lote, onChange: (ev) => setLote(ev.target.value), placeholder: esc === "novilha" ? "NOVILHAS" : "ex.: Touro", "aria-label": "Lote" })), esc === "boi" && /* @__PURE__ */ React6.createElement("label", { className: "sub", style: { marginLeft: 8 } }, "Tipo ", /* @__PURE__ */ React6.createElement("select", { className: "fx-cp", value: cat, onChange: (ev) => setCat(ev.target.value), "aria-label": "Tipo de boi" }, ["Boi", "Garrote", "Rufi\xE3o", "Outro"].map((x) => /* @__PURE__ */ React6.createElement("option", { key: x }, x)))), esc === "touro" && /* @__PURE__ */ React6.createElement("p", { className: "sub" }, "Entra em Rebanho > Touros como touro vivo. Os dados de touro (androl\xF3gico etc.) voc\xEA completa por l\xE1."), /* @__PURE__ */ React6.createElement("div", { style: { display: "flex", gap: 8, marginTop: 8 } }, /* @__PURE__ */ React6.createElement("button", { className: "btn sm", disabled: !esc, onClick: gravar, "data-testid": "alterar-situacao-gravar" }, "Gravar"), /* @__PURE__ */ React6.createElement("button", { className: "btn sm quiet", onClick: () => {
+    setAberto(false);
+    setMsg("");
+  } }, "Cancelar")), msg && /* @__PURE__ */ React6.createElement("p", { className: "sub", style: { color: "var(--late)" } }, msg));
 }
 function FichaCria({ ix, c }) {
   const n = c.nasc;
@@ -5564,60 +5826,60 @@ function FichaCria({ ix, c }) {
     ...evs.filter((e) => e.tipo === "manejo").map((e) => ({ data: e.data, t: e.descricao || e.etapa || "Manejo", s: e.lote, c: "mut" }))
   ];
   const raca = racaDoHistorico(n);
-  return /* @__PURE__ */ React5.createElement(React5.Fragment, null, /* @__PURE__ */ React5.createElement(
+  return /* @__PURE__ */ React6.createElement(React6.Fragment, null, /* @__PURE__ */ React6.createElement(
     Cabecalho,
     {
       tipo: `${categoriaCria(c)}${raca ? ` \xB7 ${raca}` : ""}`,
       brinco: c.brinco || "s/ n\xBA",
-      pills: /* @__PURE__ */ React5.createElement(React5.Fragment, null, /* @__PURE__ */ React5.createElement(Pill, { t: rotuloSit(c), cor: corSituacao(c.situacao) }), /* @__PURE__ */ React5.createElement(Pill, { t: c.sexo || "sexo?", cor: c.sexo === "F\xEAmea" ? "amber" : "blue" }), c.orfa && /* @__PURE__ */ React5.createElement(Pill, { t: "\xD3rf\xE3", cor: "late" }), c.historico && /* @__PURE__ */ React5.createElement(Pill, { t: "Hist\xF3rico" })),
+      pills: /* @__PURE__ */ React6.createElement(React6.Fragment, null, /* @__PURE__ */ React6.createElement(Pill, { t: rotuloSit(c), cor: corSituacao(c.situacao) }), /* @__PURE__ */ React6.createElement(Pill, { t: c.sexo || "sexo?", cor: c.sexo === "F\xEAmea" ? "amber" : "blue" }), c.orfa && /* @__PURE__ */ React6.createElement(Pill, { t: "\xD3rf\xE3", cor: "late" }), c.historico && /* @__PURE__ */ React6.createElement(Pill, { t: "Hist\xF3rico" })),
       linha: `Nasceu em ${br(c.nascData)} \xB7 ${idadeTexto(c.nascData, ix.hoje)}`
     }
-  ), c.situacao === "confirmar" && /* @__PURE__ */ React5.createElement("div", { className: "fx-alerta" }, "Situa\xE7\xE3o a confirmar: n\xE3o se sabe se virou novilha, foi apartada, vendida ou est\xE1 a meia."), c.orfa && /* @__PURE__ */ React5.createElement("div", { className: "fx-alerta ruim" }, "A m\xE3e morreu: cria \xF3rf\xE3, mamando."), (c.situacao === "mamando" || c.situacao === "desmamado" || c.situacao === "confirmar") && /* @__PURE__ */ React5.createElement(NoCurral, { ix, k: `c:${c.id}` }), /* @__PURE__ */ React5.createElement("div", { className: "fx-grid" }, /* @__PURE__ */ React5.createElement(Card, { titulo: "Identifica\xE7\xE3o" }, /* @__PURE__ */ React5.createElement(Dl, { itens: [
+  ), /* @__PURE__ */ React6.createElement(EditorCadastro, { key: `c:${c.id}`, k: `c:${c.id}` }), c.situacao === "confirmar" && /* @__PURE__ */ React6.createElement("div", { className: "fx-alerta" }, "Situa\xE7\xE3o a confirmar: n\xE3o se sabe se virou novilha, foi apartada, vendida ou est\xE1 a meia."), c.situacaoDono && /* @__PURE__ */ React6.createElement("div", { className: "fx-alerta ok" }, "Situa\xE7\xE3o definida pelo dono", c.situacaoDono.data ? ` (${br(c.situacaoDono.data)})` : "", "."), /* @__PURE__ */ React6.createElement(AlterarSituacao, { ix, c }), c.orfa && /* @__PURE__ */ React6.createElement("div", { className: "fx-alerta ruim" }, "A m\xE3e morreu: cria \xF3rf\xE3, mamando."), (c.situacao === "mamando" || c.situacao === "desmamado" || c.situacao === "confirmar") && /* @__PURE__ */ React6.createElement(NoCurral, { ix, k: `c:${c.id}` }), /* @__PURE__ */ React6.createElement("div", { className: "fx-grid" }, /* @__PURE__ */ React6.createElement(Card, { titulo: "Identifica\xE7\xE3o" }, /* @__PURE__ */ React6.createElement(Dl, { itens: [
     ["Nascimento", br(c.nascData)],
     ["Idade", idadeTexto(c.nascData, ix.hoje) || "\u2014"],
     ["Sexo", c.sexo || "\u2014"],
-    ["M\xE3e", c.matrizId ? /* @__PURE__ */ React5.createElement(Link, { k: `m:${c.matrizId}` }, c.maeBrinco) : /* @__PURE__ */ React5.createElement(React5.Fragment, null, c.maeBrinco || "\u2014", c.maeFora ? /* @__PURE__ */ React5.createElement("span", { className: "mut" }, " (fora do cadastro)") : null)],
+    ["M\xE3e", c.matrizId ? /* @__PURE__ */ React6.createElement(Link, { k: `m:${c.matrizId}` }, c.maeBrinco) : /* @__PURE__ */ React6.createElement(React6.Fragment, null, c.maeBrinco || "\u2014", c.maeFora ? /* @__PURE__ */ React6.createElement("span", { className: "mut" }, " (fora do cadastro)") : null)],
     ["Pai / origem", c.origem ? c.origem.rotulo : "\u2014"],
     ["Tipo de parto", n.tipoParto || "\u2014"],
     ["Peso ao nascer", n.pesoNascer ? `${n.pesoNascer} kg` : "\u2014"],
     ["Pelagem", n.pelagem || "\u2014"],
     ["Registro", c.historico ? "Planilha antiga" : "Lan\xE7ado no app"]
-  ] })), /* @__PURE__ */ React5.createElement(Card, { titulo: "Situa\xE7\xE3o" }, /* @__PURE__ */ React5.createElement(Dl, { itens: [
+  ] })), /* @__PURE__ */ React6.createElement(Card, { titulo: "Situa\xE7\xE3o" }, /* @__PURE__ */ React6.createElement(Dl, { itens: [
     ["Agora", rotuloSit(c)],
     ["Desmama", br(c.desmamaData)],
     ["Venda", c.situacao === "vendido" ? br(c.vendaData) : "\u2014"],
     ["Morte", c.situacao === "morto" ? `${br(c.mortoData)}${c.causaMorte ? ` \xB7 ${c.causaMorte}` : ""}` : "\u2014"]
-  ] }), n.observacoes && /* @__PURE__ */ React5.createElement("p", { className: "fx-obs" }, n.observacoes)), /* @__PURE__ */ React5.createElement(Peso, { pontos: c.pontos.filter((p) => p.fonte !== "Nascimento" || p.peso), gmd: c.gmd }), /* @__PURE__ */ React5.createElement(Card, { titulo: "Irm\xE3os (mesma m\xE3e)", n: irmaos.length }, !irmaos.length ? /* @__PURE__ */ React5.createElement(Vazio, null, "Nenhum outro parto da m\xE3e registrado.") : irmaos.map((p) => {
+  ] }), n.observacoes && /* @__PURE__ */ React6.createElement("p", { className: "fx-obs" }, n.observacoes)), /* @__PURE__ */ React6.createElement(Peso, { pontos: c.pontos.filter((p) => p.fonte !== "Nascimento" || p.peso), gmd: c.gmd }), /* @__PURE__ */ React6.createElement(Card, { titulo: "Irm\xE3os (mesma m\xE3e)", n: irmaos.length }, !irmaos.length ? /* @__PURE__ */ React6.createElement(Vazio, null, "Nenhum outro parto da m\xE3e registrado.") : irmaos.map((p) => {
     const x = ix.criaPorId.get(p.id);
-    return /* @__PURE__ */ React5.createElement("div", { className: "fx-row", key: p.id }, /* @__PURE__ */ React5.createElement("span", { className: "d" }, br(p.data)), /* @__PURE__ */ React5.createElement("span", null, x ? /* @__PURE__ */ React5.createElement(Link, { k: chaveDaCria(x) }, x.brinco || "s/ n\xBA") : p.brincoBezerro || "s/ n\xBA", " \xB7 ", p.sexo || ""), /* @__PURE__ */ React5.createElement("span", null, x ? /* @__PURE__ */ React5.createElement(Pill, { t: rotuloSit(x), cor: corSituacao(x.situacao) }) : null));
-  })), /* @__PURE__ */ React5.createElement(Manejos, { dados: ix.dados, ids: [c.id], brinco: c.brinco }), /* @__PURE__ */ React5.createElement(Linha, { itens: tl })));
+    return /* @__PURE__ */ React6.createElement("div", { className: "fx-row", key: p.id }, /* @__PURE__ */ React6.createElement("span", { className: "d" }, br(p.data)), /* @__PURE__ */ React6.createElement("span", null, x ? /* @__PURE__ */ React6.createElement(Link, { k: chaveDaCria(x) }, x.brinco || "s/ n\xBA") : p.brincoBezerro || "s/ n\xBA", " \xB7 ", p.sexo || ""), /* @__PURE__ */ React6.createElement("span", null, x ? /* @__PURE__ */ React6.createElement(Pill, { t: rotuloSit(x), cor: corSituacao(x.situacao) }) : null));
+  })), /* @__PURE__ */ React6.createElement(Manejos, { dados: ix.dados, ids: [c.id], brinco: c.brinco }), /* @__PURE__ */ React6.createElement(Linha, { itens: tl })));
 }
 function FichaTouro({ ix, t }) {
   const filhos = ix.crias.filter((c) => c.origem && c.origem.pai && String(c.origem.pai).toUpperCase().includes(String(t.nome || "").toUpperCase()));
   const M = filhos.filter((c) => c.sexo === "Macho").length;
-  return /* @__PURE__ */ React5.createElement(React5.Fragment, null, /* @__PURE__ */ React5.createElement(
+  return /* @__PURE__ */ React6.createElement(React6.Fragment, null, /* @__PURE__ */ React6.createElement(
     Cabecalho,
     {
       tipo: `${t.tipo || "Touro / s\xEAmen"}${t.raca ? ` \xB7 ${t.raca}` : ""}`,
       brinco: t.nome,
       grande: false,
-      pills: /* @__PURE__ */ React5.createElement(React5.Fragment, null, /* @__PURE__ */ React5.createElement(Pill, { t: t.tipo === "Touro vivo" ? "Touro vivo" : "S\xEAmen", cor: "blue" }), t.situacao && /* @__PURE__ */ React5.createElement(Pill, { t: t.situacao }))
+      pills: /* @__PURE__ */ React6.createElement(React6.Fragment, null, /* @__PURE__ */ React6.createElement(Pill, { t: t.tipo === "Touro vivo" ? "Touro vivo" : "S\xEAmen", cor: "blue" }), t.situacao && /* @__PURE__ */ React6.createElement(Pill, { t: t.situacao }))
     }
-  ), /* @__PURE__ */ React5.createElement("div", { className: "fx-grid" }, /* @__PURE__ */ React5.createElement(Card, { titulo: "Dados" }, /* @__PURE__ */ React5.createElement(Dl, { itens: [["Ra\xE7a", t.raca || "\u2014"], t.tipo !== "Touro vivo" && ["Doses", t.doses ?? "\u2014"], ["Fornecedor", t.fornecedor || t.vendedor || "\u2014"], t.brinco && ["Brinco", t.brinco], t.lote && ["Lote", t.lote]] }), t.observacoes && /* @__PURE__ */ React5.createElement("p", { className: "fx-obs" }, t.observacoes)), /* @__PURE__ */ React5.createElement(Card, { titulo: "Filhos registrados", n: filhos.length }, /* @__PURE__ */ React5.createElement("div", { className: "fx-dest" }, /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("small", null, "Machos"), /* @__PURE__ */ React5.createElement("b", null, M)), /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("small", null, "F\xEAmeas"), /* @__PURE__ */ React5.createElement("b", null, filhos.length - M))), filhos.slice(0, 15).map((c) => /* @__PURE__ */ React5.createElement("div", { className: "fx-row", key: c.id }, /* @__PURE__ */ React5.createElement("span", { className: "d" }, br(c.nascData)), /* @__PURE__ */ React5.createElement("span", null, /* @__PURE__ */ React5.createElement(Link, { k: chaveDaCria(c) }, c.brinco || "s/ n\xBA"), " \xB7 m\xE3e ", c.maeBrinco || "?"), /* @__PURE__ */ React5.createElement("span", null, /* @__PURE__ */ React5.createElement(Pill, { t: rotuloSit(c), cor: corSituacao(c.situacao) })))))));
+  ), t.tipo === "Touro vivo" && /* @__PURE__ */ React6.createElement(EditorCadastro, { key: `t:${t.id}`, k: `t:${t.id}` }), /* @__PURE__ */ React6.createElement("div", { className: "fx-grid" }, /* @__PURE__ */ React6.createElement(Card, { titulo: "Dados" }, /* @__PURE__ */ React6.createElement(Dl, { itens: [["Ra\xE7a", t.raca || "\u2014"], t.tipo !== "Touro vivo" && ["Doses", t.doses ?? "\u2014"], ["Fornecedor", t.fornecedor || t.vendedor || "\u2014"], t.brinco && ["Brinco", t.brinco], t.lote && ["Lote", t.lote]] }), t.observacoes && /* @__PURE__ */ React6.createElement("p", { className: "fx-obs" }, t.observacoes)), /* @__PURE__ */ React6.createElement(Card, { titulo: "Filhos registrados", n: filhos.length }, /* @__PURE__ */ React6.createElement("div", { className: "fx-dest" }, /* @__PURE__ */ React6.createElement("div", null, /* @__PURE__ */ React6.createElement("small", null, "Machos"), /* @__PURE__ */ React6.createElement("b", null, M)), /* @__PURE__ */ React6.createElement("div", null, /* @__PURE__ */ React6.createElement("small", null, "F\xEAmeas"), /* @__PURE__ */ React6.createElement("b", null, filhos.length - M))), filhos.slice(0, 15).map((c) => /* @__PURE__ */ React6.createElement("div", { className: "fx-row", key: c.id }, /* @__PURE__ */ React6.createElement("span", { className: "d" }, br(c.nascData)), /* @__PURE__ */ React6.createElement("span", null, /* @__PURE__ */ React6.createElement(Link, { k: chaveDaCria(c) }, c.brinco || "s/ n\xBA"), " \xB7 m\xE3e ", c.maeBrinco || "?"), /* @__PURE__ */ React6.createElement("span", null, /* @__PURE__ */ React6.createElement(Pill, { t: rotuloSit(c), cor: corSituacao(c.situacao) })))))));
 }
 function FichaBoi({ ix, t }) {
   const pts = pesagensBoi(ix.dados, t);
   const ativo = boiAtivo(t);
   const evs = (ix.dados.eventos || []).filter((e) => e.tipo === "manejo" && String(e.presentes || "").split(",").includes(t.id));
-  return /* @__PURE__ */ React5.createElement(React5.Fragment, null, /* @__PURE__ */ React5.createElement(
+  return /* @__PURE__ */ React6.createElement(React6.Fragment, null, /* @__PURE__ */ React6.createElement(
     Cabecalho,
     {
       tipo: `${categoriaBoi(t)}${t.raca ? ` \xB7 ${t.raca}` : ""}`,
       brinco: t.brinco || t.nome,
-      pills: /* @__PURE__ */ React5.createElement(React5.Fragment, null, /* @__PURE__ */ React5.createElement(Pill, { t: ativo ? "Na fazenda" : "Saiu", cor: ativo ? "green" : "gray" }), t.lote && /* @__PURE__ */ React5.createElement(Pill, { t: t.lote })),
+      pills: /* @__PURE__ */ React6.createElement(React6.Fragment, null, /* @__PURE__ */ React6.createElement(Pill, { t: ativo ? "Na fazenda" : "Saiu", cor: ativo ? "green" : "gray" }), t.lote && /* @__PURE__ */ React6.createElement(Pill, { t: t.lote })),
       linha: t.dataNascimento ? `Nascido em ${br(t.dataNascimento)} \xB7 ${idadeCurta(t.dataNascimento, ix.hoje)}` : t.dataCompra ? `Entrou em ${br(t.dataCompra)}` : ""
     }
-  ), ativo && /* @__PURE__ */ React5.createElement(NoCurral, { ix, k: `t:${t.id}` }), /* @__PURE__ */ React5.createElement("div", { className: "fx-grid" }, /* @__PURE__ */ React5.createElement(Card, { titulo: "Identifica\xE7\xE3o" }, /* @__PURE__ */ React5.createElement(Dl, { itens: [
+  ), /* @__PURE__ */ React6.createElement(EditorCadastro, { key: `t:${t.id}`, k: `t:${t.id}` }), ativo && /* @__PURE__ */ React6.createElement(NoCurral, { ix, k: `t:${t.id}` }), /* @__PURE__ */ React6.createElement("div", { className: "fx-grid" }, /* @__PURE__ */ React6.createElement(Card, { titulo: "Identifica\xE7\xE3o" }, /* @__PURE__ */ React6.createElement(Dl, { itens: [
     ["Nome / apelido", t.nome && t.nome !== t.brinco ? t.nome : "\u2014"],
     ["Ra\xE7a", t.raca || "\u2014"],
     ["Origem", t.origem || "\u2014"],
@@ -5626,15 +5888,20 @@ function FichaBoi({ ix, t }) {
     ["Vendedor", t.vendedor || "\u2014"],
     ["Lote", t.lote || "\u2014"],
     !ativo && ["Sa\xEDda", `${br(t.dataSaida)} ${t.motivoSaida || ""}`]
-  ] }), t.observacoes && /* @__PURE__ */ React5.createElement("p", { className: "fx-obs" }, t.observacoes)), /* @__PURE__ */ React5.createElement(Peso, { pontos: pts }), /* @__PURE__ */ React5.createElement(Card, { titulo: "Manejos", n: evs.length }, !evs.length ? /* @__PURE__ */ React5.createElement(Vazio, null, "Nenhum manejo registrado.") : evs.map((e) => /* @__PURE__ */ React5.createElement("div", { className: "fx-row", key: e.id }, /* @__PURE__ */ React5.createElement("span", { className: "d" }, br(e.data)), /* @__PURE__ */ React5.createElement("span", null, e.descricao || e.etapa), /* @__PURE__ */ React5.createElement("span", null))))));
+  ] }), t.observacoes && /* @__PURE__ */ React6.createElement("p", { className: "fx-obs" }, t.observacoes)), /* @__PURE__ */ React6.createElement(Peso, { pontos: pts }), /* @__PURE__ */ React6.createElement(Card, { titulo: "Manejos", n: evs.length }, !evs.length ? /* @__PURE__ */ React6.createElement(Vazio, null, "Nenhum manejo registrado.") : evs.map((e) => /* @__PURE__ */ React6.createElement("div", { className: "fx-row", key: e.id }, /* @__PURE__ */ React6.createElement("span", { className: "d" }, br(e.data)), /* @__PURE__ */ React6.createElement("span", null, e.descricao || e.etapa), /* @__PURE__ */ React6.createElement("span", null))))));
 }
-function FichaProvider({ dados, hoje, ownerMode, children, onEditarMatriz, onEditarBoi }) {
-  const ix = useMemo5(() => indiceRebanho(dados, hoje), [dados, hoje]);
-  const [pilha, setPilha] = useState5([]);
-  const [busca, setBusca] = useState5(null);
+function FichaProvider({ dados, hoje, ownerMode, children, onEditarMatriz, onEditarBoi, onAlterarSituacao, onSalvarMatriz, onCorrigirNascimento, onSalvarTouro }) {
+  const ix = useMemo6(() => indiceRebanho(dados, hoje), [dados, hoje]);
+  const [pilha, setPilha] = useState6([]);
+  const [busca, setBusca] = useState6(null);
   const caixa = useRef3(null);
-  const valor = useMemo5(() => ({
+  const valor = useMemo6(() => ({
     ix,
+    ownerMode,
+    alterarSituacao: onAlterarSituacao,
+    salvarMatriz: onSalvarMatriz,
+    corrigirNascimento: onCorrigirNascimento,
+    salvarTouro: onSalvarTouro,
     abrir: (k2) => {
       setBusca(null);
       setPilha((p) => [...p, k2]);
@@ -5644,7 +5911,7 @@ function FichaProvider({ dados, hoje, ownerMode, children, onEditarMatriz, onEdi
       setPilha([]);
       setBusca(q || "");
     }
-  }), [ix]);
+  }), [ix, ownerMode, onAlterarSituacao, onSalvarMatriz, onCorrigirNascimento, onSalvarTouro]);
   const aberto = pilha.length > 0 || busca !== null;
   useEffect3(() => {
     document.body.style.overflow = aberto ? "hidden" : "";
@@ -5664,18 +5931,18 @@ function FichaProvider({ dados, hoje, ownerMode, children, onEditarMatriz, onEdi
     const id = k.slice(2);
     if (k[0] === "m") {
       const m = ix.matPorId.get(id);
-      corpo = m ? /* @__PURE__ */ React5.createElement(FichaMatriz, { ix, m }) : /* @__PURE__ */ React5.createElement(Vazio, null, "Animal n\xE3o encontrado.");
-      if (m && ownerMode && m.status !== "Vendida" && m.status !== "Morta") editar = () => onEditarMatriz(m);
+      corpo = m ? /* @__PURE__ */ React6.createElement(FichaMatriz, { ix, m }) : /* @__PURE__ */ React6.createElement(Vazio, null, "Animal n\xE3o encontrado.");
+      if (m && ownerMode && !onSalvarMatriz) editar = () => onEditarMatriz(m);
     } else if (k[0] === "c") {
       const c = ix.criaPorId.get(id);
-      corpo = c ? /* @__PURE__ */ React5.createElement(FichaCria, { ix, c }) : /* @__PURE__ */ React5.createElement(Vazio, null, "Animal n\xE3o encontrado.");
+      corpo = c ? /* @__PURE__ */ React6.createElement(FichaCria, { ix, c }) : /* @__PURE__ */ React6.createElement(Vazio, null, "Animal n\xE3o encontrado.");
     } else {
       const t = (dados.touros || []).find((x) => x.id === id);
-      corpo = !t ? /* @__PURE__ */ React5.createElement(Vazio, null, "Animal n\xE3o encontrado.") : ehBoi(t) ? /* @__PURE__ */ React5.createElement(FichaBoi, { ix, t }) : /* @__PURE__ */ React5.createElement(FichaTouro, { ix, t });
+      corpo = !t ? /* @__PURE__ */ React6.createElement(Vazio, null, "Animal n\xE3o encontrado.") : ehBoi(t) ? /* @__PURE__ */ React6.createElement(FichaBoi, { ix, t }) : /* @__PURE__ */ React6.createElement(FichaTouro, { ix, t });
       if (t && ehBoi(t) && ownerMode) editar = () => onEditarBoi(t);
     }
   }
-  return /* @__PURE__ */ React5.createElement(Ctx.Provider, { value: valor }, children, aberto && /* @__PURE__ */ React5.createElement("div", { className: "fx-sobre", ref: caixa, role: "dialog", "aria-modal": "true", "aria-label": k ? "Ficha do animal" : "Buscar animal" }, /* @__PURE__ */ React5.createElement("div", { className: "fx-barra" }, k ? /* @__PURE__ */ React5.createElement(React5.Fragment, null, /* @__PURE__ */ React5.createElement("button", { className: "chip lock", onClick: () => setPilha((p) => p.slice(0, -1)), "aria-label": "Voltar" }, /* @__PURE__ */ React5.createElement(ChevronLeft, { size: 18 })), /* @__PURE__ */ React5.createElement("b", { className: "fx-tit" }, "Ficha do animal"), /* @__PURE__ */ React5.createElement("button", { className: "chip lock", onClick: () => valor.buscar(""), "aria-label": "Buscar outro animal" }, /* @__PURE__ */ React5.createElement(Search2, { size: 17 }))) : /* @__PURE__ */ React5.createElement("label", { className: "fx-busca" }, /* @__PURE__ */ React5.createElement(Search2, { size: 19 }), /* @__PURE__ */ React5.createElement(
+  return /* @__PURE__ */ React6.createElement(Ctx.Provider, { value: valor }, children, aberto && /* @__PURE__ */ React6.createElement("div", { className: "fx-sobre", ref: caixa, role: "dialog", "aria-modal": "true", "aria-label": k ? "Ficha do animal" : "Buscar animal" }, /* @__PURE__ */ React6.createElement("div", { className: "fx-barra" }, k ? /* @__PURE__ */ React6.createElement(React6.Fragment, null, /* @__PURE__ */ React6.createElement("button", { className: "chip lock", onClick: () => setPilha((p) => p.slice(0, -1)), "aria-label": "Voltar" }, /* @__PURE__ */ React6.createElement(ChevronLeft, { size: 18 })), /* @__PURE__ */ React6.createElement("b", { className: "fx-tit" }, "Ficha do animal"), /* @__PURE__ */ React6.createElement("button", { className: "chip lock", onClick: () => valor.buscar(""), "aria-label": "Buscar outro animal" }, /* @__PURE__ */ React6.createElement(Search2, { size: 17 }))) : /* @__PURE__ */ React6.createElement("label", { className: "fx-busca" }, /* @__PURE__ */ React6.createElement(Search2, { size: 19 }), /* @__PURE__ */ React6.createElement(
     "input",
     {
       autoFocus: true,
@@ -5692,31 +5959,31 @@ function FichaProvider({ dados, hoje, ownerMode, children, onEditarMatriz, onEdi
         }
       }
     }
-  )), /* @__PURE__ */ React5.createElement("button", { className: "chip lock", onClick: () => {
+  )), /* @__PURE__ */ React6.createElement("button", { className: "chip lock", onClick: () => {
     setPilha([]);
     setBusca(null);
-  }, "aria-label": "Fechar" }, /* @__PURE__ */ React5.createElement(X2, { size: 18 }))), /* @__PURE__ */ React5.createElement("div", { className: "fx-corpo" }, k ? /* @__PURE__ */ React5.createElement(React5.Fragment, null, corpo, editar ? /* @__PURE__ */ React5.createElement("button", { className: "btn wide", style: { marginTop: 14 }, onClick: editar }, "Alterar cadastro") : /* @__PURE__ */ React5.createElement("p", { className: "sub", style: { marginTop: 14, display: "flex", gap: 8, alignItems: "center" } }, /* @__PURE__ */ React5.createElement(Lock, { size: 14 }), " Todos veem a ficha. Alterar cadastro s\xF3 com a senha.")) : /* @__PURE__ */ React5.createElement(ResultadoBusca, { ix, q: busca }))));
+  }, "aria-label": "Fechar" }, /* @__PURE__ */ React6.createElement(X2, { size: 18 }))), /* @__PURE__ */ React6.createElement("div", { className: "fx-corpo" }, k ? /* @__PURE__ */ React6.createElement(React6.Fragment, null, corpo, editar ? /* @__PURE__ */ React6.createElement("button", { className: "btn wide", style: { marginTop: 14 }, onClick: editar }, "Alterar cadastro") : ownerMode ? null : /* @__PURE__ */ React6.createElement("p", { className: "sub", style: { marginTop: 14, display: "flex", gap: 8, alignItems: "center" } }, /* @__PURE__ */ React6.createElement(Lock, { size: 14 }), " Todos veem a ficha. Alterar cadastro s\xF3 com a senha.")) : /* @__PURE__ */ React6.createElement(ResultadoBusca, { ix, q: busca }))));
 }
 function ResultadoBusca({ ix, q }) {
-  const r = useMemo5(() => buscarAnimais2(ix, q), [ix, q]);
+  const r = useMemo6(() => buscarAnimais2(ix, q), [ix, q]);
   const repetido = r.length > 1 && r.every((x) => x.exato);
-  return /* @__PURE__ */ React5.createElement(React5.Fragment, null, /* @__PURE__ */ React5.createElement("p", { className: "sub", style: { margin: "4px 2px 12px" } }, !String(q || "").trim() ? "Digite o brinco: vaca, novilha, cria, boi ou touro (ou o nome do touro)." : !r.length ? "Nenhum animal com esse brinco no banco." : repetido ? /* @__PURE__ */ React5.createElement(React5.Fragment, null, /* @__PURE__ */ React5.createElement("b", { style: { color: "var(--amber)" } }, "N\xFAmero repetido:"), " mais de um animal com esse brinco. Escolha qual.") : `${r.length} encontrado(s)`), r.length > 0 && /* @__PURE__ */ React5.createElement("div", { className: "fx-lista" }, r.map((x) => /* @__PURE__ */ React5.createElement(LinhaAnimal, { key: x.k, k: x.k }))));
+  return /* @__PURE__ */ React6.createElement(React6.Fragment, null, /* @__PURE__ */ React6.createElement("p", { className: "sub", style: { margin: "4px 2px 12px" } }, !String(q || "").trim() ? "Digite o brinco: vaca, novilha, cria, boi ou touro (ou o nome do touro)." : !r.length ? "Nenhum animal com esse brinco no banco." : repetido ? /* @__PURE__ */ React6.createElement(React6.Fragment, null, /* @__PURE__ */ React6.createElement("b", { style: { color: "var(--amber)" } }, "N\xFAmero repetido:"), " mais de um animal com esse brinco. Escolha qual.") : `${r.length} encontrado(s)`), r.length > 0 && /* @__PURE__ */ React6.createElement("div", { className: "fx-lista" }, r.map((x) => /* @__PURE__ */ React6.createElement(LinhaAnimal, { key: x.k, k: x.k }))));
 }
 
 // src/telas/Inducao.jsx
 var br2 = (d) => d ? formatarDataBR(d) : "\u2014";
 var PRODUTOS_ETAPA = { [ETAPAS_INDUCAO[0]]: ["Implante de progesterona"], [ETAPAS_INDUCAO[1]]: ["Cipionato de estradiol"], [ETAPAS_INDUCAO[2]]: [] };
 var ids3 = (v) => String(v || "").split(",").filter(Boolean);
-var Chip = ({ on, onClick, children, testid }) => /* @__PURE__ */ React6.createElement("button", { type: "button", className: `fx-cp${on ? " on" : ""}`, "aria-pressed": on, onClick, "data-testid": testid }, children);
+var Chip = ({ on, onClick, children, testid }) => /* @__PURE__ */ React7.createElement("button", { type: "button", className: `fx-cp${on ? " on" : ""}`, "aria-pressed": on, onClick, "data-testid": testid }, children);
 function Inducao({ dados, hoje, ownerMode, modoTeste, onGravarLote }) {
   const { ix, abrir } = useFicha();
-  const [form, setForm] = useState6(null);
-  const [msg, setMsg] = useState6(null);
-  const [salvando, setSalvando] = useState6(false);
-  const [q, setQ] = useState6("");
-  const [aviso, setAviso] = useState6("");
+  const [form, setForm] = useState7(null);
+  const [msg, setMsg] = useState7(null);
+  const [salvando, setSalvando] = useState7(false);
+  const [q, setQ] = useState7("");
+  const [aviso, setAviso] = useState7("");
   const corte = configCompleta(dados.config).pesoMatriz;
-  const novs = useMemo6(() => dados.matrizes.filter(noPlantel).filter((m) => m.categoria === "Novilha").map((m) => {
+  const novs = useMemo7(() => dados.matrizes.filter(noPlantel).filter((m) => m.categoria === "Novilha").map((m) => {
     const cria = ix && ix.criaDaMatriz.get(m.id);
     const nasc = m.dataNascimento || cria && cria.nascData || "";
     const inds = inducoesDe(dados, m.id);
@@ -5724,7 +5991,7 @@ function Inducao({ dados, hoje, ownerMode, modoTeste, onGravarLote }) {
   }), [dados, ix, hoje]);
   const naoInd = novs.filter((x) => !x.ind);
   const prontas = naoInd.filter((x) => x.u && x.u.peso >= corte);
-  const historico = useMemo6(() => dados.eventos.filter(ehInducao).sort((a, b) => b.data.localeCompare(a.data) || (b.createdAt || "").localeCompare(a.createdAt || "")), [dados.eventos]);
+  const historico = useMemo7(() => dados.eventos.filter(ehInducao).sort((a, b) => b.data.localeCompare(a.data) || (b.createdAt || "").localeCompare(a.createdAt || "")), [dados.eventos]);
   function nova() {
     setMsg(null);
     setForm({ data: hoje, etapa: ETAPAS_INDUCAO[0], produtos: PRODUTOS_ETAPA[ETAPAS_INDUCAO[0]], responsavel: "", observacoes: "", filtro: prontas.length ? "prontas" : "nao", marcadas: [], res: {}, ref: "" });
@@ -5780,7 +6047,7 @@ function Inducao({ dados, hoje, ownerMode, modoTeste, onGravarLote }) {
     setMsg({ tipo: "ok", t: `Indu\xE7\xE3o gravada: ${f.etapa}, ${f.marcadas.length} novilha(s)${aval2 ? `, ${cicl} ciclando` : ""}.${modoTeste ? " (modo teste: s\xF3 na tela)" : ""}${r.offline ? " Sem internet: vai para a planilha quando voltar." : ""}` });
   }
   if (!form) {
-    return /* @__PURE__ */ React6.createElement("div", { "data-testid": "inducao" }, msg && /* @__PURE__ */ React6.createElement(Aviso, { tipo: msg.tipo === "ok" ? "ok" : void 0, onClose: () => setMsg(null) }, msg.t), /* @__PURE__ */ React6.createElement("div", { className: "fx-resumo" }, /* @__PURE__ */ React6.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React6.createElement("small", null, "Novilhas no plantel"), /* @__PURE__ */ React6.createElement("b", null, novs.length)), /* @__PURE__ */ React6.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React6.createElement("small", null, "N\xE3o induzidas"), /* @__PURE__ */ React6.createElement("b", { style: { color: "var(--amber)" } }, naoInd.length)), /* @__PURE__ */ React6.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React6.createElement("small", null, "Prontas (\u2265 ", corte, " kg)"), /* @__PURE__ */ React6.createElement("b", { style: { color: "var(--green)" } }, prontas.length), /* @__PURE__ */ React6.createElement("i", null, "n\xE3o induzidas")), /* @__PURE__ */ React6.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React6.createElement("small", null, "Induzidas"), /* @__PURE__ */ React6.createElement("b", null, novs.length - naoInd.length))), /* @__PURE__ */ React6.createElement("p", { className: "sub" }, "A indu\xE7\xE3o segue por etapas, igual a um protocolo: ", /* @__PURE__ */ React6.createElement("b", null, "D0"), " coloca o implante de progesterona, ", /* @__PURE__ */ React6.createElement("b", null, "D12"), " retira e aplica o cipionato e, na ", /* @__PURE__ */ React6.createElement("b", null, "avalia\xE7\xE3o"), ' (toque), voc\xEA marca quem est\xE1 ciclando. A novilha passa a mostrar "Induzida em" no Rebanho e na ficha.'), /* @__PURE__ */ React6.createElement("button", { className: "btn wide", onClick: nova, "data-testid": "nova-inducao" }, /* @__PURE__ */ React6.createElement(Plus3, { size: 18 }), " Nova indu\xE7\xE3o"), /* @__PURE__ */ React6.createElement("section", { className: "fx-card", style: { marginTop: 14 } }, /* @__PURE__ */ React6.createElement("h3", null, "Indu\xE7\xF5es feitas", /* @__PURE__ */ React6.createElement("span", null, historico.length)), !historico.length ? /* @__PURE__ */ React6.createElement("div", { className: "fx-vazio" }, "Nenhuma indu\xE7\xE3o registrada ainda.") : historico.map((e) => {
+    return /* @__PURE__ */ React7.createElement("div", { "data-testid": "inducao" }, msg && /* @__PURE__ */ React7.createElement(Aviso, { tipo: msg.tipo === "ok" ? "ok" : void 0, onClose: () => setMsg(null) }, msg.t), /* @__PURE__ */ React7.createElement("div", { className: "fx-resumo" }, /* @__PURE__ */ React7.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React7.createElement("small", null, "Novilhas no plantel"), /* @__PURE__ */ React7.createElement("b", null, novs.length)), /* @__PURE__ */ React7.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React7.createElement("small", null, "N\xE3o induzidas"), /* @__PURE__ */ React7.createElement("b", { style: { color: "var(--amber)" } }, naoInd.length)), /* @__PURE__ */ React7.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React7.createElement("small", null, "Prontas (\u2265 ", corte, " kg)"), /* @__PURE__ */ React7.createElement("b", { style: { color: "var(--green)" } }, prontas.length), /* @__PURE__ */ React7.createElement("i", null, "n\xE3o induzidas")), /* @__PURE__ */ React7.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React7.createElement("small", null, "Induzidas"), /* @__PURE__ */ React7.createElement("b", null, novs.length - naoInd.length))), /* @__PURE__ */ React7.createElement("p", { className: "sub" }, "A indu\xE7\xE3o segue por etapas, igual a um protocolo: ", /* @__PURE__ */ React7.createElement("b", null, "D0"), " coloca o implante de progesterona, ", /* @__PURE__ */ React7.createElement("b", null, "D12"), " retira e aplica o cipionato e, na ", /* @__PURE__ */ React7.createElement("b", null, "avalia\xE7\xE3o"), ' (toque), voc\xEA marca quem est\xE1 ciclando. A novilha passa a mostrar "Induzida em" no Rebanho e na ficha.'), /* @__PURE__ */ React7.createElement("button", { className: "btn wide", onClick: nova, "data-testid": "nova-inducao" }, /* @__PURE__ */ React7.createElement(Plus3, { size: 18 }), " Nova indu\xE7\xE3o"), /* @__PURE__ */ React7.createElement("section", { className: "fx-card", style: { marginTop: 14 } }, /* @__PURE__ */ React7.createElement("h3", null, "Indu\xE7\xF5es feitas", /* @__PURE__ */ React7.createElement("span", null, historico.length)), !historico.length ? /* @__PURE__ */ React7.createElement("div", { className: "fx-vazio" }, "Nenhuma indu\xE7\xE3o registrada ainda.") : historico.map((e) => {
       const aval2 = /avalia/i.test(etapaDaInducao(e));
       const n = ids3(e.presentes).length;
       const nao = ids3(e.ausentes).length;
@@ -5789,7 +6056,7 @@ function Inducao({ dados, hoje, ownerMode, modoTeste, onGravarLote }) {
         prods = JSON.parse(e.aplicacoes || "[]").map((a) => a.produto).filter(Boolean);
       } catch (x) {
       }
-      return /* @__PURE__ */ React6.createElement("div", { className: "fx-row", key: e.id }, /* @__PURE__ */ React6.createElement("span", { className: "d" }, br2(e.data)), /* @__PURE__ */ React6.createElement("span", null, etapaDaInducao(e), /* @__PURE__ */ React6.createElement("small", null, [prods.join(" + "), e.responsavel].filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ React6.createElement("span", { className: `fx-pill p-${aval2 ? "green" : "blue"}` }, aval2 ? `${n} ciclando \xB7 ${nao} n\xE3o` : `${n} novilha(s)`));
+      return /* @__PURE__ */ React7.createElement("div", { className: "fx-row", key: e.id }, /* @__PURE__ */ React7.createElement("span", { className: "d" }, br2(e.data)), /* @__PURE__ */ React7.createElement("span", null, etapaDaInducao(e), /* @__PURE__ */ React7.createElement("small", null, [prods.join(" + "), e.responsavel].filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ React7.createElement("span", { className: `fx-pill p-${aval2 ? "green" : "blue"}` }, aval2 ? `${n} ciclando \xB7 ${nao} n\xE3o` : `${n} novilha(s)`));
     })));
   }
   const aval = form.etapa === ETAPAS_INDUCAO[2];
@@ -5817,7 +6084,7 @@ function Inducao({ dados, hoje, ownerMode, modoTeste, onGravarLote }) {
   lista5 = lista5.slice().sort((a, b) => (b.u && b.u.peso || 0) - (a.u && a.u.peso || 0) || String(a.m.brinco).localeCompare(String(b.m.brinco), "pt-BR", { numeric: true }));
   const produtos = opcoesAtuais("produtos", "");
   const pessoas = opcoesAtuais("pessoas", "");
-  return /* @__PURE__ */ React6.createElement("div", { "data-testid": "inducao-form" }, /* @__PURE__ */ React6.createElement("section", { className: "fx-card", style: { marginBottom: 12 } }, /* @__PURE__ */ React6.createElement("h3", null, "Nova indu\xE7\xE3o"), /* @__PURE__ */ React6.createElement("div", { className: "fld" }, /* @__PURE__ */ React6.createElement("label", { htmlFor: "ind-data" }, "Data"), /* @__PURE__ */ React6.createElement("input", { id: "ind-data", type: "date", value: form.data, onChange: (e) => set("data", e.target.value) })), /* @__PURE__ */ React6.createElement("div", { className: "fld", role: "group", "aria-label": "Etapa" }, /* @__PURE__ */ React6.createElement("span", { className: "lbl fx-lbl" }, "Etapa"), /* @__PURE__ */ React6.createElement("div", { className: "fx-chips" }, ETAPAS_INDUCAO.map((e) => /* @__PURE__ */ React6.createElement(Chip, { key: e, on: form.etapa === e, onClick: () => mudarEtapa(e), testid: `etapa-${e}` }, e)))), /* @__PURE__ */ React6.createElement("div", { className: "fld", role: "group", "aria-label": "Produtos" }, /* @__PURE__ */ React6.createElement("span", { className: "lbl fx-lbl" }, "Produtos aplicados"), /* @__PURE__ */ React6.createElement("div", { className: "fx-chips" }, produtos.map((p) => /* @__PURE__ */ React6.createElement(Chip, { key: p, on: form.produtos.includes(p), onClick: () => set("produtos", form.produtos.includes(p) ? form.produtos.filter((x) => x !== p) : [...form.produtos, p]) }, p)))), /* @__PURE__ */ React6.createElement("div", { className: "fld" }, /* @__PURE__ */ React6.createElement("label", { htmlFor: "ind-resp" }, "Respons\xE1vel"), /* @__PURE__ */ React6.createElement("input", { id: "ind-resp", list: "ind-pessoas", value: form.responsavel, onChange: (e) => set("responsavel", e.target.value) }), /* @__PURE__ */ React6.createElement("datalist", { id: "ind-pessoas" }, pessoas.map((p) => /* @__PURE__ */ React6.createElement("option", { key: p, value: p })))), /* @__PURE__ */ React6.createElement("div", { className: "fld" }, /* @__PURE__ */ React6.createElement("label", { htmlFor: "ind-obs" }, "Observa\xE7\xE3o"), /* @__PURE__ */ React6.createElement("input", { id: "ind-obs", value: form.observacoes, onChange: (e) => set("observacoes", e.target.value) }))), /* @__PURE__ */ React6.createElement("div", { className: "fx-chips" }, form.ref && /* @__PURE__ */ React6.createElement(Chip, { on: form.filtro === "continuar", onClick: () => set("filtro", "continuar") }, "Do \xFAltimo D0"), /* @__PURE__ */ React6.createElement(Chip, { on: form.filtro === "prontas", onClick: () => set("filtro", "prontas") }, "Prontas \u2265 ", corte, " kg", /* @__PURE__ */ React6.createElement("b", null, prontas.length)), /* @__PURE__ */ React6.createElement(Chip, { on: form.filtro === "nao", onClick: () => set("filtro", "nao") }, "N\xE3o induzidas", /* @__PURE__ */ React6.createElement("b", null, naoInd.length)), /* @__PURE__ */ React6.createElement(Chip, { on: form.filtro === "todas", onClick: () => set("filtro", "todas") }, "Todas", /* @__PURE__ */ React6.createElement("b", null, novs.length))), /* @__PURE__ */ React6.createElement("label", { className: "search fx-search", style: { marginTop: 4 } }, /* @__PURE__ */ React6.createElement(Search3, null), /* @__PURE__ */ React6.createElement(
+  return /* @__PURE__ */ React7.createElement("div", { "data-testid": "inducao-form" }, /* @__PURE__ */ React7.createElement("section", { className: "fx-card", style: { marginBottom: 12 } }, /* @__PURE__ */ React7.createElement("h3", null, "Nova indu\xE7\xE3o"), /* @__PURE__ */ React7.createElement("div", { className: "fld" }, /* @__PURE__ */ React7.createElement("label", { htmlFor: "ind-data" }, "Data"), /* @__PURE__ */ React7.createElement("input", { id: "ind-data", type: "date", value: form.data, onChange: (e) => set("data", e.target.value) })), /* @__PURE__ */ React7.createElement("div", { className: "fld", role: "group", "aria-label": "Etapa" }, /* @__PURE__ */ React7.createElement("span", { className: "lbl fx-lbl" }, "Etapa"), /* @__PURE__ */ React7.createElement("div", { className: "fx-chips" }, ETAPAS_INDUCAO.map((e) => /* @__PURE__ */ React7.createElement(Chip, { key: e, on: form.etapa === e, onClick: () => mudarEtapa(e), testid: `etapa-${e}` }, e)))), /* @__PURE__ */ React7.createElement("div", { className: "fld", role: "group", "aria-label": "Produtos" }, /* @__PURE__ */ React7.createElement("span", { className: "lbl fx-lbl" }, "Produtos aplicados"), /* @__PURE__ */ React7.createElement("div", { className: "fx-chips" }, produtos.map((p) => /* @__PURE__ */ React7.createElement(Chip, { key: p, on: form.produtos.includes(p), onClick: () => set("produtos", form.produtos.includes(p) ? form.produtos.filter((x) => x !== p) : [...form.produtos, p]) }, p)))), /* @__PURE__ */ React7.createElement("div", { className: "fld" }, /* @__PURE__ */ React7.createElement("label", { htmlFor: "ind-resp" }, "Respons\xE1vel"), /* @__PURE__ */ React7.createElement("input", { id: "ind-resp", list: "ind-pessoas", value: form.responsavel, onChange: (e) => set("responsavel", e.target.value) }), /* @__PURE__ */ React7.createElement("datalist", { id: "ind-pessoas" }, pessoas.map((p) => /* @__PURE__ */ React7.createElement("option", { key: p, value: p })))), /* @__PURE__ */ React7.createElement("div", { className: "fld" }, /* @__PURE__ */ React7.createElement("label", { htmlFor: "ind-obs" }, "Observa\xE7\xE3o"), /* @__PURE__ */ React7.createElement("input", { id: "ind-obs", value: form.observacoes, onChange: (e) => set("observacoes", e.target.value) }))), /* @__PURE__ */ React7.createElement("div", { className: "fx-chips" }, form.ref && /* @__PURE__ */ React7.createElement(Chip, { on: form.filtro === "continuar", onClick: () => set("filtro", "continuar") }, "Do \xFAltimo D0"), /* @__PURE__ */ React7.createElement(Chip, { on: form.filtro === "prontas", onClick: () => set("filtro", "prontas") }, "Prontas \u2265 ", corte, " kg", /* @__PURE__ */ React7.createElement("b", null, prontas.length)), /* @__PURE__ */ React7.createElement(Chip, { on: form.filtro === "nao", onClick: () => set("filtro", "nao") }, "N\xE3o induzidas", /* @__PURE__ */ React7.createElement("b", null, naoInd.length)), /* @__PURE__ */ React7.createElement(Chip, { on: form.filtro === "todas", onClick: () => set("filtro", "todas") }, "Todas", /* @__PURE__ */ React7.createElement("b", null, novs.length))), /* @__PURE__ */ React7.createElement("label", { className: "search fx-search", style: { marginTop: 4 } }, /* @__PURE__ */ React7.createElement(Search3, null), /* @__PURE__ */ React7.createElement(
     "input",
     {
       inputMode: "numeric",
@@ -5834,39 +6101,39 @@ function Inducao({ dados, hoje, ownerMode, modoTeste, onGravarLote }) {
         }
       }
     }
-  )), aviso && /* @__PURE__ */ React6.createElement("p", { className: "sub", style: { margin: "0 2px 8px", color: /marcada/.test(aviso) ? "var(--green)" : "var(--amber)" }, role: "status" }, aviso), /* @__PURE__ */ React6.createElement("div", { className: "contador" }, form.marcadas.length, " marcada(s)", qq ? ` \xB7 mostrando ${achadas.length} com "${qq}"` : ""), /* @__PURE__ */ React6.createElement("div", { className: "fx-lista", style: { marginTop: 8 } }, !lista5.length && /* @__PURE__ */ React6.createElement("div", { className: "empty" }, "Nenhuma novilha com esse filtro."), lista5.map((x) => {
+  )), aviso && /* @__PURE__ */ React7.createElement("p", { className: "sub", style: { margin: "0 2px 8px", color: /marcada/.test(aviso) ? "var(--green)" : "var(--amber)" }, role: "status" }, aviso), /* @__PURE__ */ React7.createElement("div", { className: "contador" }, form.marcadas.length, " marcada(s)", qq ? ` \xB7 mostrando ${achadas.length} com "${qq}"` : ""), /* @__PURE__ */ React7.createElement("div", { className: "fx-lista", style: { marginTop: 8 } }, !lista5.length && /* @__PURE__ */ React7.createElement("div", { className: "empty" }, "Nenhuma novilha com esse filtro."), lista5.map((x) => {
     const on = form.marcadas.includes(x.m.id);
-    return /* @__PURE__ */ React6.createElement("div", { key: x.m.id, className: `fx-li fx-marca${on ? " on" : ""}` }, /* @__PURE__ */ React6.createElement("button", { type: "button", className: "fx-marca-bt", onClick: () => marcar(x.m.id), "aria-pressed": on, "data-testid": `ind-${x.m.brinco}` }, /* @__PURE__ */ React6.createElement("span", { className: "fx-bb" }, x.m.brinco, /* @__PURE__ */ React6.createElement("small", null, on ? "\u2713 marcada" : "Novilha")), /* @__PURE__ */ React6.createElement("span", { className: "fx-two" }, /* @__PURE__ */ React6.createElement("b", null, x.u ? `${x.u.peso} kg` : "Sem peso", x.idade ? ` \xB7 ${x.idade.meses} meses` : ""), /* @__PURE__ */ React6.createElement("span", null, x.ult ? `${x.ult.etapa} em ${br2(x.ult.data)}` : "N\xE3o induzida", " \xB7 ", x.m.lote || "sem lote"))), aval && on ? /* @__PURE__ */ React6.createElement("span", { className: "fx-res" }, ["Ciclando", "N\xE3o"].map((r) => /* @__PURE__ */ React6.createElement("button", { key: r, type: "button", className: `fx-pill p-${form.res[x.m.id] === r ? r === "Ciclando" ? "green" : "late" : "gray"}`, onClick: () => set("res", { ...form.res, [x.m.id]: r }), "data-testid": `res-${x.m.brinco}-${r}` }, r))) : /* @__PURE__ */ React6.createElement("button", { type: "button", className: "fx-pill p-gray", onClick: () => abrir(`m:${x.m.id}`), "aria-label": `Ficha da novilha ${x.m.brinco}` }, "ficha"));
-  })), msg && /* @__PURE__ */ React6.createElement(Aviso, { tipo: msg.tipo === "ok" ? "ok" : void 0 }, msg.t), /* @__PURE__ */ React6.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } }, /* @__PURE__ */ React6.createElement("button", { className: "btn", style: { flex: 1 }, onClick: gravar, disabled: salvando, "data-testid": "gravar-inducao" }, salvando ? /* @__PURE__ */ React6.createElement(Loader23, { size: 17, className: "spin" }) : /* @__PURE__ */ React6.createElement(Save3, { size: 17 }), " Gravar (", form.marcadas.length, ")"), /* @__PURE__ */ React6.createElement("button", { className: "btn quiet", onClick: () => {
+    return /* @__PURE__ */ React7.createElement("div", { key: x.m.id, className: `fx-li fx-marca${on ? " on" : ""}` }, /* @__PURE__ */ React7.createElement("button", { type: "button", className: "fx-marca-bt", onClick: () => marcar(x.m.id), "aria-pressed": on, "data-testid": `ind-${x.m.brinco}` }, /* @__PURE__ */ React7.createElement("span", { className: "fx-bb" }, x.m.brinco, /* @__PURE__ */ React7.createElement("small", null, on ? "\u2713 marcada" : "Novilha")), /* @__PURE__ */ React7.createElement("span", { className: "fx-two" }, /* @__PURE__ */ React7.createElement("b", null, x.u ? `${x.u.peso} kg` : "Sem peso", x.idade ? ` \xB7 ${x.idade.meses} meses` : ""), /* @__PURE__ */ React7.createElement("span", null, x.ult ? `${x.ult.etapa} em ${br2(x.ult.data)}` : "N\xE3o induzida", " \xB7 ", x.m.lote || "sem lote"))), aval && on ? /* @__PURE__ */ React7.createElement("span", { className: "fx-res" }, ["Ciclando", "N\xE3o"].map((r) => /* @__PURE__ */ React7.createElement("button", { key: r, type: "button", className: `fx-pill p-${form.res[x.m.id] === r ? r === "Ciclando" ? "green" : "late" : "gray"}`, onClick: () => set("res", { ...form.res, [x.m.id]: r }), "data-testid": `res-${x.m.brinco}-${r}` }, r))) : /* @__PURE__ */ React7.createElement("button", { type: "button", className: "fx-pill p-gray", onClick: () => abrir(`m:${x.m.id}`), "aria-label": `Ficha da novilha ${x.m.brinco}` }, "ficha"));
+  })), msg && /* @__PURE__ */ React7.createElement(Aviso, { tipo: msg.tipo === "ok" ? "ok" : void 0 }, msg.t), /* @__PURE__ */ React7.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } }, /* @__PURE__ */ React7.createElement("button", { className: "btn", style: { flex: 1 }, onClick: gravar, disabled: salvando, "data-testid": "gravar-inducao" }, salvando ? /* @__PURE__ */ React7.createElement(Loader23, { size: 17, className: "spin" }) : /* @__PURE__ */ React7.createElement(Save4, { size: 17 }), " Gravar (", form.marcadas.length, ")"), /* @__PURE__ */ React7.createElement("button", { className: "btn quiet", onClick: () => {
     setForm(null);
     setMsg(null);
   } }, "Cancelar")));
 }
 
 // src/telas/Vacinas.jsx
-import React7, { useMemo as useMemo7, useState as useState7 } from "react";
-import { Syringe, FileDown as FileDown2, Loader2 as Loader24, Plus as Plus4, Trash2 as Trash23, Save as Save4 } from "lucide-react";
+import React8, { useMemo as useMemo8, useState as useState8 } from "react";
+import { Syringe, FileDown as FileDown2, Loader2 as Loader24, Plus as Plus4, Trash2 as Trash23, Save as Save5 } from "lucide-react";
 var NIVEL = { atrasada: "atrasada", pendente: "pendente", futura: "ok" };
 function Calendario({ dados, onSalvarConfig, onFechar }) {
-  const [regras, setRegras] = useState7(() => calendarioVacinas(dados.config));
-  const [diasMin, setDiasMin] = useState7(String((dados.config || {}).diasMinPosParto || DIAS_MIN_POS_PARTO_PADRAO));
-  const [ok, setOk] = useState7("");
+  const [regras, setRegras] = useState8(() => calendarioVacinas(dados.config));
+  const [diasMin, setDiasMin] = useState8(String((dados.config || {}).diasMinPosParto || DIAS_MIN_POS_PARTO_PADRAO));
+  const [ok, setOk] = useState8("");
   const mudar = (i, k, v) => setRegras((rs) => rs.map((r, j) => j === i ? { ...r, [k]: v } : r));
   function salvar2() {
     onSalvarConfig({ calendarioVacinas: JSON.stringify(regras.filter((r) => String(r.nome || "").trim())), diasMinPosParto: parseInt(diasMin, 10) || DIAS_MIN_POS_PARTO_PADRAO });
     setOk("Calend\xE1rio salvo.");
   }
-  return /* @__PURE__ */ React7.createElement("section", { className: "sheet pad", "data-testid": "calendario-vacinas" }, /* @__PURE__ */ React7.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Calend\xE1rio de vacinas"), regras.map((r, i) => /* @__PURE__ */ React7.createElement("div", { key: r.id, style: { borderBottom: "1px solid var(--line2)", padding: "10px 0" } }, /* @__PURE__ */ React7.createElement("label", { style: { display: "flex", gap: 8, alignItems: "center", fontWeight: 600 } }, /* @__PURE__ */ React7.createElement("input", { type: "checkbox", checked: r.ativo !== false, onChange: (e) => mudar(i, "ativo", e.target.checked), style: { width: 20, minHeight: 20 } }), r.tipo === "periodo" ? /* @__PURE__ */ React7.createElement("input", { "aria-label": "Nome da vacina", value: r.nome, onChange: (e) => mudar(i, "nome", e.target.value) }) : r.nome), /* @__PURE__ */ React7.createElement("div", { className: "sub", style: { margin: "4px 0 0 28px" } }, r.id === "reprodutiva" && "Matrizes: uma dose por ciclo (depois do parto). Vaca sem registro aparece para confirmar.", r.id === "lepto" && /* @__PURE__ */ React7.createElement(React7.Fragment, null, "Vaca cheia: refor\xE7o aos ", /* @__PURE__ */ React7.createElement("input", { "aria-label": "Meses de prenhez", style: { width: 60, minHeight: 34, display: "inline-block" }, value: r.meses, onChange: (e) => mudar(i, "meses", e.target.value) }), " meses de prenhez (obrigat\xF3rio)."), r.tipo === "idade" && /* @__PURE__ */ React7.createElement(React7.Fragment, null, "Bezerras de ", /* @__PURE__ */ React7.createElement("input", { "aria-label": "Idade m\xEDnima (meses)", style: { width: 54, minHeight: 34, display: "inline-block" }, value: r.idadeMin, onChange: (e) => mudar(i, "idadeMin", e.target.value) }), " a ", /* @__PURE__ */ React7.createElement("input", { "aria-label": "Idade m\xE1xima (meses)", style: { width: 54, minHeight: 34, display: "inline-block" }, value: r.idadeMax, onChange: (e) => mudar(i, "idadeMax", e.target.value) }), " meses, uma vez na vida."), r.tipo === "periodo" && /* @__PURE__ */ React7.createElement("span", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 6 } }, "Para ", /* @__PURE__ */ React7.createElement("select", { "aria-label": "Para quem", value: r.publico, onChange: (e) => mudar(i, "publico", e.target.value), style: { width: "auto", minHeight: 36 } }, /* @__PURE__ */ React7.createElement("option", { value: "matrizes" }, "matrizes"), /* @__PURE__ */ React7.createElement("option", { value: "cheias" }, "vacas cheias"), /* @__PURE__ */ React7.createElement("option", { value: "todos" }, "todas as vacas e novilhas")), "a cada ", /* @__PURE__ */ React7.createElement("input", { "aria-label": "Intervalo em meses", style: { width: 60, minHeight: 34 }, value: r.intervaloMeses, onChange: (e) => mudar(i, "intervaloMeses", e.target.value) }), " meses", /* @__PURE__ */ React7.createElement("button", { type: "button", className: "x-peq", "aria-label": "Tirar esta vacina", onClick: () => setRegras((rs) => rs.filter((_, j) => j !== i)) }, /* @__PURE__ */ React7.createElement(Trash23, { size: 16 })))))), /* @__PURE__ */ React7.createElement("button", { type: "button", className: "btn quiet sm", style: { marginTop: 10 }, onClick: () => setRegras((rs) => [...rs, { id: `v${Date.now()}`, nome: "", tipo: "periodo", publico: "matrizes", intervaloMeses: 12, ativo: true }]) }, /* @__PURE__ */ React7.createElement(Plus4, { size: 15 }), " Vacina peri\xF3dica (ex.: clostridioses, raiva)"), /* @__PURE__ */ React7.createElement("div", { className: "fld", style: { marginTop: 14 } }, /* @__PURE__ */ React7.createElement("label", { htmlFor: "dias-min" }, "Dias m\xEDnimos de parida para entrar no protocolo"), /* @__PURE__ */ React7.createElement("input", { id: "dias-min", type: "number", value: diasMin, onChange: (e) => setDiasMin(e.target.value) })), ok && /* @__PURE__ */ React7.createElement(Aviso, { tipo: "ok" }, ok), /* @__PURE__ */ React7.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React7.createElement("button", { className: "btn", onClick: salvar2 }, /* @__PURE__ */ React7.createElement(Save4, { size: 17 }), " Salvar calend\xE1rio"), /* @__PURE__ */ React7.createElement("button", { className: "btn quiet", onClick: onFechar }, "Voltar")));
+  return /* @__PURE__ */ React8.createElement("section", { className: "sheet pad", "data-testid": "calendario-vacinas" }, /* @__PURE__ */ React8.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Calend\xE1rio de vacinas"), regras.map((r, i) => /* @__PURE__ */ React8.createElement("div", { key: r.id, style: { borderBottom: "1px solid var(--line2)", padding: "10px 0" } }, /* @__PURE__ */ React8.createElement("label", { style: { display: "flex", gap: 8, alignItems: "center", fontWeight: 600 } }, /* @__PURE__ */ React8.createElement("input", { type: "checkbox", checked: r.ativo !== false, onChange: (e) => mudar(i, "ativo", e.target.checked), style: { width: 20, minHeight: 20 } }), r.tipo === "periodo" ? /* @__PURE__ */ React8.createElement("input", { "aria-label": "Nome da vacina", value: r.nome, onChange: (e) => mudar(i, "nome", e.target.value) }) : r.nome), /* @__PURE__ */ React8.createElement("div", { className: "sub", style: { margin: "4px 0 0 28px" } }, r.id === "reprodutiva" && "Matrizes: uma dose por ciclo (depois do parto). Vaca sem registro aparece para confirmar.", r.id === "lepto" && /* @__PURE__ */ React8.createElement(React8.Fragment, null, "Vaca cheia: refor\xE7o aos ", /* @__PURE__ */ React8.createElement("input", { "aria-label": "Meses de prenhez", style: { width: 60, minHeight: 34, display: "inline-block" }, value: r.meses, onChange: (e) => mudar(i, "meses", e.target.value) }), " meses de prenhez (obrigat\xF3rio)."), r.tipo === "idade" && /* @__PURE__ */ React8.createElement(React8.Fragment, null, "Bezerras de ", /* @__PURE__ */ React8.createElement("input", { "aria-label": "Idade m\xEDnima (meses)", style: { width: 54, minHeight: 34, display: "inline-block" }, value: r.idadeMin, onChange: (e) => mudar(i, "idadeMin", e.target.value) }), " a ", /* @__PURE__ */ React8.createElement("input", { "aria-label": "Idade m\xE1xima (meses)", style: { width: 54, minHeight: 34, display: "inline-block" }, value: r.idadeMax, onChange: (e) => mudar(i, "idadeMax", e.target.value) }), " meses, uma vez na vida."), r.tipo === "periodo" && /* @__PURE__ */ React8.createElement("span", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 6 } }, "Para ", /* @__PURE__ */ React8.createElement("select", { "aria-label": "Para quem", value: r.publico, onChange: (e) => mudar(i, "publico", e.target.value), style: { width: "auto", minHeight: 36 } }, /* @__PURE__ */ React8.createElement("option", { value: "matrizes" }, "matrizes"), /* @__PURE__ */ React8.createElement("option", { value: "cheias" }, "vacas cheias"), /* @__PURE__ */ React8.createElement("option", { value: "todos" }, "todas as vacas e novilhas")), "a cada ", /* @__PURE__ */ React8.createElement("input", { "aria-label": "Intervalo em meses", style: { width: 60, minHeight: 34 }, value: r.intervaloMeses, onChange: (e) => mudar(i, "intervaloMeses", e.target.value) }), " meses", /* @__PURE__ */ React8.createElement("button", { type: "button", className: "x-peq", "aria-label": "Tirar esta vacina", onClick: () => setRegras((rs) => rs.filter((_, j) => j !== i)) }, /* @__PURE__ */ React8.createElement(Trash23, { size: 16 })))))), /* @__PURE__ */ React8.createElement("button", { type: "button", className: "btn quiet sm", style: { marginTop: 10 }, onClick: () => setRegras((rs) => [...rs, { id: `v${Date.now()}`, nome: "", tipo: "periodo", publico: "matrizes", intervaloMeses: 12, ativo: true }]) }, /* @__PURE__ */ React8.createElement(Plus4, { size: 15 }), " Vacina peri\xF3dica (ex.: clostridioses, raiva)"), /* @__PURE__ */ React8.createElement("div", { className: "fld", style: { marginTop: 14 } }, /* @__PURE__ */ React8.createElement("label", { htmlFor: "dias-min" }, "Dias m\xEDnimos de parida para entrar no protocolo"), /* @__PURE__ */ React8.createElement("input", { id: "dias-min", type: "number", value: diasMin, onChange: (e) => setDiasMin(e.target.value) })), ok && /* @__PURE__ */ React8.createElement(Aviso, { tipo: "ok" }, ok), /* @__PURE__ */ React8.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React8.createElement("button", { className: "btn", onClick: salvar2 }, /* @__PURE__ */ React8.createElement(Save5, { size: 17 }), " Salvar calend\xE1rio"), /* @__PURE__ */ React8.createElement("button", { className: "btn quiet", onClick: onFechar }, "Voltar")));
 }
 function Vacinas({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarConfig }) {
-  const [vacinando, setVacinando] = useState7(null);
-  const [calendario, setCalendario] = useState7(false);
-  const [conf, setConf] = useState7({});
-  const [msg, setMsg] = useState7("");
-  const [pdf, setPdf] = useState7(false);
-  const [verFuturas, setVerFuturas] = useState7(false);
-  const pend = useMemo7(() => pendenciasVacinas(dados, dados.config, hoje), [dados, hoje]);
-  const grupos = useMemo7(() => {
+  const [vacinando, setVacinando] = useState8(null);
+  const [calendario, setCalendario] = useState8(false);
+  const [conf, setConf] = useState8({});
+  const [msg, setMsg] = useState8("");
+  const [pdf, setPdf] = useState8(false);
+  const [verFuturas, setVerFuturas] = useState8(false);
+  const pend = useMemo8(() => pendenciasVacinas(dados, dados.config, hoje), [dados, hoje]);
+  const grupos = useMemo8(() => {
     const mp = /* @__PURE__ */ new Map();
     pend.filter((p) => verFuturas || p.nivel !== "futura").forEach((p) => {
       if (!mp.has(p.regra.id)) mp.set(p.regra.id, { regra: p.regra, itens: [] });
@@ -5874,9 +6141,9 @@ function Vacinas({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarConf
     });
     return [...mp.values()];
   }, [pend, verFuturas]);
-  if (calendario && ownerMode) return /* @__PURE__ */ React7.createElement(Calendario, { dados, onSalvarConfig, onFechar: () => setCalendario(false) });
+  if (calendario && ownerMode) return /* @__PURE__ */ React8.createElement(Calendario, { dados, onSalvarConfig, onFechar: () => setCalendario(false) });
   if (vacinando) {
-    return /* @__PURE__ */ React7.createElement(ManejoCurral, { key: vacinando.titulo, dados, hoje, itensAvulsos: vacinando.itens, etapa: "Vacina\xE7\xE3o", titulo: vacinando.titulo, aplicacoesIniciais: vacinando.aplicacoes, modoTeste, onGravarLote, onVoltar: () => setVacinando(null) });
+    return /* @__PURE__ */ React8.createElement(ManejoCurral, { key: vacinando.titulo, dados, hoje, itensAvulsos: vacinando.itens, etapa: "Vacina\xE7\xE3o", titulo: vacinando.titulo, aplicacoesIniciais: vacinando.aplicacoes, modoTeste, onGravarLote, onVoltar: () => setVacinando(null) });
   }
   const tipoAplicacao = (regra) => regra.id === "reprodutiva" ? "Vacina reprodutiva" : regra.id === "lepto" ? "Refor\xE7o Lepto" : regra.id === "brucelose" ? "Brucelose" : regra.nome;
   function vacinar(g) {
@@ -5902,7 +6169,7 @@ function Vacinas({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarConf
     const r = await onGravarLote({ estado: { ...dados, eventos: [...dados.eventos, ev] }, eventosParaGravar: [{ tipo: "manejo", evento: ev }], matrizesParaGravar: [], tourosParaGravar: [] }, `vacina confirmada ${p.brinco}`);
     setMsg(r.ok ? `Vaca ${p.brinco}: vacina reprodutiva registrada em ${formatarDataBR(data)}.` : r.msg);
   }
-  return /* @__PURE__ */ React7.createElement("section", { "data-testid": "tela-vacinas" }, /* @__PURE__ */ React7.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 } }, /* @__PURE__ */ React7.createElement("button", { className: "btn sm", onClick: vacinacaoAvulsa }, /* @__PURE__ */ React7.createElement(Syringe, { size: 15 }), " Vacina\xE7\xE3o avulsa (escolher animais)"), /* @__PURE__ */ React7.createElement("button", { className: "btn ghost sm", disabled: pdf, onClick: async () => {
+  return /* @__PURE__ */ React8.createElement("section", { "data-testid": "tela-vacinas" }, /* @__PURE__ */ React8.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 } }, /* @__PURE__ */ React8.createElement("button", { className: "btn sm", onClick: vacinacaoAvulsa }, /* @__PURE__ */ React8.createElement(Syringe, { size: 15 }), " Vacina\xE7\xE3o avulsa (escolher animais)"), /* @__PURE__ */ React8.createElement("button", { className: "btn ghost sm", disabled: pdf, onClick: async () => {
     setPdf(true);
     try {
       await baixarPDF(relatorioVacinas(dados, dados.config, hoje));
@@ -5910,19 +6177,19 @@ function Vacinas({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarConf
       console.error(e);
     }
     setPdf(false);
-  } }, pdf ? /* @__PURE__ */ React7.createElement(Loader24, { size: 15, className: "spin" }) : /* @__PURE__ */ React7.createElement(FileDown2, { size: 15 }), " PDF das pend\xEAncias"), ownerMode && /* @__PURE__ */ React7.createElement("button", { className: "btn quiet sm", onClick: () => setCalendario(true) }, "Calend\xE1rio de vacinas"), /* @__PURE__ */ React7.createElement("button", { className: "btn quiet sm", onClick: () => setVerFuturas((v) => !v) }, verFuturas ? "S\xF3 as de agora" : "Ver tamb\xE9m as pr\xF3ximas")), msg && /* @__PURE__ */ React7.createElement(Aviso, { tipo: "ok", onClose: () => setMsg("") }, msg), grupos.length === 0 && /* @__PURE__ */ React7.createElement("div", { className: "sheet" }, /* @__PURE__ */ React7.createElement("div", { className: "empty" }, "Nenhuma vacina pendente agora.")), grupos.map((g) => /* @__PURE__ */ React7.createElement("div", { className: "grp-vac", key: g.regra.id, "data-testid": `grupo-${g.regra.id}` }, /* @__PURE__ */ React7.createElement("header", null, /* @__PURE__ */ React7.createElement("b", null, g.regra.nome, /* @__PURE__ */ React7.createElement("span", { className: "mut", style: { fontSize: 13, fontWeight: 500 } }, " \xB7 ", g.itens.length, " animal(is)")), /* @__PURE__ */ React7.createElement("button", { className: "btn sm", onClick: () => vacinar(g) }, /* @__PURE__ */ React7.createElement(Syringe, { size: 15 }), " Vacinar estes")), g.itens.map((p) => /* @__PURE__ */ React7.createElement("div", { key: `${g.regra.id}-${p.animalId}`, className: "led-r", style: { "--cols": "72px minmax(0,1fr)", minHeight: 54 } }, /* @__PURE__ */ React7.createElement("span", { className: "b" }, p.brinco), /* @__PURE__ */ React7.createElement("span", { className: "two" }, /* @__PURE__ */ React7.createElement("b", { style: { fontSize: 14 } }, [p.tipo, p.status].filter(Boolean).join(" \xB7 ")), /* @__PURE__ */ React7.createElement("span", { className: `vac-tag ${NIVEL[p.nivel]}`, style: { whiteSpace: "normal" } }, p.situacao), p.confirmar && /* @__PURE__ */ React7.createElement("span", { style: { display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 6, color: "var(--tx)" } }, "Foi vacinada?", /* @__PURE__ */ React7.createElement("input", { type: "date", "aria-label": `Data da vacina da ${p.brinco}`, value: conf[p.animalId] || hoje, onChange: (e) => setConf((c) => ({ ...c, [p.animalId]: e.target.value })), style: { width: "auto", minHeight: 34 } }), /* @__PURE__ */ React7.createElement("button", { className: "btn sm", style: { minHeight: 34 }, onClick: () => confirmar(p, true) }, "Sim"), /* @__PURE__ */ React7.createElement("button", { className: "btn quiet sm", style: { minHeight: 34 }, onClick: () => confirmar(p, false) }, "N\xE3o"))))))));
+  } }, pdf ? /* @__PURE__ */ React8.createElement(Loader24, { size: 15, className: "spin" }) : /* @__PURE__ */ React8.createElement(FileDown2, { size: 15 }), " PDF das pend\xEAncias"), ownerMode && /* @__PURE__ */ React8.createElement("button", { className: "btn quiet sm", onClick: () => setCalendario(true) }, "Calend\xE1rio de vacinas"), /* @__PURE__ */ React8.createElement("button", { className: "btn quiet sm", onClick: () => setVerFuturas((v) => !v) }, verFuturas ? "S\xF3 as de agora" : "Ver tamb\xE9m as pr\xF3ximas")), msg && /* @__PURE__ */ React8.createElement(Aviso, { tipo: "ok", onClose: () => setMsg("") }, msg), grupos.length === 0 && /* @__PURE__ */ React8.createElement("div", { className: "sheet" }, /* @__PURE__ */ React8.createElement("div", { className: "empty" }, "Nenhuma vacina pendente agora.")), grupos.map((g) => /* @__PURE__ */ React8.createElement("div", { className: "grp-vac", key: g.regra.id, "data-testid": `grupo-${g.regra.id}` }, /* @__PURE__ */ React8.createElement("header", null, /* @__PURE__ */ React8.createElement("b", null, g.regra.nome, /* @__PURE__ */ React8.createElement("span", { className: "mut", style: { fontSize: 13, fontWeight: 500 } }, " \xB7 ", g.itens.length, " animal(is)")), /* @__PURE__ */ React8.createElement("button", { className: "btn sm", onClick: () => vacinar(g) }, /* @__PURE__ */ React8.createElement(Syringe, { size: 15 }), " Vacinar estes")), g.itens.map((p) => /* @__PURE__ */ React8.createElement("div", { key: `${g.regra.id}-${p.animalId}`, className: "led-r", style: { "--cols": "72px minmax(0,1fr)", minHeight: 54 } }, /* @__PURE__ */ React8.createElement("span", { className: "b" }, p.brinco), /* @__PURE__ */ React8.createElement("span", { className: "two" }, /* @__PURE__ */ React8.createElement("b", { style: { fontSize: 14 } }, [p.tipo, p.status].filter(Boolean).join(" \xB7 ")), /* @__PURE__ */ React8.createElement("span", { className: `vac-tag ${NIVEL[p.nivel]}`, style: { whiteSpace: "normal" } }, p.situacao), p.confirmar && /* @__PURE__ */ React8.createElement("span", { style: { display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 6, color: "var(--tx)" } }, "Foi vacinada?", /* @__PURE__ */ React8.createElement("input", { type: "date", "aria-label": `Data da vacina da ${p.brinco}`, value: conf[p.animalId] || hoje, onChange: (e) => setConf((c) => ({ ...c, [p.animalId]: e.target.value })), style: { width: "auto", minHeight: 34 } }), /* @__PURE__ */ React8.createElement("button", { className: "btn sm", style: { minHeight: 34 }, onClick: () => confirmar(p, true) }, "Sim"), /* @__PURE__ */ React8.createElement("button", { className: "btn quiet sm", style: { minHeight: 34 }, onClick: () => confirmar(p, false) }, "N\xE3o"))))))));
 }
 
 // src/telas/ManejoGeral.jsx
-import React9, { useEffect as useEffect4, useMemo as useMemo9, useState as useState9 } from "react";
-import { Save as Save5, Loader2 as Loader25, FileDown as FileDown3, Plus as Plus6, X as X3, Check as Check4, ArrowLeft as ArrowLeft3, ClipboardCheck, Pencil as Pencil2, Trash2 as Trash24 } from "lucide-react";
+import React10, { useEffect as useEffect4, useMemo as useMemo10, useState as useState10 } from "react";
+import { Save as Save6, Loader2 as Loader25, FileDown as FileDown3, Plus as Plus6, X as X3, Check as Check4, ArrowLeft as ArrowLeft3, ClipboardCheck, Pencil as Pencil2, Trash2 as Trash24 } from "lucide-react";
 
 // src/telas/ManejoBusca.jsx
-import React8, { useMemo as useMemo8, useRef as useRef4, useState as useState8 } from "react";
+import React9, { useMemo as useMemo9, useRef as useRef4, useState as useState9 } from "react";
 import { Search as Search4, Check as Check3, Plus as Plus5, AlertTriangle, StickyNote } from "lucide-react";
 var mesmaInclusao = (i, f) => String(i.brinco) === String(f.brinco) && (i.animal || "") === (f.animal || "");
 function CampoNota({ brinco, valor, onChange, autoFocus, id }) {
-  return /* @__PURE__ */ React8.createElement(
+  return /* @__PURE__ */ React9.createElement(
     "input",
     {
       id,
@@ -5940,18 +6207,18 @@ function CampoNota({ brinco, valor, onChange, autoFocus, id }) {
 }
 function Ficha({ f, marcado, incluido, lote, nota, onNota, onMarcar, onIncluir }) {
   const cor = f.naLista ? "good" : f.obs ? f.ativo ? "soon" : "late" : "mut";
-  return /* @__PURE__ */ React8.createElement("div", { className: `ficha-busca ${cor}`, "data-testid": `ficha-${f.chave}` }, /* @__PURE__ */ React8.createElement("div", { className: "fb-topo" }, /* @__PURE__ */ React8.createElement("b", { className: "b" }, f.brinco), /* @__PURE__ */ React8.createElement("span", { className: "fb-tit" }, f.titulo)), /* @__PURE__ */ React8.createElement("div", { className: `fb-sit ${f.situacao.nivel}`, "data-testid": "ficha-situacao" }, f.situacao.texto), f.linhas.map((l) => /* @__PURE__ */ React8.createElement("div", { key: l, className: "fb-lin" }, l)), /* @__PURE__ */ React8.createElement("div", { className: "fb-lin" }, f.loteAtual ? /* @__PURE__ */ React8.createElement(React8.Fragment, null, "Lote atual: ", /* @__PURE__ */ React8.createElement("b", null, f.loteAtual)) : f.tipo === "cria" ? "Cria: n\xE3o tem lote pr\xF3prio" : "Sem lote no cadastro"), /* @__PURE__ */ React8.createElement("div", { className: `fb-obs ${f.naLista ? "good" : f.ativo ? "soon" : "late"}` }, f.naLista ? `Est\xE1 na lista do lote ${lote}.` : f.obs), /* @__PURE__ */ React8.createElement(CampoNota, { brinco: f.brinco, valor: nota, onChange: (t) => onNota(chaveNota(f), t) }), nota && !f.naLista && !incluido && /* @__PURE__ */ React8.createElement("div", { className: "fb-lin", style: { margin: "3px 0 0" } }, "A observa\xE7\xE3o \xE9 gravada quando voc\xEA incluir o brinco no manejo."), /* @__PURE__ */ React8.createElement("div", { style: { height: 8 } }), f.naLista ? /* @__PURE__ */ React8.createElement("button", { type: "button", className: `btn wide${marcado ? " quiet" : ""}`, onClick: () => onMarcar(f), "data-testid": "ficha-acao" }, /* @__PURE__ */ React8.createElement(Check3, { size: 17 }), " ", marcado ? "Marcada. Toque para desmarcar" : "Marcar como presente") : incluido ? /* @__PURE__ */ React8.createElement("button", { type: "button", className: "btn wide quiet", disabled: true, "data-testid": "ficha-acao" }, /* @__PURE__ */ React8.createElement(Check3, { size: 17 }), " J\xE1 inclu\xEDda no manejo") : /* @__PURE__ */ React8.createElement("button", { type: "button", className: "btn wide", onClick: () => onIncluir(f), "data-testid": "ficha-acao" }, /* @__PURE__ */ React8.createElement(Plus5, { size: 17 }), " ", f.ativo ? "Incluir no manejo" : "Incluir mesmo assim"));
+  return /* @__PURE__ */ React9.createElement("div", { className: `ficha-busca ${cor}`, "data-testid": `ficha-${f.chave}` }, /* @__PURE__ */ React9.createElement("div", { className: "fb-topo" }, /* @__PURE__ */ React9.createElement("b", { className: "b" }, f.brinco), /* @__PURE__ */ React9.createElement("span", { className: "fb-tit" }, f.titulo)), /* @__PURE__ */ React9.createElement("div", { className: `fb-sit ${f.situacao.nivel}`, "data-testid": "ficha-situacao" }, f.situacao.texto), f.linhas.map((l) => /* @__PURE__ */ React9.createElement("div", { key: l, className: "fb-lin" }, l)), /* @__PURE__ */ React9.createElement("div", { className: "fb-lin" }, f.loteAtual ? /* @__PURE__ */ React9.createElement(React9.Fragment, null, "Lote atual: ", /* @__PURE__ */ React9.createElement("b", null, f.loteAtual)) : f.tipo === "cria" ? "Cria: n\xE3o tem lote pr\xF3prio" : "Sem lote no cadastro"), /* @__PURE__ */ React9.createElement("div", { className: `fb-obs ${f.naLista ? "good" : f.ativo ? "soon" : "late"}` }, f.naLista ? `Est\xE1 na lista do lote ${lote}.` : f.obs), /* @__PURE__ */ React9.createElement(CampoNota, { brinco: f.brinco, valor: nota, onChange: (t) => onNota(chaveNota(f), t) }), nota && !f.naLista && !incluido && /* @__PURE__ */ React9.createElement("div", { className: "fb-lin", style: { margin: "3px 0 0" } }, "A observa\xE7\xE3o \xE9 gravada quando voc\xEA incluir o brinco no manejo."), /* @__PURE__ */ React9.createElement("div", { style: { height: 8 } }), f.naLista ? /* @__PURE__ */ React9.createElement("button", { type: "button", className: `btn wide${marcado ? " quiet" : ""}`, onClick: () => onMarcar(f), "data-testid": "ficha-acao" }, /* @__PURE__ */ React9.createElement(Check3, { size: 17 }), " ", marcado ? "Marcada. Toque para desmarcar" : "Marcar como presente") : incluido ? /* @__PURE__ */ React9.createElement("button", { type: "button", className: "btn wide quiet", disabled: true, "data-testid": "ficha-acao" }, /* @__PURE__ */ React9.createElement(Check3, { size: 17 }), " J\xE1 inclu\xEDda no manejo") : /* @__PURE__ */ React9.createElement("button", { type: "button", className: "btn wide", onClick: () => onIncluir(f), "data-testid": "ficha-acao" }, /* @__PURE__ */ React9.createElement(Plus5, { size: 17 }), " ", f.ativo ? "Incluir no manejo" : "Incluir mesmo assim"));
 }
 function ConferirBrincos({ dados, lote, hoje, itens: itens2, marcados, onToggle, incluidos, onIncluir, indice, esperados, rotuloContador, notas, onNota }) {
   const nts = notas || {};
-  const [q, setQ] = useState8("");
-  const [abertas, setAbertas] = useState8({});
-  const [msg, setMsg] = useState8(null);
-  const [letras, setLetras] = useState8(false);
+  const [q, setQ] = useState9("");
+  const [abertas, setAbertas] = useState9({});
+  const [msg, setMsg] = useState9(null);
+  const [letras, setLetras] = useState9(false);
   const entrada = useRef4(null);
   const b = q.trim();
-  const fichas = useMemo8(() => b ? buscarAnimais(dados, lote, b, hoje, { indice, esperados }) : [], [dados, lote, b, hoje, indice, esperados]);
-  const filtrados = useMemo8(() => b ? itens2.filter((x) => String(x.brinco).toLowerCase().startsWith(b.toLowerCase())) : itens2, [itens2, b]);
+  const fichas = useMemo9(() => b ? buscarAnimais(dados, lote, b, hoje, { indice, esperados }) : [], [dados, lote, b, hoje, indice, esperados]);
+  const filtrados = useMemo9(() => b ? itens2.filter((x) => String(x.brinco).toLowerCase().startsWith(b.toLowerCase())) : itens2, [itens2, b]);
   const n = itens2.filter((x) => marcados.has(x.id)).length;
   const marcadoNaFicha = (f) => marcados.has(f.animal) || incluidos.some((i) => mesmaInclusao(i, f));
   function marcar(f) {
@@ -5989,7 +6256,7 @@ function ConferirBrincos({ dados, lote, hoje, itens: itens2, marcados, onToggle,
     }
     incluir(fichaSemCadastro(b));
   }
-  return /* @__PURE__ */ React8.createElement("div", null, /* @__PURE__ */ React8.createElement("div", { className: "contador", "data-testid": "contador" }, n, " de ", itens2.length, " ", rotuloContador || "conferidos"), /* @__PURE__ */ React8.createElement("label", { className: "search", style: { marginTop: 8 } }, /* @__PURE__ */ React8.createElement(Search4, null), /* @__PURE__ */ React8.createElement(
+  return /* @__PURE__ */ React9.createElement("div", null, /* @__PURE__ */ React9.createElement("div", { className: "contador", "data-testid": "contador" }, n, " de ", itens2.length, " ", rotuloContador || "conferidos"), /* @__PURE__ */ React9.createElement("label", { className: "search", style: { marginTop: 8 } }, /* @__PURE__ */ React9.createElement(Search4, null), /* @__PURE__ */ React9.createElement(
     "input",
     {
       ref: entrada,
@@ -6011,7 +6278,7 @@ function ConferirBrincos({ dados, lote, hoje, itens: itens2, marcados, onToggle,
         }
       }
     }
-  ), /* @__PURE__ */ React8.createElement(
+  ), /* @__PURE__ */ React9.createElement(
     "button",
     {
       type: "button",
@@ -6028,11 +6295,11 @@ function ConferirBrincos({ dados, lote, hoje, itens: itens2, marcados, onToggle,
       }
     },
     letras ? "123" : "ABC"
-  )), msg && /* @__PURE__ */ React8.createElement("div", { className: `hint ${msg.tom}`, role: "status", "data-testid": "msg-marcar", style: { margin: "6px 2px", fontSize: 13.5 } }, msg.t), fichas.map((f) => /* @__PURE__ */ React8.createElement(Ficha, { key: f.chave, f, lote, nota: nts[chaveNota(f)], onNota, marcado: marcadoNaFicha(f), incluido: incluidos.some((i) => mesmaInclusao(i, f)), onMarcar: marcar, onIncluir: incluir })), b && fichas.length === 0 && filtrados.length === 0 && /* @__PURE__ */ React8.createElement("div", { className: "ficha-busca late", "data-testid": "ficha-sem-cadastro" }, /* @__PURE__ */ React8.createElement("div", { className: "fb-topo" }, /* @__PURE__ */ React8.createElement("b", { className: "b" }, b), /* @__PURE__ */ React8.createElement("span", { className: "fb-tit" }, /* @__PURE__ */ React8.createElement(AlertTriangle, { size: 14, style: { verticalAlign: -2 } }), " Brinco sem cadastro")), /* @__PURE__ */ React8.createElement("div", { className: "fb-lin" }, "N\xE3o est\xE1 no banco de dados (matrizes, novilhas, crias e touros) nem em nenhum lote."), /* @__PURE__ */ React8.createElement("div", { style: { height: 8 } }), /* @__PURE__ */ React8.createElement(CampoNota, { brinco: b, valor: nts[`b:${b}`], onChange: (t) => onNota(`b:${b}`, t) }), /* @__PURE__ */ React8.createElement("div", { style: { height: 8 } }), /* @__PURE__ */ React8.createElement("button", { type: "button", className: "btn wide", onClick: () => incluir(fichaSemCadastro(b)), "data-testid": "incluir-sem-cadastro" }, /* @__PURE__ */ React8.createElement(Plus5, { size: 17 }), " Incluir ", b, " mesmo assim")), /* @__PURE__ */ React8.createElement("div", { className: "marcar", "data-testid": "lista-marcar", hidden: filtrados.length === 0 && !!b }, filtrados.map((x) => {
+  )), msg && /* @__PURE__ */ React9.createElement("div", { className: `hint ${msg.tom}`, role: "status", "data-testid": "msg-marcar", style: { margin: "6px 2px", fontSize: 13.5 } }, msg.t), fichas.map((f) => /* @__PURE__ */ React9.createElement(Ficha, { key: f.chave, f, lote, nota: nts[chaveNota(f)], onNota, marcado: marcadoNaFicha(f), incluido: incluidos.some((i) => mesmaInclusao(i, f)), onMarcar: marcar, onIncluir: incluir })), b && fichas.length === 0 && filtrados.length === 0 && /* @__PURE__ */ React9.createElement("div", { className: "ficha-busca late", "data-testid": "ficha-sem-cadastro" }, /* @__PURE__ */ React9.createElement("div", { className: "fb-topo" }, /* @__PURE__ */ React9.createElement("b", { className: "b" }, b), /* @__PURE__ */ React9.createElement("span", { className: "fb-tit" }, /* @__PURE__ */ React9.createElement(AlertTriangle, { size: 14, style: { verticalAlign: -2 } }), " Brinco sem cadastro")), /* @__PURE__ */ React9.createElement("div", { className: "fb-lin" }, "N\xE3o est\xE1 no banco de dados (matrizes, novilhas, crias e touros) nem em nenhum lote."), /* @__PURE__ */ React9.createElement("div", { style: { height: 8 } }), /* @__PURE__ */ React9.createElement(CampoNota, { brinco: b, valor: nts[`b:${b}`], onChange: (t) => onNota(`b:${b}`, t) }), /* @__PURE__ */ React9.createElement("div", { style: { height: 8 } }), /* @__PURE__ */ React9.createElement("button", { type: "button", className: "btn wide", onClick: () => incluir(fichaSemCadastro(b)), "data-testid": "incluir-sem-cadastro" }, /* @__PURE__ */ React9.createElement(Plus5, { size: 17 }), " Incluir ", b, " mesmo assim")), /* @__PURE__ */ React9.createElement("div", { className: "marcar", "data-testid": "lista-marcar", hidden: filtrados.length === 0 && !!b }, filtrados.map((x) => {
     const on = marcados.has(x.id);
     const nota = nts[x.id] || "";
     const aberta = !!abertas[x.id];
-    return /* @__PURE__ */ React8.createElement("div", { key: x.id, className: `marca-lin${on ? " on" : ""}` }, /* @__PURE__ */ React8.createElement("div", { className: "marca-topo" }, /* @__PURE__ */ React8.createElement("button", { type: "button", className: "marca-bt", "aria-pressed": on, "aria-label": `${on ? "Desmarcar" : "Marcar"} ${x.brinco}`, onClick: () => onToggle(x.id) }, /* @__PURE__ */ React8.createElement("span", { className: "caixa" }, on ? /* @__PURE__ */ React8.createElement(Check3, { size: 18 }) : null), /* @__PURE__ */ React8.createElement("span", { className: "b" }, x.brinco), /* @__PURE__ */ React8.createElement("span", { className: "two" }, /* @__PURE__ */ React8.createElement("b", null, x.linha1), /* @__PURE__ */ React8.createElement("span", { className: x.nivel || "mut" }, x.linha2))), onNota && /* @__PURE__ */ React8.createElement(
+    return /* @__PURE__ */ React9.createElement("div", { key: x.id, className: `marca-lin${on ? " on" : ""}` }, /* @__PURE__ */ React9.createElement("div", { className: "marca-topo" }, /* @__PURE__ */ React9.createElement("button", { type: "button", className: "marca-bt", "aria-pressed": on, "aria-label": `${on ? "Desmarcar" : "Marcar"} ${x.brinco}`, onClick: () => onToggle(x.id) }, /* @__PURE__ */ React9.createElement("span", { className: "caixa" }, on ? /* @__PURE__ */ React9.createElement(Check3, { size: 18 }) : null), /* @__PURE__ */ React9.createElement("span", { className: "b" }, x.brinco), /* @__PURE__ */ React9.createElement("span", { className: "two" }, /* @__PURE__ */ React9.createElement("b", null, x.linha1), /* @__PURE__ */ React9.createElement("span", { className: x.nivel || "mut" }, x.linha2))), onNota && /* @__PURE__ */ React9.createElement(
       "button",
       {
         type: "button",
@@ -6042,9 +6309,9 @@ function ConferirBrincos({ dados, lote, hoje, itens: itens2, marcados, onToggle,
         "data-testid": `nota-bt-${x.brinco}`,
         onClick: () => setAbertas((a) => ({ ...a, [x.id]: !a[x.id] }))
       },
-      /* @__PURE__ */ React8.createElement(StickyNote, { size: 19 })
-    )), onNota && aberta && /* @__PURE__ */ React8.createElement("div", { className: "nota-cx" }, /* @__PURE__ */ React8.createElement(CampoNota, { brinco: x.brinco, valor: nota, onChange: (t) => onNota(x.id, t), autoFocus: true })), onNota && !aberta && nota && /* @__PURE__ */ React8.createElement("div", { className: "nota-txt", "data-testid": `nota-txt-${x.brinco}` }, nota));
-  }), filtrados.length === 0 && !b && /* @__PURE__ */ React8.createElement("div", { className: "empty" }, "Nenhum animal cadastrado neste lote ainda.")));
+      /* @__PURE__ */ React9.createElement(StickyNote, { size: 19 })
+    )), onNota && aberta && /* @__PURE__ */ React9.createElement("div", { className: "nota-cx" }, /* @__PURE__ */ React9.createElement(CampoNota, { brinco: x.brinco, valor: nota, onChange: (t) => onNota(x.id, t), autoFocus: true })), onNota && !aberta && nota && /* @__PURE__ */ React9.createElement("div", { className: "nota-txt", "data-testid": `nota-txt-${x.brinco}` }, nota));
+  }), filtrados.length === 0 && !b && /* @__PURE__ */ React9.createElement("div", { className: "empty" }, "Nenhum animal cadastrado neste lote ainda.")));
 }
 
 // src/telas/ManejoGeral.jsx
@@ -6061,20 +6328,20 @@ var migrarRascunho = (r) => {
   return resto;
 };
 function Conferencia({ dados, manejoId, msg, onVoltar, ownerMode, onAbrir, onExcluir }) {
-  const rel = useMemo9(() => relatorioConferencia(dados, manejoId), [dados, manejoId]);
+  const rel = useMemo10(() => relatorioConferencia(dados, manejoId), [dados, manejoId]);
   const e = dados.eventos.find((x) => x.id === manejoId);
-  const rep = useMemo9(() => e ? faltasRepetidas(dados, e.lote) : [], [dados, e]);
-  const resumo = useMemo9(() => resumoExclusao(dados, manejoId), [dados, manejoId]);
-  const [pdf, setPdf] = useState9(false);
-  const [confirmando, setConfirmando] = useState9(false);
-  const [erroExcluir, setErroExcluir] = useState9("");
+  const rep = useMemo10(() => e ? faltasRepetidas(dados, e.lote) : [], [dados, e]);
+  const resumo = useMemo10(() => resumoExclusao(dados, manejoId), [dados, manejoId]);
+  const [pdf, setPdf] = useState10(false);
+  const [confirmando, setConfirmando] = useState10(false);
+  const [erroExcluir, setErroExcluir] = useState10("");
   const excluir = async () => {
     const r = await onExcluir(manejoId);
     if (r && !r.ok) {
       setErroExcluir(r.msg);
     }
   };
-  return /* @__PURE__ */ React9.createElement("section", { className: "sheet pad", "data-testid": "conferencia" }, /* @__PURE__ */ React9.createElement("button", { className: "btn quiet sm", onClick: onVoltar, style: { marginBottom: 10 } }, /* @__PURE__ */ React9.createElement(ArrowLeft3, { size: 15 }), " Voltar"), msg && /* @__PURE__ */ React9.createElement(Aviso, { tipo: "ok" }, msg), /* @__PURE__ */ React9.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rel.titulo), rel.subtitulo && /* @__PURE__ */ React9.createElement("p", { className: "sub", style: { marginTop: 0 } }, rel.subtitulo), /* @__PURE__ */ React9.createElement(Kpis, { itens: rel.resumo }), rep.length > 0 && /* @__PURE__ */ React9.createElement(Aviso, null, "Faltaram tamb\xE9m no manejo anterior deste lote: ", /* @__PURE__ */ React9.createElement("b", null, rep.map((x) => x.brinco).join(", ")), ". Vale procurar."), /* @__PURE__ */ React9.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" } }, /* @__PURE__ */ React9.createElement("button", { className: "btn ghost sm", disabled: pdf, onClick: async () => {
+  return /* @__PURE__ */ React10.createElement("section", { className: "sheet pad", "data-testid": "conferencia" }, /* @__PURE__ */ React10.createElement("button", { className: "btn quiet sm", onClick: onVoltar, style: { marginBottom: 10 } }, /* @__PURE__ */ React10.createElement(ArrowLeft3, { size: 15 }), " Voltar"), msg && /* @__PURE__ */ React10.createElement(Aviso, { tipo: "ok" }, msg), /* @__PURE__ */ React10.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rel.titulo), rel.subtitulo && /* @__PURE__ */ React10.createElement("p", { className: "sub", style: { marginTop: 0 } }, rel.subtitulo), /* @__PURE__ */ React10.createElement(Kpis, { itens: rel.resumo }), rep.length > 0 && /* @__PURE__ */ React10.createElement(Aviso, null, "Faltaram tamb\xE9m no manejo anterior deste lote: ", /* @__PURE__ */ React10.createElement("b", null, rep.map((x) => x.brinco).join(", ")), ". Vale procurar."), /* @__PURE__ */ React10.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" } }, /* @__PURE__ */ React10.createElement("button", { className: "btn ghost sm", disabled: pdf, onClick: async () => {
     setPdf(true);
     try {
       await baixarPDF(rel);
@@ -6082,24 +6349,24 @@ function Conferencia({ dados, manejoId, msg, onVoltar, ownerMode, onAbrir, onExc
       console.error(err);
     }
     setPdf(false);
-  } }, pdf ? /* @__PURE__ */ React9.createElement(Loader25, { size: 15, className: "spin" }) : /* @__PURE__ */ React9.createElement(FileDown3, { size: 15 }), " PDF da confer\xEAncia"), onAbrir && /* @__PURE__ */ React9.createElement("button", { className: "btn sm", onClick: () => onAbrir(manejoId), "data-testid": "abrir-manejo" }, /* @__PURE__ */ React9.createElement(Pencil2, { size: 15 }), " ", ownerMode ? "Editar manejo" : "Incluir brincos e observa\xE7\xF5es"), ownerMode && onExcluir && /* @__PURE__ */ React9.createElement("button", { className: "btn quiet sm", onClick: () => {
+  } }, pdf ? /* @__PURE__ */ React10.createElement(Loader25, { size: 15, className: "spin" }) : /* @__PURE__ */ React10.createElement(FileDown3, { size: 15 }), " PDF da confer\xEAncia"), onAbrir && /* @__PURE__ */ React10.createElement("button", { className: "btn sm", onClick: () => onAbrir(manejoId), "data-testid": "abrir-manejo" }, /* @__PURE__ */ React10.createElement(Pencil2, { size: 15 }), " ", ownerMode ? "Editar manejo" : "Incluir brincos e observa\xE7\xF5es"), ownerMode && onExcluir && /* @__PURE__ */ React10.createElement("button", { className: "btn quiet sm", onClick: () => {
     setErroExcluir("");
     setConfirmando(true);
-  }, "data-testid": "excluir-manejo" }, /* @__PURE__ */ React9.createElement(Trash24, { size: 15 }), " Excluir manejo")), confirmando && resumo && /* @__PURE__ */ React9.createElement(Aviso, null, /* @__PURE__ */ React9.createElement("div", { "data-testid": "confirmar-exclusao" }, /* @__PURE__ */ React9.createElement("b", null, "Excluir este manejo?"), " ", formatarDataBR(resumo.data), " \xB7 lote ", resumo.lote, " \xB7 ", resumo.descricao, ".", /* @__PURE__ */ React9.createElement("div", { style: { margin: "6px 0" } }, "Ele some do app e da planilha (a planilha guarda uma c\xF3pia na aba Excluidos).", resumo.pendentes ? ` ${resumo.pendentes} pedido(s) de mudan\xE7a de lote que ainda esperam voc\xEA somem junto.` : "", resumo.notasPendentes ? ` ${resumo.notasPendentes} observa\xE7\xE3o(\xF5es) ainda n\xE3o efetivada(s) somem junto.` : "", resumo.aprovadas ? ` ${resumo.aprovadas} mudan\xE7a(s) de lote j\xE1 confirmada(s) N\xC3O voltam: o animal continua no lote novo.` : ""), erroExcluir && /* @__PURE__ */ React9.createElement("div", { className: "late", role: "alert", style: { margin: "4px 0" } }, erroExcluir), /* @__PURE__ */ React9.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React9.createElement("button", { className: "btn sm", onClick: excluir, "data-testid": "confirmar-exclusao-sim" }, /* @__PURE__ */ React9.createElement(Trash24, { size: 15 }), " Sim, excluir"), /* @__PURE__ */ React9.createElement("button", { className: "btn quiet sm", onClick: () => setConfirmando(false) }, "N\xE3o, manter")))), rel.secoes.filter((s) => s.linhas.length).map((s) => /* @__PURE__ */ React9.createElement(SecaoRelatorio, { key: s.titulo, secao: s })));
+  }, "data-testid": "excluir-manejo" }, /* @__PURE__ */ React10.createElement(Trash24, { size: 15 }), " Excluir manejo")), confirmando && resumo && /* @__PURE__ */ React10.createElement(Aviso, null, /* @__PURE__ */ React10.createElement("div", { "data-testid": "confirmar-exclusao" }, /* @__PURE__ */ React10.createElement("b", null, "Excluir este manejo?"), " ", formatarDataBR(resumo.data), " \xB7 lote ", resumo.lote, " \xB7 ", resumo.descricao, ".", /* @__PURE__ */ React10.createElement("div", { style: { margin: "6px 0" } }, "Ele some do app e da planilha (a planilha guarda uma c\xF3pia na aba Excluidos).", resumo.pendentes ? ` ${resumo.pendentes} pedido(s) de mudan\xE7a de lote que ainda esperam voc\xEA somem junto.` : "", resumo.notasPendentes ? ` ${resumo.notasPendentes} observa\xE7\xE3o(\xF5es) ainda n\xE3o efetivada(s) somem junto.` : "", resumo.aprovadas ? ` ${resumo.aprovadas} mudan\xE7a(s) de lote j\xE1 confirmada(s) N\xC3O voltam: o animal continua no lote novo.` : ""), erroExcluir && /* @__PURE__ */ React10.createElement("div", { className: "late", role: "alert", style: { margin: "4px 0" } }, erroExcluir), /* @__PURE__ */ React10.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React10.createElement("button", { className: "btn sm", onClick: excluir, "data-testid": "confirmar-exclusao-sim" }, /* @__PURE__ */ React10.createElement(Trash24, { size: 15 }), " Sim, excluir"), /* @__PURE__ */ React10.createElement("button", { className: "btn quiet sm", onClick: () => setConfirmando(false) }, "N\xE3o, manter")))), rel.secoes.filter((s2) => s2.linhas.length).map((s2) => /* @__PURE__ */ React10.createElement(SecaoRelatorio, { key: s2.titulo, secao: s2 })));
 }
 function PendenciasLote({ dados, onDecidirLote }) {
-  const pend = useMemo9(() => pendenciasLote(dados), [dados]);
-  const [msg, setMsg] = useState9("");
+  const pend = useMemo10(() => pendenciasLote(dados), [dados]);
+  const [msg, setMsg] = useState10("");
   if (!pend.length && !msg) return null;
   const decidir = (itens2, aprovar) => {
     const r = onDecidirLote(itens2.map((p) => ({ manejoId: p.manejoId, animal: p.animal, aprovar })));
     setMsg(r || "");
   };
-  return /* @__PURE__ */ React9.createElement("section", { className: "sheet pad", "data-testid": "pendencias-lote", style: { marginBottom: 12 } }, /* @__PURE__ */ React9.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Mudan\xE7as de lote para confirmar", /* @__PURE__ */ React9.createElement("small", null, pend.length)), msg && /* @__PURE__ */ React9.createElement(Aviso, { tipo: "ok", onClose: () => setMsg("") }, msg), pend.map((p) => /* @__PURE__ */ React9.createElement("div", { key: `${p.manejoId}-${p.animal}`, className: "pend-lote", "data-testid": `pend-${p.brinco}` }, /* @__PURE__ */ React9.createElement("div", null, /* @__PURE__ */ React9.createElement("b", { className: "b" }, p.brinco), /* @__PURE__ */ React9.createElement("div", { className: "l2" }, p.de || "sem lote", " \u2192 ", /* @__PURE__ */ React9.createElement("b", null, p.para)), /* @__PURE__ */ React9.createElement("div", { className: "l3" }, formatarDataBR(p.data), " \xB7 ", p.descricao, p.responsavel ? ` \xB7 ${p.responsavel}` : "")), /* @__PURE__ */ React9.createElement("div", { className: "pend-bts" }, /* @__PURE__ */ React9.createElement("button", { className: "btn sm", onClick: () => decidir([p], true), "aria-label": `Confirmar mudan\xE7a de lote da ${p.brinco}` }, /* @__PURE__ */ React9.createElement(Check4, { size: 15 }), " Mudar"), /* @__PURE__ */ React9.createElement("button", { className: "btn quiet sm", onClick: () => decidir([p], false), "aria-label": `Recusar mudan\xE7a de lote da ${p.brinco}` }, /* @__PURE__ */ React9.createElement(X3, { size: 15 }), " N\xE3o")))), pend.length > 1 && /* @__PURE__ */ React9.createElement("button", { className: "btn ghost sm", style: { marginTop: 10 }, onClick: () => decidir(pend, true) }, "Confirmar todas (", pend.length, ")"));
+  return /* @__PURE__ */ React10.createElement("section", { className: "sheet pad", "data-testid": "pendencias-lote", style: { marginBottom: 12 } }, /* @__PURE__ */ React10.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Mudan\xE7as de lote para confirmar", /* @__PURE__ */ React10.createElement("small", null, pend.length)), msg && /* @__PURE__ */ React10.createElement(Aviso, { tipo: "ok", onClose: () => setMsg("") }, msg), pend.map((p) => /* @__PURE__ */ React10.createElement("div", { key: `${p.manejoId}-${p.animal}`, className: "pend-lote", "data-testid": `pend-${p.brinco}` }, /* @__PURE__ */ React10.createElement("div", null, /* @__PURE__ */ React10.createElement("b", { className: "b" }, p.brinco), /* @__PURE__ */ React10.createElement("div", { className: "l2" }, p.de || "sem lote", " \u2192 ", /* @__PURE__ */ React10.createElement("b", null, p.para)), /* @__PURE__ */ React10.createElement("div", { className: "l3" }, formatarDataBR(p.data), " \xB7 ", p.descricao, p.responsavel ? ` \xB7 ${p.responsavel}` : "")), /* @__PURE__ */ React10.createElement("div", { className: "pend-bts" }, /* @__PURE__ */ React10.createElement("button", { className: "btn sm", onClick: () => decidir([p], true), "aria-label": `Confirmar mudan\xE7a de lote da ${p.brinco}` }, /* @__PURE__ */ React10.createElement(Check4, { size: 15 }), " Mudar"), /* @__PURE__ */ React10.createElement("button", { className: "btn quiet sm", onClick: () => decidir([p], false), "aria-label": `Recusar mudan\xE7a de lote da ${p.brinco}` }, /* @__PURE__ */ React10.createElement(X3, { size: 15 }), " N\xE3o")))), pend.length > 1 && /* @__PURE__ */ React10.createElement("button", { className: "btn ghost sm", style: { marginTop: 10 }, onClick: () => decidir(pend, true) }, "Confirmar todas (", pend.length, ")"));
 }
 function PendenciasNotas({ dados, onEfetivarNotas, onAbrir }) {
-  const pend = useMemo9(() => pendenciasNotas(dados), [dados]);
-  const [msg, setMsg] = useState9(null);
+  const pend = useMemo10(() => pendenciasNotas(dados), [dados]);
+  const [msg, setMsg] = useState10(null);
   if (!pend.length && !msg) return null;
   const efetivar = (itens2) => {
     const r = onEfetivarNotas(itens2.map((p) => ({ manejoId: p.manejoId, idx: p.idx, feito: true })));
@@ -6109,15 +6376,15 @@ function PendenciasNotas({ dados, onEfetivarNotas, onAbrir }) {
     const r = onEfetivarNotas(msg.desfazer);
     setMsg(r ? { t: "Voltou para a lista de observa\xE7\xF5es para efetivar.", desfazer: null } : null);
   };
-  return /* @__PURE__ */ React9.createElement("section", { className: "sheet pad", "data-testid": "pendencias-notas", style: { marginBottom: 12 } }, /* @__PURE__ */ React9.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Observa\xE7\xF5es para efetivar", /* @__PURE__ */ React9.createElement("small", null, pend.length)), msg && /* @__PURE__ */ React9.createElement(Aviso, { tipo: "ok", onClose: () => setMsg(null) }, msg.t, msg.desfazer && /* @__PURE__ */ React9.createElement("button", { type: "button", className: "btn quiet sm", style: { marginLeft: 8 }, onClick: desfazer, "data-testid": "desfazer-notas" }, "Desfazer")), pend.map((p) => /* @__PURE__ */ React9.createElement("div", { key: `${p.manejoId}-${p.idx}`, className: "pend-lote", "data-testid": `nota-pend-${p.brinco}` }, /* @__PURE__ */ React9.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React9.createElement("b", { className: "b" }, p.brinco), /* @__PURE__ */ React9.createElement("span", { className: "nota-quem" }, " ", p.semCadastro || !p.animal ? "sem cadastro" : p.sit || ""), /* @__PURE__ */ React9.createElement("div", { className: "l2 nota-corpo" }, p.nota), /* @__PURE__ */ React9.createElement("button", { type: "button", className: "l3 link-lin", onClick: () => onAbrir(p.manejoId) }, formatarDataBR(p.data), " \xB7 lote ", p.lote, " \xB7 ", p.descricao, p.responsavel ? ` \xB7 ${p.responsavel}` : "")), /* @__PURE__ */ React9.createElement("div", { className: "pend-bts" }, /* @__PURE__ */ React9.createElement("button", { className: "btn sm", onClick: () => efetivar([p]), "aria-label": `Efetivada a observa\xE7\xE3o do brinco ${p.brinco}` }, /* @__PURE__ */ React9.createElement(Check4, { size: 15 }), " Efetivada")))), pend.length > 1 && /* @__PURE__ */ React9.createElement("button", { className: "btn ghost sm", style: { marginTop: 10 }, onClick: () => efetivar(pend), "data-testid": "efetivar-todas" }, "Marcar todas como efetivadas (", pend.length, ")"));
+  return /* @__PURE__ */ React10.createElement("section", { className: "sheet pad", "data-testid": "pendencias-notas", style: { marginBottom: 12 } }, /* @__PURE__ */ React10.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Observa\xE7\xF5es para efetivar", /* @__PURE__ */ React10.createElement("small", null, pend.length)), msg && /* @__PURE__ */ React10.createElement(Aviso, { tipo: "ok", onClose: () => setMsg(null) }, msg.t, msg.desfazer && /* @__PURE__ */ React10.createElement("button", { type: "button", className: "btn quiet sm", style: { marginLeft: 8 }, onClick: desfazer, "data-testid": "desfazer-notas" }, "Desfazer")), pend.map((p) => /* @__PURE__ */ React10.createElement("div", { key: `${p.manejoId}-${p.idx}`, className: "pend-lote", "data-testid": `nota-pend-${p.brinco}` }, /* @__PURE__ */ React10.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React10.createElement("b", { className: "b" }, p.brinco), /* @__PURE__ */ React10.createElement("span", { className: "nota-quem" }, " ", p.semCadastro || !p.animal ? "sem cadastro" : p.sit || ""), /* @__PURE__ */ React10.createElement("div", { className: "l2 nota-corpo" }, p.nota), /* @__PURE__ */ React10.createElement("button", { type: "button", className: "l3 link-lin", onClick: () => onAbrir(p.manejoId) }, formatarDataBR(p.data), " \xB7 lote ", p.lote, " \xB7 ", p.descricao, p.responsavel ? ` \xB7 ${p.responsavel}` : "")), /* @__PURE__ */ React10.createElement("div", { className: "pend-bts" }, /* @__PURE__ */ React10.createElement("button", { className: "btn sm", onClick: () => efetivar([p]), "aria-label": `Efetivada a observa\xE7\xE3o do brinco ${p.brinco}` }, /* @__PURE__ */ React10.createElement(Check4, { size: 15 }), " Efetivada")))), pend.length > 1 && /* @__PURE__ */ React10.createElement("button", { className: "btn ghost sm", style: { marginTop: 10 }, onClick: () => efetivar(pend), "data-testid": "efetivar-todas" }, "Marcar todas como efetivadas (", pend.length, ")"));
 }
 function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, onGravarLote, onDecidirLote, onEfetivarNotas, onCorrigirManejo, onExcluirManejo }) {
-  const [f, setF] = useState9(() => ({ ...vazio(hoje), ...migrarRascunho(lerLocal(CHAVE, null)) || {} }));
-  const [tela, setTela] = useState9(() => lerLocal(CHAVE, null) ? "form" : "inicio");
-  const [ver, setVer] = useState9(null);
-  const [erro, setErro] = useState9("");
-  const [gravando, setGravando] = useState9(false);
-  const [avisoInicio, setAvisoInicio] = useState9("");
+  const [f, setF] = useState10(() => ({ ...vazio(hoje), ...migrarRascunho(lerLocal(CHAVE, null)) || {} }));
+  const [tela, setTela] = useState10(() => lerLocal(CHAVE, null) ? "form" : "inicio");
+  const [ver, setVer] = useState10(null);
+  const [erro, setErro] = useState10("");
+  const [gravando, setGravando] = useState10(false);
+  const [avisoInicio, setAvisoInicio] = useState10("");
   const editando = tela === "form" && !!f.editId;
   const eventoEdicao = editando ? dados.eventos.find((x) => x.id === f.editId) : null;
   const soAcrescenta = editando && !ownerMode;
@@ -6128,21 +6395,21 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
     setErro("");
     setF((x) => ({ ...x, [k]: v }));
   };
-  const lotes = useMemo9(() => lotesParaManejo(dados), [dados]);
+  const lotes = useMemo10(() => lotesParaManejo(dados), [dados]);
   const lote = f.lote === OUTRO ? padronizarLote(f.loteDigitado, dados.matrizes) : f.lote;
-  const comCrias = useMemo9(() => !!lote && temCriasAoPe(dados, lote, hoje), [dados, lote, hoje]);
+  const comCrias = useMemo10(() => !!lote && temCriasAoPe(dados, lote, hoje), [dados, lote, hoje]);
   const incluirCrias = f.incluirCrias === null ? comCrias : f.incluirCrias && comCrias;
-  const indice = useMemo9(() => indiceBusca(dados, hoje), [dados, hoje]);
+  const indice = useMemo10(() => indiceBusca(dados, hoje), [dados, hoje]);
   const mesmoLoteGravado = !!eventoEdicao && mesmoLote(lote, eventoEdicao.lote);
-  const extras = useMemo9(() => eventoEdicao && mesmoLoteGravado ? idsDoManejo(eventoEdicao) : void 0, [eventoEdicao, mesmoLoteGravado]);
-  const jaGravados = useMemo9(() => new Set(eventoEdicao ? String(eventoEdicao.presentes || "").split(",").filter(Boolean) : []), [eventoEdicao]);
-  const itens2 = useMemo9(() => animaisDoLote(dados, lote, { hoje, incluirCrias, indice, extras }), [dados, lote, hoje, incluirCrias, indice, extras]);
-  const esperados = useMemo9(() => new Set(itens2.map((x) => x.id)), [itens2]);
-  const incl = useMemo9(() => resolverInclusoes(dados, lote, f.incluidos, hoje, { indice, esperados }), [dados, lote, f.incluidos, hoje, indice, esperados]);
+  const extras = useMemo10(() => eventoEdicao && mesmoLoteGravado ? idsDoManejo(eventoEdicao) : void 0, [eventoEdicao, mesmoLoteGravado]);
+  const jaGravados = useMemo10(() => new Set(eventoEdicao ? String(eventoEdicao.presentes || "").split(",").filter(Boolean) : []), [eventoEdicao]);
+  const itens2 = useMemo10(() => animaisDoLote(dados, lote, { hoje, incluirCrias, indice, extras }), [dados, lote, hoje, incluirCrias, indice, extras]);
+  const esperados = useMemo10(() => new Set(itens2.map((x) => x.id)), [itens2]);
+  const incl = useMemo10(() => resolverInclusoes(dados, lote, f.incluidos, hoje, { indice, esperados }), [dados, lote, f.incluidos, hoje, indice, esperados]);
   const fora = incl.fora;
-  const marcadosTodos = useMemo9(() => [.../* @__PURE__ */ new Set([...f.marcados.filter((id) => esperados.has(id)), ...incl.marcadosExtra])], [f.marcados, esperados, incl.marcadosExtra]);
-  const marcados = useMemo9(() => new Set(marcadosTodos), [marcadosTodos]);
-  const feitos = useMemo9(() => listarManejosGerais(dados), [dados]);
+  const marcadosTodos = useMemo10(() => [.../* @__PURE__ */ new Set([...f.marcados.filter((id) => esperados.has(id)), ...incl.marcadosExtra])], [f.marcados, esperados, incl.marcadosExtra]);
+  const marcados = useMemo10(() => new Set(marcadosTodos), [marcadosTodos]);
+  const feitos = useMemo10(() => listarManejosGerais(dados), [dados]);
   const abrirEdicao = (id) => {
     const e = dados.eventos.find((x) => x.id === id);
     if (!e) return;
@@ -6169,12 +6436,12 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
     }
     return r;
   };
-  if (ver) return /* @__PURE__ */ React9.createElement(Conferencia, { dados, manejoId: ver.id, msg: ver.msg, onVoltar: () => setVer(null), ownerMode, onAbrir: abrirEdicao, onExcluir: onExcluirManejo ? excluirManejo : null });
+  if (ver) return /* @__PURE__ */ React10.createElement(Conferencia, { dados, manejoId: ver.id, msg: ver.msg, onVoltar: () => setVer(null), ownerMode, onAbrir: abrirEdicao, onExcluir: onExcluirManejo ? excluirManejo : null });
   if (tela === "inicio") {
-    return /* @__PURE__ */ React9.createElement(React9.Fragment, null, avisoInicio && /* @__PURE__ */ React9.createElement(Aviso, { tipo: "ok", onClose: () => setAvisoInicio("") }, avisoInicio), ownerMode && /* @__PURE__ */ React9.createElement(PendenciasLote, { dados, onDecidirLote }), ownerMode && onEfetivarNotas && /* @__PURE__ */ React9.createElement(PendenciasNotas, { dados, onEfetivarNotas, onAbrir: (id) => setVer({ id }) }), /* @__PURE__ */ React9.createElement("section", { className: "sheet pad", "data-testid": "geral-inicio" }, /* @__PURE__ */ React9.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Manejo geral"), /* @__PURE__ */ React9.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Pour-on, brinco mosquicida, verm\xEDfugo, vacina ou s\xF3 confer\xEAncia. Escolha o lote, marque quem passou no curral e o app mostra quem faltou e quem veio de outro lote."), scriptDesatualizado && /* @__PURE__ */ React9.createElement(Aviso, null, "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13). ", ownerMode ? "Implante a vers\xE3o nova do script." : "Avise o propriet\xE1rio."), /* @__PURE__ */ React9.createElement("button", { className: "btn wide", onClick: () => {
+    return /* @__PURE__ */ React10.createElement(React10.Fragment, null, avisoInicio && /* @__PURE__ */ React10.createElement(Aviso, { tipo: "ok", onClose: () => setAvisoInicio("") }, avisoInicio), ownerMode && /* @__PURE__ */ React10.createElement(PendenciasLote, { dados, onDecidirLote }), ownerMode && onEfetivarNotas && /* @__PURE__ */ React10.createElement(PendenciasNotas, { dados, onEfetivarNotas, onAbrir: (id) => setVer({ id }) }), /* @__PURE__ */ React10.createElement("section", { className: "sheet pad", "data-testid": "geral-inicio" }, /* @__PURE__ */ React10.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Manejo geral"), /* @__PURE__ */ React10.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Pour-on, brinco mosquicida, verm\xEDfugo, vacina ou s\xF3 confer\xEAncia. Escolha o lote, marque quem passou no curral e o app mostra quem faltou e quem veio de outro lote."), scriptDesatualizado && /* @__PURE__ */ React10.createElement(Aviso, null, "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13). ", ownerMode ? "Implante a vers\xE3o nova do script." : "Avise o propriet\xE1rio."), /* @__PURE__ */ React10.createElement("button", { className: "btn wide", onClick: () => {
       setF(vazio(hoje));
       setTela("form");
-    }, disabled: scriptDesatualizado }, /* @__PURE__ */ React9.createElement(Plus6, { size: 17 }), " Novo manejo"), feitos.length > 0 && /* @__PURE__ */ React9.createElement(React9.Fragment, null, /* @__PURE__ */ React9.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Manejos feitos", /* @__PURE__ */ React9.createElement("small", null, feitos.length)), feitos.slice(0, 30).map((c) => /* @__PURE__ */ React9.createElement("button", { key: c.id, className: "card-prot", onClick: () => setVer({ id: c.id }), "data-testid": `manejo-${c.id}` }, /* @__PURE__ */ React9.createElement("b", null, formatarDataBR(c.data), " \xB7 ", c.descricao), /* @__PURE__ */ React9.createElement("div", { className: "l2" }, "Lote ", c.lote, " \xB7 ", c.conferidos.length, " de ", c.esperados, " conferidos", c.faltando.length ? ` \xB7 ${c.faltando.length} faltando` : "", c.fora.length ? ` \xB7 ${c.fora.length} de fora` : "", c.notas.length ? ` \xB7 ${c.notas.length} observa\xE7\xE3o(\xF5es)` : "", c.responsavel ? ` \xB7 ${c.responsavel}` : ""))))));
+    }, disabled: scriptDesatualizado }, /* @__PURE__ */ React10.createElement(Plus6, { size: 17 }), " Novo manejo"), feitos.length > 0 && /* @__PURE__ */ React10.createElement(React10.Fragment, null, /* @__PURE__ */ React10.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Manejos feitos", /* @__PURE__ */ React10.createElement("small", null, feitos.length)), feitos.slice(0, 30).map((c) => /* @__PURE__ */ React10.createElement("button", { key: c.id, className: "card-prot", onClick: () => setVer({ id: c.id }), "data-testid": `manejo-${c.id}` }, /* @__PURE__ */ React10.createElement("b", null, formatarDataBR(c.data), " \xB7 ", c.descricao), /* @__PURE__ */ React10.createElement("div", { className: "l2" }, "Lote ", c.lote, " \xB7 ", c.conferidos.length, " de ", c.esperados, " conferidos", c.faltando.length ? ` \xB7 ${c.faltando.length} faltando` : "", c.fora.length ? ` \xB7 ${c.fora.length} de fora` : "", c.notas.length ? ` \xB7 ${c.notas.length} observa\xE7\xE3o(\xF5es)` : "", c.responsavel ? ` \xB7 ${c.responsavel}` : ""))))));
   }
   function toggle(id) {
     if (soAcrescenta && jaGravados.has(id)) {
@@ -6195,14 +6462,14 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
     });
   }
   function tirar(x) {
-    setF((s) => {
-      const { [chaveNota(x)]: _tirada, ...notas } = s.notas || {};
-      return { ...s, incluidos: s.incluidos.filter((i) => !(String(i.brinco) === String(x.brinco) && (i.animal || "") === (x.animal || ""))), aprovar: s.aprovar.filter((a) => a !== x.animal), notas };
+    setF((s2) => {
+      const { [chaveNota(x)]: _tirada, ...notas } = s2.notas || {};
+      return { ...s2, incluidos: s2.incluidos.filter((i) => !(String(i.brinco) === String(x.brinco) && (i.animal || "") === (x.animal || ""))), aprovar: s2.aprovar.filter((a) => a !== x.animal), notas };
     });
   }
   function anotar(chave2, texto) {
     setErro("");
-    setF((s) => ({ ...s, notas: { ...s.notas || {}, [chave2]: texto } }));
+    setF((s2) => ({ ...s2, notas: { ...s2.notas || {}, [chave2]: texto } }));
   }
   function rapido(m) {
     const ja = f.descricao.trim();
@@ -6308,10 +6575,10 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
   const nSemCad = fora.filter(semCad).length;
   const foraOutro = fora.filter((x) => !semCad(x));
   const semCadastro = fora.filter(semCad);
-  return /* @__PURE__ */ React9.createElement("section", { className: "sheet pad", "data-testid": "geral-form" }, /* @__PURE__ */ React9.createElement("button", { className: "btn quiet sm", onClick: () => editando ? sairDaEdicao() : setTela("inicio"), style: { marginBottom: 10 } }, /* @__PURE__ */ React9.createElement(ArrowLeft3, { size: 15 }), " ", editando ? "Voltar sem salvar" : "Voltar (o rascunho fica guardado)"), /* @__PURE__ */ React9.createElement("h2", { className: "h2", style: { marginTop: 0 } }, !editando ? "Novo manejo" : ownerMode ? "Editar manejo" : "Incluir brincos e observa\xE7\xF5es"), scriptDesatualizado && /* @__PURE__ */ React9.createElement(Aviso, null, "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13)."), soAcrescenta ? /* @__PURE__ */ React9.createElement("div", { className: "sub", "data-testid": "cabecalho-travado", style: { marginTop: 0 } }, /* @__PURE__ */ React9.createElement("b", null, formatarDataBR(f.data), " \xB7 lote ", lote, " \xB7 ", f.descricao), f.responsavel ? ` \xB7 ${f.responsavel}` : "", /* @__PURE__ */ React9.createElement("div", { style: { fontSize: 13, marginTop: 4 } }, "Aqui voc\xEA inclui mais brincos e escreve ou corrige observa\xE7\xF5es. O que j\xE1 foi gravado fica como est\xE1: s\xF3 o propriet\xE1rio muda o manejo ou tira brincos.")) : /* @__PURE__ */ React9.createElement(React9.Fragment, null, /* @__PURE__ */ React9.createElement("div", { className: "grid2" }, /* @__PURE__ */ React9.createElement("div", { className: "fld" }, /* @__PURE__ */ React9.createElement("label", { htmlFor: "mg-data" }, "Data"), /* @__PURE__ */ React9.createElement("input", { id: "mg-data", type: "date", value: f.data, onChange: (e) => set("data", e.target.value) })), /* @__PURE__ */ React9.createElement("div", { className: "fld" }, /* @__PURE__ */ React9.createElement("label", { htmlFor: "mg-lote" }, "Lote"), /* @__PURE__ */ React9.createElement("select", { id: "mg-lote", value: f.lote, onChange: (e) => setF((x) => ({ ...x, lote: e.target.value, marcados: [], incluirCrias: null })) }, /* @__PURE__ */ React9.createElement("option", { value: "" }, "Escolha o lote"), lotes.map((l) => /* @__PURE__ */ React9.createElement("option", { key: l.lote, value: l.lote }, l.lote, " (", l.n, ")")), /* @__PURE__ */ React9.createElement("option", { value: OUTRO }, "Outro lote (digitar)")))), f.lote === OUTRO && /* @__PURE__ */ React9.createElement("div", { className: "fld" }, /* @__PURE__ */ React9.createElement("label", { htmlFor: "mg-lote-novo" }, "Nome do lote"), /* @__PURE__ */ React9.createElement("input", { id: "mg-lote-novo", value: f.loteDigitado, onChange: (e) => {
+  return /* @__PURE__ */ React10.createElement("section", { className: "sheet pad", "data-testid": "geral-form" }, /* @__PURE__ */ React10.createElement("button", { className: "btn quiet sm", onClick: () => editando ? sairDaEdicao() : setTela("inicio"), style: { marginBottom: 10 } }, /* @__PURE__ */ React10.createElement(ArrowLeft3, { size: 15 }), " ", editando ? "Voltar sem salvar" : "Voltar (o rascunho fica guardado)"), /* @__PURE__ */ React10.createElement("h2", { className: "h2", style: { marginTop: 0 } }, !editando ? "Novo manejo" : ownerMode ? "Editar manejo" : "Incluir brincos e observa\xE7\xF5es"), scriptDesatualizado && /* @__PURE__ */ React10.createElement(Aviso, null, "A planilha ainda n\xE3o aceita o manejo geral (precisa do script 13)."), soAcrescenta ? /* @__PURE__ */ React10.createElement("div", { className: "sub", "data-testid": "cabecalho-travado", style: { marginTop: 0 } }, /* @__PURE__ */ React10.createElement("b", null, formatarDataBR(f.data), " \xB7 lote ", lote, " \xB7 ", f.descricao), f.responsavel ? ` \xB7 ${f.responsavel}` : "", /* @__PURE__ */ React10.createElement("div", { style: { fontSize: 13, marginTop: 4 } }, "Aqui voc\xEA inclui mais brincos e escreve ou corrige observa\xE7\xF5es. O que j\xE1 foi gravado fica como est\xE1: s\xF3 o propriet\xE1rio muda o manejo ou tira brincos.")) : /* @__PURE__ */ React10.createElement(React10.Fragment, null, /* @__PURE__ */ React10.createElement("div", { className: "grid2" }, /* @__PURE__ */ React10.createElement("div", { className: "fld" }, /* @__PURE__ */ React10.createElement("label", { htmlFor: "mg-data" }, "Data"), /* @__PURE__ */ React10.createElement("input", { id: "mg-data", type: "date", value: f.data, onChange: (e) => set("data", e.target.value) })), /* @__PURE__ */ React10.createElement("div", { className: "fld" }, /* @__PURE__ */ React10.createElement("label", { htmlFor: "mg-lote" }, "Lote"), /* @__PURE__ */ React10.createElement("select", { id: "mg-lote", value: f.lote, onChange: (e) => setF((x) => ({ ...x, lote: e.target.value, marcados: [], incluirCrias: null })) }, /* @__PURE__ */ React10.createElement("option", { value: "" }, "Escolha o lote"), lotes.map((l) => /* @__PURE__ */ React10.createElement("option", { key: l.lote, value: l.lote }, l.lote, " (", l.n, ")")), /* @__PURE__ */ React10.createElement("option", { value: OUTRO }, "Outro lote (digitar)")))), f.lote === OUTRO && /* @__PURE__ */ React10.createElement("div", { className: "fld" }, /* @__PURE__ */ React10.createElement("label", { htmlFor: "mg-lote-novo" }, "Nome do lote"), /* @__PURE__ */ React10.createElement("input", { id: "mg-lote-novo", value: f.loteDigitado, onChange: (e) => {
     setErro("");
     setF((x) => ({ ...x, loteDigitado: e.target.value }));
-  }, placeholder: "Ex.: Pasto da grota" })), /* @__PURE__ */ React9.createElement("div", { className: "fld" }, /* @__PURE__ */ React9.createElement("label", { htmlFor: "mg-desc" }, "Manejo (o que est\xE1 sendo feito)"), /* @__PURE__ */ React9.createElement("div", { className: "pills", style: { marginTop: 0 } }, MANEJOS_RAPIDOS.map((m) => /* @__PURE__ */ React9.createElement("button", { key: m.rotulo, type: "button", "aria-pressed": f.descricao.toLowerCase().includes(m.rotulo.toLowerCase()), onClick: () => rapido(m) }, m.rotulo))), /* @__PURE__ */ React9.createElement("input", { id: "mg-desc", value: f.descricao, onChange: (e) => set("descricao", e.target.value), placeholder: "Ex.: Pour-on no lombo e confer\xEAncia" })), /* @__PURE__ */ React9.createElement("div", { className: "fld" }, /* @__PURE__ */ React9.createElement("label", { htmlFor: "mg-resp" }, "Respons\xE1vel"), /* @__PURE__ */ React9.createElement("input", { id: "mg-resp", value: f.responsavel, onChange: (e) => set("responsavel", e.target.value) })), /* @__PURE__ */ React9.createElement(AplicacoesEditor, { valor: f.aplicacoes, onChange: (a) => set("aplicacoes", a) })), !lote && /* @__PURE__ */ React9.createElement("p", { className: "sub", "data-testid": "geral-sem-lote" }, f.lote === OUTRO ? "Digite o nome do lote novo para come\xE7ar a conferir os brincos." : 'Escolha o lote (ou "Outro lote") para conferir os brincos.'), lote && /* @__PURE__ */ React9.createElement(React9.Fragment, null, comCrias && /* @__PURE__ */ React9.createElement("label", { className: "chk-lin", style: { margin: "4px 0 10px" } }, /* @__PURE__ */ React9.createElement("input", { type: "checkbox", checked: incluirCrias, onChange: (e) => set("incluirCrias", e.target.checked), "data-testid": "incluir-crias" }), "Incluir as crias ao p\xE9 (bezerros mamando das vacas deste lote)"), /* @__PURE__ */ React9.createElement(Rotulo, null, "Conferir os brincos do lote ", lote), itens2.length === 0 && /* @__PURE__ */ React9.createElement("p", { className: "sub", "data-testid": "lote-sem-animais" }, 'Este lote ainda n\xE3o tem animais no cadastro. Digite o brinco de cada animal que passar: se ele existe em outro lote, o app mostra a situa\xE7\xE3o dele e inclui com a observa\xE7\xE3o; se n\xE3o existe em lugar nenhum, inclui anotado como "sem cadastro".'), /* @__PURE__ */ React9.createElement(ConferirBrincos, { dados, lote, hoje, itens: itens2, marcados, onToggle: toggle, incluidos: f.incluidos, onIncluir: incluir, indice, esperados, rotuloContador: "conferidos", notas: f.notas || {}, onNota: anotar }), fora.length > 0 && /* @__PURE__ */ React9.createElement("div", { className: "fora-lote", "data-testid": "fora-lote" }, foraOutro.length > 0 && /* @__PURE__ */ React9.createElement(Rotulo, null, "Inclu\xEDdos de fora da lista do lote (", foraOutro.length, ")"), foraOutro.map((x) => /* @__PURE__ */ React9.createElement("div", { key: `${x.animal}-${x.brinco}`, className: "fora-lin", "data-testid": `fora-${x.brinco}` }, /* @__PURE__ */ React9.createElement("div", { className: "fora-top" }, /* @__PURE__ */ React9.createElement("b", { className: "b" }, x.brinco), /* @__PURE__ */ React9.createElement("span", { className: "late" }, x.obs), !(soAcrescenta && x.manter) && /* @__PURE__ */ React9.createElement("button", { type: "button", className: "x-peq", "aria-label": `Tirar ${x.brinco}`, onClick: () => tirar(x) }, /* @__PURE__ */ React9.createElement(X3, { size: 16 }))), x.sit && /* @__PURE__ */ React9.createElement("div", { className: "sub fora-sit", style: { margin: "2px 0 0", fontSize: 13 } }, x.sit), /* @__PURE__ */ React9.createElement(CampoNota, { brinco: x.brinco, valor: (f.notas || {})[chaveNota(x)], onChange: (t) => anotar(chaveNota(x), t) }), x.mudar === "pendente" && (ownerMode ? /* @__PURE__ */ React9.createElement("label", { className: "chk-lin", style: { fontSize: 14 } }, /* @__PURE__ */ React9.createElement(
+  }, placeholder: "Ex.: Pasto da grota" })), /* @__PURE__ */ React10.createElement("div", { className: "fld" }, /* @__PURE__ */ React10.createElement("label", { htmlFor: "mg-desc" }, "Manejo (o que est\xE1 sendo feito)"), /* @__PURE__ */ React10.createElement("div", { className: "pills", style: { marginTop: 0 } }, MANEJOS_RAPIDOS.map((m) => /* @__PURE__ */ React10.createElement("button", { key: m.rotulo, type: "button", "aria-pressed": f.descricao.toLowerCase().includes(m.rotulo.toLowerCase()), onClick: () => rapido(m) }, m.rotulo))), /* @__PURE__ */ React10.createElement("input", { id: "mg-desc", value: f.descricao, onChange: (e) => set("descricao", e.target.value), placeholder: "Ex.: Pour-on no lombo e confer\xEAncia" })), /* @__PURE__ */ React10.createElement("div", { className: "fld" }, /* @__PURE__ */ React10.createElement("label", { htmlFor: "mg-resp" }, "Respons\xE1vel"), /* @__PURE__ */ React10.createElement("input", { id: "mg-resp", value: f.responsavel, onChange: (e) => set("responsavel", e.target.value) })), /* @__PURE__ */ React10.createElement(AplicacoesEditor, { valor: f.aplicacoes, onChange: (a) => set("aplicacoes", a) })), !lote && /* @__PURE__ */ React10.createElement("p", { className: "sub", "data-testid": "geral-sem-lote" }, f.lote === OUTRO ? "Digite o nome do lote novo para come\xE7ar a conferir os brincos." : 'Escolha o lote (ou "Outro lote") para conferir os brincos.'), lote && /* @__PURE__ */ React10.createElement(React10.Fragment, null, comCrias && /* @__PURE__ */ React10.createElement("label", { className: "chk-lin", style: { margin: "4px 0 10px" } }, /* @__PURE__ */ React10.createElement("input", { type: "checkbox", checked: incluirCrias, onChange: (e) => set("incluirCrias", e.target.checked), "data-testid": "incluir-crias" }), "Incluir as crias ao p\xE9 (bezerros mamando das vacas deste lote)"), /* @__PURE__ */ React10.createElement(Rotulo, null, "Conferir os brincos do lote ", lote), itens2.length === 0 && /* @__PURE__ */ React10.createElement("p", { className: "sub", "data-testid": "lote-sem-animais" }, 'Este lote ainda n\xE3o tem animais no cadastro. Digite o brinco de cada animal que passar: se ele existe em outro lote, o app mostra a situa\xE7\xE3o dele e inclui com a observa\xE7\xE3o; se n\xE3o existe em lugar nenhum, inclui anotado como "sem cadastro".'), /* @__PURE__ */ React10.createElement(ConferirBrincos, { dados, lote, hoje, itens: itens2, marcados, onToggle: toggle, incluidos: f.incluidos, onIncluir: incluir, indice, esperados, rotuloContador: "conferidos", notas: f.notas || {}, onNota: anotar }), fora.length > 0 && /* @__PURE__ */ React10.createElement("div", { className: "fora-lote", "data-testid": "fora-lote" }, foraOutro.length > 0 && /* @__PURE__ */ React10.createElement(Rotulo, null, "Inclu\xEDdos de fora da lista do lote (", foraOutro.length, ")"), foraOutro.map((x) => /* @__PURE__ */ React10.createElement("div", { key: `${x.animal}-${x.brinco}`, className: "fora-lin", "data-testid": `fora-${x.brinco}` }, /* @__PURE__ */ React10.createElement("div", { className: "fora-top" }, /* @__PURE__ */ React10.createElement("b", { className: "b" }, x.brinco), /* @__PURE__ */ React10.createElement("span", { className: "late" }, x.obs), !(soAcrescenta && x.manter) && /* @__PURE__ */ React10.createElement("button", { type: "button", className: "x-peq", "aria-label": `Tirar ${x.brinco}`, onClick: () => tirar(x) }, /* @__PURE__ */ React10.createElement(X3, { size: 16 }))), x.sit && /* @__PURE__ */ React10.createElement("div", { className: "sub fora-sit", style: { margin: "2px 0 0", fontSize: 13 } }, x.sit), /* @__PURE__ */ React10.createElement(CampoNota, { brinco: x.brinco, valor: (f.notas || {})[chaveNota(x)], onChange: (t) => anotar(chaveNota(x), t) }), x.mudar === "pendente" && (ownerMode ? /* @__PURE__ */ React10.createElement("label", { className: "chk-lin", style: { fontSize: 14 } }, /* @__PURE__ */ React10.createElement(
     "input",
     {
       type: "checkbox",
@@ -6319,18 +6586,18 @@ function ManejoGeral({ dados, hoje, ownerMode, modoTeste, scriptDesatualizado, o
       "aria-label": `Mudar ${x.brinco} para o lote ${lote}`,
       onChange: (e) => set("aprovar", e.target.checked ? [...f.aprovar, x.animal] : f.aprovar.filter((a) => a !== x.animal))
     }
-  ), "Mudar para o lote ", lote) : /* @__PURE__ */ React9.createElement("div", { className: "sub", style: { fontSize: 13 } }, "A mudan\xE7a para o lote ", lote, " vai para o propriet\xE1rio confirmar.")))), semCadastro.length > 0 && /* @__PURE__ */ React9.createElement("div", { style: { marginTop: foraOutro.length ? 10 : 0 } }, /* @__PURE__ */ React9.createElement(Rotulo, null, "Sem cadastro (", semCadastro.length, ")"), /* @__PURE__ */ React9.createElement("p", { className: "sub", style: { margin: "0 0 4px", fontSize: 13 } }, "N\xE3o est\xE3o no banco de dados nem em nenhum lote. Ficam anotados no manejo.")), semCadastro.map((x) => /* @__PURE__ */ React9.createElement("div", { key: `sc-${x.brinco}`, className: "fora-lin", "data-testid": `fora-${x.brinco}` }, /* @__PURE__ */ React9.createElement("div", { className: "fora-top" }, /* @__PURE__ */ React9.createElement("b", { className: "b" }, x.brinco), /* @__PURE__ */ React9.createElement("span", { className: "late" }, x.obs), !(soAcrescenta && x.manter) && /* @__PURE__ */ React9.createElement("button", { type: "button", className: "x-peq", "aria-label": `Tirar ${x.brinco}`, onClick: () => tirar(x) }, /* @__PURE__ */ React9.createElement(X3, { size: 16 }))), /* @__PURE__ */ React9.createElement(CampoNota, { brinco: x.brinco, valor: (f.notas || {})[chaveNota(x)], onChange: (t) => anotar(chaveNota(x), t) }))))), !soAcrescenta && /* @__PURE__ */ React9.createElement("div", { className: "fld", style: { marginTop: 12 } }, /* @__PURE__ */ React9.createElement("label", { htmlFor: "mg-obs" }, "Observa\xE7\xE3o"), /* @__PURE__ */ React9.createElement("input", { id: "mg-obs", value: f.obs, onChange: (e) => set("obs", e.target.value) })), erro && /* @__PURE__ */ React9.createElement(Aviso, null, erro), /* @__PURE__ */ React9.createElement("button", { className: "btn wide", style: { marginTop: 8 }, onClick: gravar, disabled: gravando || total === 0 || scriptDesatualizado }, gravando ? /* @__PURE__ */ React9.createElement(Loader25, { size: 18, className: "spin" }) : /* @__PURE__ */ React9.createElement(Save5, { size: 18 }), " ", editando ? "Salvar altera\xE7\xF5es" : "Gravar manejo", " (", nMarc, " de ", itens2.length, fora.length ? ` + ${fora.length} de fora${nSemCad ? `, ${nSemCad} sem cadastro` : ""}` : "", ")"), total === 0 && !scriptDesatualizado && /* @__PURE__ */ React9.createElement("p", { className: "sub", "data-testid": "dica-gravar", style: { textAlign: "center", marginTop: 8 } }, "Para gravar: marque quem passou ou digite um brinco."), lote && itens2.length > nMarc && nMarc > 0 && /* @__PURE__ */ React9.createElement("p", { className: "sub", style: { textAlign: "center" } }, /* @__PURE__ */ React9.createElement(ClipboardCheck, { size: 14, style: { verticalAlign: -2 } }), " ", itens2.length - nMarc, " ainda n\xE3o marcado(s): ao gravar, entram como faltando."));
+  ), "Mudar para o lote ", lote) : /* @__PURE__ */ React10.createElement("div", { className: "sub", style: { fontSize: 13 } }, "A mudan\xE7a para o lote ", lote, " vai para o propriet\xE1rio confirmar.")))), semCadastro.length > 0 && /* @__PURE__ */ React10.createElement("div", { style: { marginTop: foraOutro.length ? 10 : 0 } }, /* @__PURE__ */ React10.createElement(Rotulo, null, "Sem cadastro (", semCadastro.length, ")"), /* @__PURE__ */ React10.createElement("p", { className: "sub", style: { margin: "0 0 4px", fontSize: 13 } }, "N\xE3o est\xE3o no banco de dados nem em nenhum lote. Ficam anotados no manejo.")), semCadastro.map((x) => /* @__PURE__ */ React10.createElement("div", { key: `sc-${x.brinco}`, className: "fora-lin", "data-testid": `fora-${x.brinco}` }, /* @__PURE__ */ React10.createElement("div", { className: "fora-top" }, /* @__PURE__ */ React10.createElement("b", { className: "b" }, x.brinco), /* @__PURE__ */ React10.createElement("span", { className: "late" }, x.obs), !(soAcrescenta && x.manter) && /* @__PURE__ */ React10.createElement("button", { type: "button", className: "x-peq", "aria-label": `Tirar ${x.brinco}`, onClick: () => tirar(x) }, /* @__PURE__ */ React10.createElement(X3, { size: 16 }))), /* @__PURE__ */ React10.createElement(CampoNota, { brinco: x.brinco, valor: (f.notas || {})[chaveNota(x)], onChange: (t) => anotar(chaveNota(x), t) }))))), !soAcrescenta && /* @__PURE__ */ React10.createElement("div", { className: "fld", style: { marginTop: 12 } }, /* @__PURE__ */ React10.createElement("label", { htmlFor: "mg-obs" }, "Observa\xE7\xE3o"), /* @__PURE__ */ React10.createElement("input", { id: "mg-obs", value: f.obs, onChange: (e) => set("obs", e.target.value) })), erro && /* @__PURE__ */ React10.createElement(Aviso, null, erro), /* @__PURE__ */ React10.createElement("button", { className: "btn wide", style: { marginTop: 8 }, onClick: gravar, disabled: gravando || total === 0 || scriptDesatualizado }, gravando ? /* @__PURE__ */ React10.createElement(Loader25, { size: 18, className: "spin" }) : /* @__PURE__ */ React10.createElement(Save6, { size: 18 }), " ", editando ? "Salvar altera\xE7\xF5es" : "Gravar manejo", " (", nMarc, " de ", itens2.length, fora.length ? ` + ${fora.length} de fora${nSemCad ? `, ${nSemCad} sem cadastro` : ""}` : "", ")"), total === 0 && !scriptDesatualizado && /* @__PURE__ */ React10.createElement("p", { className: "sub", "data-testid": "dica-gravar", style: { textAlign: "center", marginTop: 8 } }, "Para gravar: marque quem passou ou digite um brinco."), lote && itens2.length > nMarc && nMarc > 0 && /* @__PURE__ */ React10.createElement("p", { className: "sub", style: { textAlign: "center" } }, /* @__PURE__ */ React10.createElement(ClipboardCheck, { size: 14, style: { verticalAlign: -2 } }), " ", itens2.length - nMarc, " ainda n\xE3o marcado(s): ao gravar, entram como faltando."));
 }
 
 // src/telas/Manejo.jsx
 function Manejo({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarProtocolo, onSalvarConfig, scriptAntes13, onDecidirLote, onEfetivarNotas, onCorrigirManejo, onExcluirManejo, novoProtocolo }) {
-  const [aba, setAba] = useState10("protocolos");
-  const [novo, setNovo] = useState10(novoProtocolo || null);
-  const [volta, setVolta] = useState10(0);
+  const [aba, setAba] = useState11("protocolos");
+  const [novo, setNovo] = useState11(novoProtocolo || null);
+  const [volta, setVolta] = useState11(0);
   const pend = pendenciasVacinas(dados, dados.config, hoje).filter((p) => p.nivel !== "futura").length;
   const ativos2 = (dados.protocolos || []).filter((p) => p.status !== "Encerrado").length;
   const pendLote = ownerMode ? pendenciasLote(dados).length + pendenciasNotas(dados).length : 0;
-  return /* @__PURE__ */ React10.createElement("div", { className: "wrap" }, /* @__PURE__ */ React10.createElement("div", { className: "head" }, /* @__PURE__ */ React10.createElement("div", null, /* @__PURE__ */ React10.createElement("small", null, "Curral"), /* @__PURE__ */ React10.createElement("h1", null, "Manejo"))), /* @__PURE__ */ React10.createElement(
+  return /* @__PURE__ */ React11.createElement("div", { className: "wrap" }, /* @__PURE__ */ React11.createElement("div", { className: "head" }, /* @__PURE__ */ React11.createElement("div", null, /* @__PURE__ */ React11.createElement("small", null, "Curral"), /* @__PURE__ */ React11.createElement("h1", null, "Manejo"))), /* @__PURE__ */ React11.createElement(
     IndexTabs,
     {
       rotulo: "Manejo",
@@ -6341,7 +6608,7 @@ function Manejo({ dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarProto
       },
       tabs: [{ id: "protocolos", label: "Protocolos", count: ativos2 }, { id: "vacinas", label: "Vacinas", count: pend }, { id: "geral", label: "Geral", count: pendLote || void 0 }, { id: "inducao", label: "Indu\xE7\xE3o" }]
     }
-  ), aba === "protocolos" && /* @__PURE__ */ React10.createElement(Protocolos, { key: `p${volta}`, dados, hoje, ownerMode, modoTeste, onSalvarProtocolo, onGravarLote, abrirNovo: novo, onNovoConsumido: () => setNovo(null) }), aba === "geral" && /* @__PURE__ */ React10.createElement(ManejoGeral, { key: `g${volta}`, dados, hoje, ownerMode, modoTeste, scriptDesatualizado: !!scriptAntes13, onGravarLote, onDecidirLote, onEfetivarNotas, onCorrigirManejo, onExcluirManejo }), aba === "inducao" && /* @__PURE__ */ React10.createElement(Inducao, { key: `i${volta}`, dados, hoje, ownerMode, modoTeste, onGravarLote }), aba === "vacinas" && /* @__PURE__ */ React10.createElement(Vacinas, { key: `v${volta}`, dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarConfig }));
+  ), aba === "protocolos" && /* @__PURE__ */ React11.createElement(Protocolos, { key: `p${volta}`, dados, hoje, ownerMode, modoTeste, onSalvarProtocolo, onGravarLote, abrirNovo: novo, onNovoConsumido: () => setNovo(null) }), aba === "geral" && /* @__PURE__ */ React11.createElement(ManejoGeral, { key: `g${volta}`, dados, hoje, ownerMode, modoTeste, scriptDesatualizado: !!scriptAntes13, onGravarLote, onDecidirLote, onEfetivarNotas, onCorrigirManejo, onExcluirManejo }), aba === "inducao" && /* @__PURE__ */ React11.createElement(Inducao, { key: `i${volta}`, dados, hoje, ownerMode, modoTeste, onGravarLote }), aba === "vacinas" && /* @__PURE__ */ React11.createElement(Vacinas, { key: `v${volta}`, dados, hoje, ownerMode, modoTeste, onGravarLote, onSalvarConfig }));
 }
 
 // src/estilos.js
@@ -6879,6 +7146,9 @@ button.fx-kpi{cursor:pointer} button.fx-kpi:hover{border-color:var(--line)}
 .pd-defs summary{cursor:pointer;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:8px 0}
 .pd-defs ul{margin:6px 0 0;padding-left:1.1rem;line-height:1.6}
 .pd-defs b{color:var(--tx)}
+.ed-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:0 12px}
+.ed-grid .fld{margin-bottom:10px}
+.ed-grid input,.ed-grid select{width:100%}
 .link{background:none;border:none;padding:0;color:var(--amber);text-decoration:underline;cursor:pointer;font:inherit}
 .inv-tabela td{white-space:nowrap}
 .inv-tabela td.acao{white-space:normal}
@@ -6899,8 +7169,8 @@ button.fx-kpi{cursor:pointer} button.fx-kpi:hover{border-color:var(--line)}
 
 // src/excel.js
 import * as XLSX from "xlsx";
-var nomeAba = (s) => String(s).replace(/[\\/?*[\]:]/g, " ").slice(0, 31) || "Aba";
-var semAcento2 = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9_-]+/g, "_");
+var nomeAba = (s2) => String(s2).replace(/[\\/?*[\]:]/g, " ").slice(0, 31) || "Aba";
+var semAcento2 = (s2) => String(s2).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9_-]+/g, "_");
 function exportarExcel({ matrizes, touros, eventos }, ano, hoje) {
   const evs = filtrarPorAno(eventos, ano);
   const wb = XLSX.utils.book_new();
@@ -6920,14 +7190,14 @@ function exportarRelatorioExcel(rel, ano, hoje) {
   const topo = [[rel.titulo, ""], ["Gerado em", hoje], ["Ano de gest\xE3o", rotuloAno(ano)], ["", ""], ...rel.resumo.map((r) => [r.rotulo, r.valor])];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(topo), "Resumo");
   const usados = /* @__PURE__ */ new Set(["Resumo"]);
-  rel.secoes.forEach((s) => {
-    let nome = nomeAba(s.titulo);
+  rel.secoes.forEach((s2) => {
+    let nome = nomeAba(s2.titulo);
     let n = 2;
     while (usados.has(nome)) {
-      nome = nomeAba(`${s.titulo} ${n++}`);
+      nome = nomeAba(`${s2.titulo} ${n++}`);
     }
     usados.add(nome);
-    const aoa = [s.colunas.map((c) => c.label), ...s.linhas.map((l) => s.colunas.map((c) => l[c.k] === void 0 ? "" : l[c.k]))];
+    const aoa = [s2.colunas.map((c) => c.label), ...s2.linhas.map((l) => s2.colunas.map((c) => l[c.k] === void 0 ? "" : l[c.k]))];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), nome);
   });
   const arquivo = `${semAcento2(rel.titulo)}_${hoje}.xlsx`;
@@ -7016,29 +7286,29 @@ var fmtIdade = (dias) => dias === null || dias === void 0 ? "\u2014" : dias < 60
 var fmtGmd = (g) => g === null || g === void 0 ? "\u2014" : `${fmtNum(g, 2)} kg/dia`;
 
 // src/telas/Lancar.jsx
-import React15, { useState as useState14, useEffect as useEffect6, useMemo as useMemo12, useRef as useRef6 } from "react";
-import { Save as Save8, Check as Check6, Loader2 as Loader29 } from "lucide-react";
+import React16, { useState as useState15, useEffect as useEffect6, useMemo as useMemo13, useRef as useRef6 } from "react";
+import { Save as Save9, Check as Check6, Loader2 as Loader29 } from "lucide-react";
 
 // src/telas/FichaRapida.jsx
-import React11 from "react";
+import React12 from "react";
 function FichaRapida({ ficha, digitado, ocultarSemPeso }) {
   if (!digitado || !String(digitado).trim()) return null;
   if (!ficha || !ficha.achado) {
     if (String(digitado).trim().length < 3) return null;
-    return /* @__PURE__ */ React11.createElement("div", { className: "ficha-rapida ruim", "data-testid": "ficha-rapida", role: "status" }, "Brinco ", String(digitado).trim(), " n\xE3o encontrado (cria ou novilha). Confira o n\xFAmero.");
+    return /* @__PURE__ */ React12.createElement("div", { className: "ficha-rapida ruim", "data-testid": "ficha-rapida", role: "status" }, "Brinco ", String(digitado).trim(), " n\xE3o encontrado (cria ou novilha). Confira o n\xFAmero.");
   }
   if (ficha.jaMorto) {
-    return /* @__PURE__ */ React11.createElement("div", { className: "ficha-rapida ruim", "data-testid": "ficha-rapida", role: "status" }, /* @__PURE__ */ React11.createElement("b", null, ficha.brinco), " \xB7 Este animal morreu", ficha.mortoEm ? ` em ${formatarDataBR(ficha.mortoEm)}` : "", ". N\xE3o d\xE1 para pesar.");
+    return /* @__PURE__ */ React12.createElement("div", { className: "ficha-rapida ruim", "data-testid": "ficha-rapida", role: "status" }, /* @__PURE__ */ React12.createElement("b", null, ficha.brinco), " \xB7 Este animal morreu", ficha.mortoEm ? ` em ${formatarDataBR(ficha.mortoEm)}` : "", ". N\xE3o d\xE1 para pesar.");
   }
   if (ficha.jaVendido) {
-    return /* @__PURE__ */ React11.createElement("div", { className: "ficha-rapida ruim", "data-testid": "ficha-rapida", role: "status" }, /* @__PURE__ */ React11.createElement("b", null, ficha.brinco), " \xB7 Este animal j\xE1 foi vendido", ficha.vendidoEm ? ` em ${formatarDataBR(ficha.vendidoEm)}` : "", ".");
+    return /* @__PURE__ */ React12.createElement("div", { className: "ficha-rapida ruim", "data-testid": "ficha-rapida", role: "status" }, /* @__PURE__ */ React12.createElement("b", null, ficha.brinco), " \xB7 Este animal j\xE1 foi vendido", ficha.vendidoEm ? ` em ${formatarDataBR(ficha.vendidoEm)}` : "", ".");
   }
   const tipo = ficha.categoria && ficha.categoria !== "Cria" ? ficha.categoria : ficha.sexo === "F\xEAmea" ? "Bezerra" : ficha.sexo === "Macho" ? "Bezerro" : "Cria";
-  return /* @__PURE__ */ React11.createElement("div", { className: `ficha-rapida${ficha.mesmaData && ficha.mesmaData.length ? " atencao" : ""}`, "data-testid": "ficha-rapida", role: "status" }, /* @__PURE__ */ React11.createElement("div", null, /* @__PURE__ */ React11.createElement("b", null, ficha.brinco), " \xB7 ", tipo, ficha.sexo && tipo !== "Bezerro" && tipo !== "Bezerra" ? ` \xB7 ${ficha.sexo}` : ""), /* @__PURE__ */ React11.createElement("div", { className: "lin" }, /* @__PURE__ */ React11.createElement("span", null, "Idade ", /* @__PURE__ */ React11.createElement("b", null, ficha.idade ? ficha.idade.texto : "?")), /* @__PURE__ */ React11.createElement("span", null, "Nasceu ", /* @__PURE__ */ React11.createElement("b", null, ficha.nascData ? formatarDataBR(ficha.nascData) : "?")), /* @__PURE__ */ React11.createElement("span", null, "M\xE3e ", /* @__PURE__ */ React11.createElement("b", null, ficha.maeBrinco || "\u2014"))), !ocultarSemPeso && /* @__PURE__ */ React11.createElement("div", { className: "lin" }, ficha.ultimoPeso ? /* @__PURE__ */ React11.createElement("span", null, "\xDAltimo peso ", /* @__PURE__ */ React11.createElement("b", null, fmtKg(ficha.ultimoPeso.peso)), " em ", formatarDataBR(ficha.ultimoPeso.data)) : /* @__PURE__ */ React11.createElement("span", null, /* @__PURE__ */ React11.createElement("b", null, "Ainda n\xE3o foi pesado")), ficha.desmamaData ? /* @__PURE__ */ React11.createElement("span", null, "Desmama em ", /* @__PURE__ */ React11.createElement("b", null, formatarDataBR(ficha.desmamaData))) : null));
+  return /* @__PURE__ */ React12.createElement("div", { className: `ficha-rapida${ficha.mesmaData && ficha.mesmaData.length ? " atencao" : ""}`, "data-testid": "ficha-rapida", role: "status" }, /* @__PURE__ */ React12.createElement("div", null, /* @__PURE__ */ React12.createElement("b", null, ficha.brinco), " \xB7 ", tipo, ficha.sexo && tipo !== "Bezerro" && tipo !== "Bezerra" ? ` \xB7 ${ficha.sexo}` : ""), /* @__PURE__ */ React12.createElement("div", { className: "lin" }, /* @__PURE__ */ React12.createElement("span", null, "Idade ", /* @__PURE__ */ React12.createElement("b", null, ficha.idade ? ficha.idade.texto : "?")), /* @__PURE__ */ React12.createElement("span", null, "Nasceu ", /* @__PURE__ */ React12.createElement("b", null, ficha.nascData ? formatarDataBR(ficha.nascData) : "?")), /* @__PURE__ */ React12.createElement("span", null, "M\xE3e ", /* @__PURE__ */ React12.createElement("b", null, ficha.maeBrinco || "\u2014"))), !ocultarSemPeso && /* @__PURE__ */ React12.createElement("div", { className: "lin" }, ficha.ultimoPeso ? /* @__PURE__ */ React12.createElement("span", null, "\xDAltimo peso ", /* @__PURE__ */ React12.createElement("b", null, fmtKg(ficha.ultimoPeso.peso)), " em ", formatarDataBR(ficha.ultimoPeso.data)) : /* @__PURE__ */ React12.createElement("span", null, /* @__PURE__ */ React12.createElement("b", null, "Ainda n\xE3o foi pesado")), ficha.desmamaData ? /* @__PURE__ */ React12.createElement("span", null, "Desmama em ", /* @__PURE__ */ React12.createElement("b", null, formatarDataBR(ficha.desmamaData))) : null));
 }
 
 // src/telas/Lote.jsx
-import React12, { useState as useState11 } from "react";
+import React13, { useState as useState12 } from "react";
 import { ClipboardPaste, Check as Check5, Loader2 as Loader26 } from "lucide-react";
 function lerBlocoLote(texto) {
   let t = String(texto || "").trim();
@@ -7071,11 +7341,11 @@ function mudancas(aplicado, dados) {
   return partes.join(" \xB7 ");
 }
 function LoteFoto({ dados, hoje, onGravarLote, modoTeste }) {
-  const [texto, setTexto] = useState11("");
-  const [erro, setErro] = useState11("");
-  const [prev, setPrev] = useState11(null);
-  const [gravando, setGravando] = useState11(false);
-  const [feito, setFeito] = useState11("");
+  const [texto, setTexto] = useState12("");
+  const [erro, setErro] = useState12("");
+  const [prev, setPrev] = useState12(null);
+  const [gravando, setGravando] = useState12(false);
+  const [feito, setFeito] = useState12("");
   function conferir() {
     setFeito("");
     const r = lerBlocoLote(texto);
@@ -7098,23 +7368,23 @@ function LoteFoto({ dados, hoje, onGravarLote, modoTeste }) {
       setTexto("");
     } else setErro(r.msg);
   }
-  return /* @__PURE__ */ React12.createElement("div", null, /* @__PURE__ */ React12.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Lote por foto"), /* @__PURE__ */ React12.createElement("p", { className: "sub" }, "Tire a foto da folha do manejo e mande para o Claude no chat. Ele devolve um bloco de texto com os lan\xE7amentos. Cole aqui, confira o que vai mudar em cada vaca e s\xF3 ent\xE3o grave."), /* @__PURE__ */ React12.createElement("div", { className: "fld" }, /* @__PURE__ */ React12.createElement("label", { htmlFor: "lote-texto" }, "Bloco de lan\xE7amentos"), /* @__PURE__ */ React12.createElement("textarea", { id: "lote-texto", value: texto, onChange: (e) => setTexto(e.target.value), placeholder: '[ { "tipo": "nascimento", "matriz": "3012", "data": "10/10/26", "sexo": "F" } ]', spellCheck: false })), /* @__PURE__ */ React12.createElement("button", { className: "btn wide quiet", onClick: conferir }, /* @__PURE__ */ React12.createElement(ClipboardPaste, { size: 18 }), " Conferir antes de gravar"), erro && /* @__PURE__ */ React12.createElement(Aviso, null, erro), feito && /* @__PURE__ */ React12.createElement(Aviso, { tipo: "ok" }, feito, modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : ""), prev && /* @__PURE__ */ React12.createElement("div", { style: { marginTop: 18 } }, /* @__PURE__ */ React12.createElement("h2", { className: "h2" }, "Confer\xEAncia", /* @__PURE__ */ React12.createElement("small", null, prev.aplicados.length, " para gravar \xB7 ", prev.rejeitados.length, " com problema")), prev.aplicados.length > 0 && /* @__PURE__ */ React12.createElement("div", { className: "sheet", "data-testid": "lote-aplicados" }, prev.aplicados.map((a) => /* @__PURE__ */ React12.createElement("div", { className: "lote-item", key: a.indice, "data-testid": "lote-item" }, /* @__PURE__ */ React12.createElement("span", { className: "n" }, a.indice + 1), /* @__PURE__ */ React12.createElement("div", { className: "txt" }, /* @__PURE__ */ React12.createElement("b", null, descreverEvento(a.eventos[0], prev.estado)), /* @__PURE__ */ React12.createElement("span", null, mudancas(a, dados) || "sem mudan\xE7a no cadastro da vaca")), /* @__PURE__ */ React12.createElement("span", { className: "m mut" }, formatarDataBR(a.eventos[0].data))))), prev.avisos.length > 0 && /* @__PURE__ */ React12.createElement(Aviso, { tipo: "info" }, /* @__PURE__ */ React12.createElement("b", null, "Aten\xE7\xE3o:"), /* @__PURE__ */ React12.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, prev.avisos.map((a, i) => /* @__PURE__ */ React12.createElement("li", { key: i }, "linha ", a.indice + 1, ": ", a.aviso)))), prev.rejeitados.length > 0 && /* @__PURE__ */ React12.createElement(Aviso, null, /* @__PURE__ */ React12.createElement("b", null, "N\xE3o v\xE3o ser gravados:"), /* @__PURE__ */ React12.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 }, "data-testid": "lote-rejeitados" }, prev.rejeitados.map((r, i) => /* @__PURE__ */ React12.createElement("li", { key: i }, "linha ", r.indice + 1, ": ", r.motivo)))), /* @__PURE__ */ React12.createElement("button", { className: "btn wide", disabled: gravando || prev.aplicados.length === 0, onClick: gravar, style: { marginTop: 10 } }, gravando ? /* @__PURE__ */ React12.createElement(Loader26, { size: 18, className: "spin" }) : /* @__PURE__ */ React12.createElement(Check5, { size: 18 }), gravando ? "Gravando..." : `Gravar ${prev.aplicados.length} lan\xE7amento(s)`)));
+  return /* @__PURE__ */ React13.createElement("div", null, /* @__PURE__ */ React13.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Lote por foto"), /* @__PURE__ */ React13.createElement("p", { className: "sub" }, "Tire a foto da folha do manejo e mande para o Claude no chat. Ele devolve um bloco de texto com os lan\xE7amentos. Cole aqui, confira o que vai mudar em cada vaca e s\xF3 ent\xE3o grave."), /* @__PURE__ */ React13.createElement("div", { className: "fld" }, /* @__PURE__ */ React13.createElement("label", { htmlFor: "lote-texto" }, "Bloco de lan\xE7amentos"), /* @__PURE__ */ React13.createElement("textarea", { id: "lote-texto", value: texto, onChange: (e) => setTexto(e.target.value), placeholder: '[ { "tipo": "nascimento", "matriz": "3012", "data": "10/10/26", "sexo": "F" } ]', spellCheck: false })), /* @__PURE__ */ React13.createElement("button", { className: "btn wide quiet", onClick: conferir }, /* @__PURE__ */ React13.createElement(ClipboardPaste, { size: 18 }), " Conferir antes de gravar"), erro && /* @__PURE__ */ React13.createElement(Aviso, null, erro), feito && /* @__PURE__ */ React13.createElement(Aviso, { tipo: "ok" }, feito, modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : ""), prev && /* @__PURE__ */ React13.createElement("div", { style: { marginTop: 18 } }, /* @__PURE__ */ React13.createElement("h2", { className: "h2" }, "Confer\xEAncia", /* @__PURE__ */ React13.createElement("small", null, prev.aplicados.length, " para gravar \xB7 ", prev.rejeitados.length, " com problema")), prev.aplicados.length > 0 && /* @__PURE__ */ React13.createElement("div", { className: "sheet", "data-testid": "lote-aplicados" }, prev.aplicados.map((a) => /* @__PURE__ */ React13.createElement("div", { className: "lote-item", key: a.indice, "data-testid": "lote-item" }, /* @__PURE__ */ React13.createElement("span", { className: "n" }, a.indice + 1), /* @__PURE__ */ React13.createElement("div", { className: "txt" }, /* @__PURE__ */ React13.createElement("b", null, descreverEvento(a.eventos[0], prev.estado)), /* @__PURE__ */ React13.createElement("span", null, mudancas(a, dados) || "sem mudan\xE7a no cadastro da vaca")), /* @__PURE__ */ React13.createElement("span", { className: "m mut" }, formatarDataBR(a.eventos[0].data))))), prev.avisos.length > 0 && /* @__PURE__ */ React13.createElement(Aviso, { tipo: "info" }, /* @__PURE__ */ React13.createElement("b", null, "Aten\xE7\xE3o:"), /* @__PURE__ */ React13.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, prev.avisos.map((a, i) => /* @__PURE__ */ React13.createElement("li", { key: i }, "linha ", a.indice + 1, ": ", a.aviso)))), prev.rejeitados.length > 0 && /* @__PURE__ */ React13.createElement(Aviso, null, /* @__PURE__ */ React13.createElement("b", null, "N\xE3o v\xE3o ser gravados:"), /* @__PURE__ */ React13.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 }, "data-testid": "lote-rejeitados" }, prev.rejeitados.map((r, i) => /* @__PURE__ */ React13.createElement("li", { key: i }, "linha ", r.indice + 1, ": ", r.motivo)))), /* @__PURE__ */ React13.createElement("button", { className: "btn wide", disabled: gravando || prev.aplicados.length === 0, onClick: gravar, style: { marginTop: 10 } }, gravando ? /* @__PURE__ */ React13.createElement(Loader26, { size: 18, className: "spin" }) : /* @__PURE__ */ React13.createElement(Check5, { size: 18 }), gravando ? "Gravando..." : `Gravar ${prev.aplicados.length} lan\xE7amento(s)`)));
 }
 
 // src/telas/Morte.jsx
-import React13, { useMemo as useMemo10, useState as useState12, useRef as useRef5, useEffect as useEffect5 } from "react";
-import { Save as Save6, Loader2 as Loader27, Undo2 } from "lucide-react";
+import React14, { useMemo as useMemo11, useState as useState13, useRef as useRef5, useEffect as useEffect5 } from "react";
+import { Save as Save7, Loader2 as Loader27, Undo2 } from "lucide-react";
 var campoDef = (k) => CAMPOS.morte.find((c) => c.key === k);
 var inicial = (brinco, hoje) => ({ brinco: brinco || "", data: hoje, causa: "", tipoAnimal: "", observacoes: "" });
 function FormMorte({ dados, hoje, brincoFixo, onRegistrar, modoTeste, aoTerminar }) {
-  const [form, setForm] = useState12(() => inicial(brincoFixo, hoje));
-  const [erro, setErro] = useState12("");
-  const [confirmar, setConfirmar] = useState12(false);
-  const [salvando, setSalvando] = useState12(false);
-  const [msg, setMsg] = useState12("");
+  const [form, setForm] = useState13(() => inicial(brincoFixo, hoje));
+  const [erro, setErro] = useState13("");
+  const [confirmar, setConfirmar] = useState13(false);
+  const [salvando, setSalvando] = useState13(false);
+  const [msg, setMsg] = useState13("");
   const timer2 = useRef5(null);
   useEffect5(() => () => clearTimeout(timer2.current), []);
-  const info = useMemo10(() => infoAnimalMorte(dados, form.brinco), [dados, form.brinco]);
+  const info = useMemo11(() => infoAnimalMorte(dados, form.brinco), [dados, form.brinco]);
   const temBrinco = !!form.brinco.trim();
   function mudar(chave2, valor) {
     setForm((f) => ({ ...f, [chave2]: valor }));
@@ -7151,7 +7421,7 @@ function FormMorte({ dados, hoje, brincoFixo, onRegistrar, modoTeste, aoTerminar
     timer2.current = setTimeout(() => setMsg(""), 12e3);
     if (aoTerminar) aoTerminar(r);
   }
-  return /* @__PURE__ */ React13.createElement("div", null, /* @__PURE__ */ React13.createElement("div", { className: "fld" }, /* @__PURE__ */ React13.createElement("label", { htmlFor: "morte-brinco" }, "Brinco do animal"), /* @__PURE__ */ React13.createElement(
+  return /* @__PURE__ */ React14.createElement("div", null, /* @__PURE__ */ React14.createElement("div", { className: "fld" }, /* @__PURE__ */ React14.createElement("label", { htmlFor: "morte-brinco" }, "Brinco do animal"), /* @__PURE__ */ React14.createElement(
     "input",
     {
       id: "morte-brinco",
@@ -7163,15 +7433,15 @@ function FormMorte({ dados, hoje, brincoFixo, onRegistrar, modoTeste, aoTerminar
       onChange: (e) => mudar("brinco", e.target.value),
       placeholder: "Digite o n\xFAmero do brinco (cria, novilha ou vaca)"
     }
-  ), !temBrinco && /* @__PURE__ */ React13.createElement("div", { className: "hint" }, "Deixe em branco se o animal n\xE3o tem n\xFAmero (touro, boi, bezerro sem brinco). A\xED escolha que animal \xE9."), temBrinco && info.achado && !info.jaMorto && !info.jaVendido && /* @__PURE__ */ React13.createElement("div", { className: "hint", "data-testid": "morte-achei" }, "Achei: ", info.descricao), temBrinco && info.achado && info.jaMorto && /* @__PURE__ */ React13.createElement("div", { className: "hint late" }, "Este animal j\xE1 est\xE1 registrado como morto", info.mortoEm ? ` em ${formatarDataBR(info.mortoEm)}` : "", "."), temBrinco && info.achado && !info.jaMorto && info.jaVendido && /* @__PURE__ */ React13.createElement("div", { className: "hint late" }, "Este animal j\xE1 foi vendido", info.vendidoEm ? ` em ${formatarDataBR(info.vendidoEm)}` : "", "."), temBrinco && !info.achado && /* @__PURE__ */ React13.createElement("div", { className: "hint late", "data-testid": "morte-nao-achei" }, "N\xE3o achei o n\xFAmero ", form.brinco.trim(), " no sistema. Se o n\xFAmero est\xE1 certo, escolha que animal \xE9 abaixo para registrar assim mesmo.")), /* @__PURE__ */ React13.createElement("div", { className: "grid2" }, /* @__PURE__ */ React13.createElement(Campo, { campo: campoDef("data"), value: form.data, onChange: mudar, matrizes: [], touros: [] }), /* @__PURE__ */ React13.createElement(Campo, { campo: campoDef("causa"), value: form.causa, onChange: mudar, matrizes: [], touros: [] })), !info.achado && /* @__PURE__ */ React13.createElement(Campo, { campo: { ...campoDef("tipoAnimal"), label: "Que animal \xE9", required: true }, value: form.tipoAnimal, onChange: mudar, matrizes: [], touros: [] }), /* @__PURE__ */ React13.createElement(Campo, { campo: { ...campoDef("observacoes"), label: "Observa\xE7\xE3o (livre)" }, value: form.observacoes, onChange: mudar, matrizes: [], touros: [] }), erro && /* @__PURE__ */ React13.createElement(Aviso, null, erro), confirmar && info.matriz && /* @__PURE__ */ React13.createElement(Aviso, { tipo: "info" }, "Vai registrar a morte de ", /* @__PURE__ */ React13.createElement("b", null, info.descricao), ". ", info.matriz.status === "Cheia" ? "Ela estava cheia e " : "Ela ", "sai da lista de vacas e da previs\xE3o de parto. Confirma?", /* @__PURE__ */ React13.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React13.createElement("button", { className: "btn sm", onClick: () => salvar2(true), disabled: salvando }, "Confirmar morte"), /* @__PURE__ */ React13.createElement("button", { className: "btn quiet sm", onClick: () => setConfirmar(false) }, "Voltar"))), msg && /* @__PURE__ */ React13.createElement(Aviso, { tipo: "ok" }, msg, modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : ""), /* @__PURE__ */ React13.createElement("button", { className: "btn wide", onClick: () => salvar2(false), disabled: salvando, style: { marginTop: 6 } }, salvando ? /* @__PURE__ */ React13.createElement(Loader27, { size: 18, className: "spin" }) : /* @__PURE__ */ React13.createElement(Save6, { size: 18 }), " ", salvando ? "Gravando..." : "Registrar morte"));
+  ), !temBrinco && /* @__PURE__ */ React14.createElement("div", { className: "hint" }, "Deixe em branco se o animal n\xE3o tem n\xFAmero (touro, boi, bezerro sem brinco). A\xED escolha que animal \xE9."), temBrinco && info.achado && !info.jaMorto && !info.jaVendido && /* @__PURE__ */ React14.createElement("div", { className: "hint", "data-testid": "morte-achei" }, "Achei: ", info.descricao), temBrinco && info.achado && info.jaMorto && /* @__PURE__ */ React14.createElement("div", { className: "hint late" }, "Este animal j\xE1 est\xE1 registrado como morto", info.mortoEm ? ` em ${formatarDataBR(info.mortoEm)}` : "", "."), temBrinco && info.achado && !info.jaMorto && info.jaVendido && /* @__PURE__ */ React14.createElement("div", { className: "hint late" }, "Este animal j\xE1 foi vendido", info.vendidoEm ? ` em ${formatarDataBR(info.vendidoEm)}` : "", "."), temBrinco && !info.achado && /* @__PURE__ */ React14.createElement("div", { className: "hint late", "data-testid": "morte-nao-achei" }, "N\xE3o achei o n\xFAmero ", form.brinco.trim(), " no sistema. Se o n\xFAmero est\xE1 certo, escolha que animal \xE9 abaixo para registrar assim mesmo.")), /* @__PURE__ */ React14.createElement("div", { className: "grid2" }, /* @__PURE__ */ React14.createElement(Campo, { campo: campoDef("data"), value: form.data, onChange: mudar, matrizes: [], touros: [] }), /* @__PURE__ */ React14.createElement(Campo, { campo: campoDef("causa"), value: form.causa, onChange: mudar, matrizes: [], touros: [] })), !info.achado && /* @__PURE__ */ React14.createElement(Campo, { campo: { ...campoDef("tipoAnimal"), label: "Que animal \xE9", required: true }, value: form.tipoAnimal, onChange: mudar, matrizes: [], touros: [] }), /* @__PURE__ */ React14.createElement(Campo, { campo: { ...campoDef("observacoes"), label: "Observa\xE7\xE3o (livre)" }, value: form.observacoes, onChange: mudar, matrizes: [], touros: [] }), erro && /* @__PURE__ */ React14.createElement(Aviso, null, erro), confirmar && info.matriz && /* @__PURE__ */ React14.createElement(Aviso, { tipo: "info" }, "Vai registrar a morte de ", /* @__PURE__ */ React14.createElement("b", null, info.descricao), ". ", info.matriz.status === "Cheia" ? "Ela estava cheia e " : "Ela ", "sai da lista de vacas e da previs\xE3o de parto. Confirma?", /* @__PURE__ */ React14.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React14.createElement("button", { className: "btn sm", onClick: () => salvar2(true), disabled: salvando }, "Confirmar morte"), /* @__PURE__ */ React14.createElement("button", { className: "btn quiet sm", onClick: () => setConfirmar(false) }, "Voltar"))), msg && /* @__PURE__ */ React14.createElement(Aviso, { tipo: "ok" }, msg, modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : ""), /* @__PURE__ */ React14.createElement("button", { className: "btn wide", onClick: () => salvar2(false), disabled: salvando, style: { marginTop: 6 } }, salvando ? /* @__PURE__ */ React14.createElement(Loader27, { size: 18, className: "spin" }) : /* @__PURE__ */ React14.createElement(Save7, { size: 18 }), " ", salvando ? "Gravando..." : "Registrar morte"));
 }
 function ModalMorte({ item, onEditar, onAnular, onFechar, onFeito }) {
   const e = item.e;
   const semCadastro = !e.criaId && !e.matrizId;
-  const [form, setForm] = useState12({ data: e.data || "", causa: e.causa || "", observacoes: e.observacoes || "", tipoAnimal: e.tipoAnimal || "", brinco: e.brinco || "" });
-  const [erro, setErro] = useState12("");
-  const [anular, setAnular] = useState12(false);
-  const [gravando, setGravando] = useState12(false);
+  const [form, setForm] = useState13({ data: e.data || "", causa: e.causa || "", observacoes: e.observacoes || "", tipoAnimal: e.tipoAnimal || "", brinco: e.brinco || "" });
+  const [erro, setErro] = useState13("");
+  const [anular, setAnular] = useState13(false);
+  const [gravando, setGravando] = useState13(false);
   const mudar = (k, v) => {
     setForm((f) => ({ ...f, [k]: v }));
     setErro("");
@@ -7202,29 +7472,29 @@ function ModalMorte({ item, onEditar, onAnular, onFechar, onFeito }) {
     onFeito(r.msg);
     onFechar();
   }
-  return /* @__PURE__ */ React13.createElement(Modal, { titulo: `Morte \xB7 ${item.animal}`, onClose: onFechar, rotulo: "Corrigir morte" }, /* @__PURE__ */ React13.createElement(Lead, { rotulo: "Animal", valor: item.animal }), item.mae && /* @__PURE__ */ React13.createElement(Lead, { rotulo: "M\xE3e", valor: item.mae }), /* @__PURE__ */ React13.createElement(Lead, { rotulo: "Lote", valor: item.lote }), !item.ativa ? /* @__PURE__ */ React13.createElement("p", { className: "sub", style: { marginTop: 12 } }, "Esta morte foi anulada (lan\xE7amento errado). Ela n\xE3o conta nos relat\xF3rios. Se o animal realmente morreu, lance a morte de novo.") : /* @__PURE__ */ React13.createElement(React13.Fragment, null, /* @__PURE__ */ React13.createElement("div", { style: { marginTop: 14 } }, /* @__PURE__ */ React13.createElement("div", { className: "grid2" }, /* @__PURE__ */ React13.createElement(Campo, { campo: CAMPOS.morte.find((c) => c.key === "data"), value: form.data, onChange: mudar, matrizes: [], touros: [] }), /* @__PURE__ */ React13.createElement(Campo, { campo: CAMPOS.morte.find((c) => c.key === "causa"), value: form.causa, onChange: mudar, matrizes: [], touros: [] })), semCadastro && /* @__PURE__ */ React13.createElement("div", { className: "grid2" }, /* @__PURE__ */ React13.createElement(Campo, { campo: { ...CAMPOS.morte.find((c) => c.key === "tipoAnimal"), required: true }, value: form.tipoAnimal, onChange: mudar, matrizes: [], touros: [] }), /* @__PURE__ */ React13.createElement(Campo, { campo: CAMPOS.morte.find((c) => c.key === "brinco"), value: form.brinco, onChange: mudar, matrizes: [], touros: [] })), /* @__PURE__ */ React13.createElement(Campo, { campo: { ...CAMPOS.morte.find((c) => c.key === "observacoes"), label: "Observa\xE7\xE3o (livre)" }, value: form.observacoes, onChange: mudar, matrizes: [], touros: [] })), erro && /* @__PURE__ */ React13.createElement(Aviso, null, erro), anular && /* @__PURE__ */ React13.createElement(Aviso, { tipo: "info" }, "Anular quando a morte foi lan\xE7ada no animal errado ou por engano.", " ", e.matrizId ? `A vaca volta ao status de antes (${e.statusAnterior || "Vazia"}).` : "O animal volta a contar no rebanho.", " A linha fica guardada na planilha, marcada como anulada.", /* @__PURE__ */ React13.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React13.createElement("button", { className: "btn sm", onClick: confirmarAnular, disabled: gravando }, "Sim, anular esta morte"), /* @__PURE__ */ React13.createElement("button", { className: "btn quiet sm", onClick: () => setAnular(false) }, "N\xE3o"))), /* @__PURE__ */ React13.createElement("div", { style: { display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React13.createElement("button", { className: "btn", style: { flex: 1 }, onClick: salvar2, disabled: gravando }, gravando ? /* @__PURE__ */ React13.createElement(Loader27, { size: 17, className: "spin" }) : /* @__PURE__ */ React13.createElement(Save6, { size: 17 }), " Salvar corre\xE7\xE3o"), /* @__PURE__ */ React13.createElement("button", { className: "btn quiet", onClick: () => setAnular(true), disabled: gravando }, /* @__PURE__ */ React13.createElement(Undo2, { size: 17 }), " Anular"))));
+  return /* @__PURE__ */ React14.createElement(Modal, { titulo: `Morte \xB7 ${item.animal}`, onClose: onFechar, rotulo: "Corrigir morte" }, /* @__PURE__ */ React14.createElement(Lead, { rotulo: "Animal", valor: item.animal }), item.mae && /* @__PURE__ */ React14.createElement(Lead, { rotulo: "M\xE3e", valor: item.mae }), /* @__PURE__ */ React14.createElement(Lead, { rotulo: "Lote", valor: item.lote }), !item.ativa ? /* @__PURE__ */ React14.createElement("p", { className: "sub", style: { marginTop: 12 } }, "Esta morte foi anulada (lan\xE7amento errado). Ela n\xE3o conta nos relat\xF3rios. Se o animal realmente morreu, lance a morte de novo.") : /* @__PURE__ */ React14.createElement(React14.Fragment, null, /* @__PURE__ */ React14.createElement("div", { style: { marginTop: 14 } }, /* @__PURE__ */ React14.createElement("div", { className: "grid2" }, /* @__PURE__ */ React14.createElement(Campo, { campo: CAMPOS.morte.find((c) => c.key === "data"), value: form.data, onChange: mudar, matrizes: [], touros: [] }), /* @__PURE__ */ React14.createElement(Campo, { campo: CAMPOS.morte.find((c) => c.key === "causa"), value: form.causa, onChange: mudar, matrizes: [], touros: [] })), semCadastro && /* @__PURE__ */ React14.createElement("div", { className: "grid2" }, /* @__PURE__ */ React14.createElement(Campo, { campo: { ...CAMPOS.morte.find((c) => c.key === "tipoAnimal"), required: true }, value: form.tipoAnimal, onChange: mudar, matrizes: [], touros: [] }), /* @__PURE__ */ React14.createElement(Campo, { campo: CAMPOS.morte.find((c) => c.key === "brinco"), value: form.brinco, onChange: mudar, matrizes: [], touros: [] })), /* @__PURE__ */ React14.createElement(Campo, { campo: { ...CAMPOS.morte.find((c) => c.key === "observacoes"), label: "Observa\xE7\xE3o (livre)" }, value: form.observacoes, onChange: mudar, matrizes: [], touros: [] })), erro && /* @__PURE__ */ React14.createElement(Aviso, null, erro), anular && /* @__PURE__ */ React14.createElement(Aviso, { tipo: "info" }, "Anular quando a morte foi lan\xE7ada no animal errado ou por engano.", " ", e.matrizId ? `A vaca volta ao status de antes (${e.statusAnterior || "Vazia"}).` : "O animal volta a contar no rebanho.", " A linha fica guardada na planilha, marcada como anulada.", /* @__PURE__ */ React14.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React14.createElement("button", { className: "btn sm", onClick: confirmarAnular, disabled: gravando }, "Sim, anular esta morte"), /* @__PURE__ */ React14.createElement("button", { className: "btn quiet sm", onClick: () => setAnular(false) }, "N\xE3o"))), /* @__PURE__ */ React14.createElement("div", { style: { display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React14.createElement("button", { className: "btn", style: { flex: 1 }, onClick: salvar2, disabled: gravando }, gravando ? /* @__PURE__ */ React14.createElement(Loader27, { size: 17, className: "spin" }) : /* @__PURE__ */ React14.createElement(Save7, { size: 17 }), " Salvar corre\xE7\xE3o"), /* @__PURE__ */ React14.createElement("button", { className: "btn quiet", onClick: () => setAnular(true), disabled: gravando }, /* @__PURE__ */ React14.createElement(Undo2, { size: 17 }), " Anular"))));
 }
 function ListaMortes({ dados, ownerMode, onEditar, onAnular }) {
-  const [aberta, setAberta] = useState12(null);
-  const [aviso, setAviso] = useState12("");
-  const todas = useMemo10(() => listarMortes(dados), [dados]);
+  const [aberta, setAberta] = useState13(null);
+  const [aviso, setAviso] = useState13("");
+  const todas = useMemo11(() => listarMortes(dados), [dados]);
   const lista5 = ownerMode ? todas : todas.filter((x) => x.ativa).slice(0, 6);
   const item = aberta ? todas.find((x) => x.e.id === aberta) : null;
-  return /* @__PURE__ */ React13.createElement(React13.Fragment, null, /* @__PURE__ */ React13.createElement("h2", { className: "h2" }, ownerMode ? "Mortes lan\xE7adas" : "\xDAltimas mortes lan\xE7adas", /* @__PURE__ */ React13.createElement("small", null, ownerMode ? `${todas.filter((x) => x.ativa).length} ativa(s) \xB7 toque para corrigir` : "")), aviso && /* @__PURE__ */ React13.createElement(Aviso, { tipo: "ok", onClose: () => setAviso("") }, aviso), /* @__PURE__ */ React13.createElement("div", { className: "sheet", "data-testid": "lista-mortes" }, lista5.length === 0 ? /* @__PURE__ */ React13.createElement("div", { className: "empty" }, "Nenhuma morte lan\xE7ada.") : lista5.map((x) => {
-    const corpo = /* @__PURE__ */ React13.createElement(React13.Fragment, null, /* @__PURE__ */ React13.createElement("span", { className: "two", style: { minWidth: 0 } }, /* @__PURE__ */ React13.createElement("b", null, x.animal, !x.ativa ? " \xB7 anulada" : ""), /* @__PURE__ */ React13.createElement("span", null, [x.e.causa, x.mae ? `m\xE3e ${x.mae}` : "", x.e.observacoes].filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ React13.createElement("span", { className: "m mut" }, formatarDataBR(x.e.data)));
-    return ownerMode ? /* @__PURE__ */ React13.createElement("button", { className: "led-r", key: x.e.id, style: { "--cols": "minmax(0,1fr) auto", minHeight: 56, opacity: x.ativa ? 1 : 0.55 }, onClick: () => setAberta(x.e.id), "aria-label": `Abrir morte de ${x.animal}` }, corpo) : /* @__PURE__ */ React13.createElement("div", { className: "led-r", key: x.e.id, style: { "--cols": "minmax(0,1fr) auto", minHeight: 56 } }, corpo);
-  })), item && /* @__PURE__ */ React13.createElement(ModalMorte, { key: item.e.id, item, onEditar, onAnular, onFechar: () => setAberta(null), onFeito: setAviso }));
+  return /* @__PURE__ */ React14.createElement(React14.Fragment, null, /* @__PURE__ */ React14.createElement("h2", { className: "h2" }, ownerMode ? "Mortes lan\xE7adas" : "\xDAltimas mortes lan\xE7adas", /* @__PURE__ */ React14.createElement("small", null, ownerMode ? `${todas.filter((x) => x.ativa).length} ativa(s) \xB7 toque para corrigir` : "")), aviso && /* @__PURE__ */ React14.createElement(Aviso, { tipo: "ok", onClose: () => setAviso("") }, aviso), /* @__PURE__ */ React14.createElement("div", { className: "sheet", "data-testid": "lista-mortes" }, lista5.length === 0 ? /* @__PURE__ */ React14.createElement("div", { className: "empty" }, "Nenhuma morte lan\xE7ada.") : lista5.map((x) => {
+    const corpo = /* @__PURE__ */ React14.createElement(React14.Fragment, null, /* @__PURE__ */ React14.createElement("span", { className: "two", style: { minWidth: 0 } }, /* @__PURE__ */ React14.createElement("b", null, x.animal, !x.ativa ? " \xB7 anulada" : ""), /* @__PURE__ */ React14.createElement("span", null, [x.e.causa, x.mae ? `m\xE3e ${x.mae}` : "", x.e.observacoes].filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ React14.createElement("span", { className: "m mut" }, formatarDataBR(x.e.data)));
+    return ownerMode ? /* @__PURE__ */ React14.createElement("button", { className: "led-r", key: x.e.id, style: { "--cols": "minmax(0,1fr) auto", minHeight: 56, opacity: x.ativa ? 1 : 0.55 }, onClick: () => setAberta(x.e.id), "aria-label": `Abrir morte de ${x.animal}` }, corpo) : /* @__PURE__ */ React14.createElement("div", { className: "led-r", key: x.e.id, style: { "--cols": "minmax(0,1fr) auto", minHeight: 56 } }, corpo);
+  })), item && /* @__PURE__ */ React14.createElement(ModalMorte, { key: item.e.id, item, onEditar, onAnular, onFechar: () => setAberta(null), onFeito: setAviso }));
 }
 
 // src/telas/Nascimentos.jsx
-import React14, { useMemo as useMemo11, useState as useState13 } from "react";
-import { Search as Search5, Save as Save7, Loader2 as Loader28 } from "lucide-react";
+import React15, { useMemo as useMemo12, useState as useState14 } from "react";
+import { Search as Search5, Save as Save8, Loader2 as Loader28 } from "lucide-react";
 var CHAVES_EDICAO = ["matrizId", "data", "resultadoParto", "sexo", "brincoBezerro", "pelagem", "tipoParto", "observacoes"];
 var faltaNoNascimento = (e) => [!e.matrizId && !(situacaoHistorica(e) || {}).maeFora && "m\xE3e", !e.sexo && "sexo", !String(e.brincoBezerro ?? "").trim() && "brinco"].filter(Boolean);
 function ModalNascimento({ nasc, dados, onEditar, onFechar, onFeito }) {
-  const [form, setForm] = useState13(() => Object.fromEntries(CHAVES_EDICAO.map((k) => [k, nasc[k] ?? ""])));
-  const [erro, setErro] = useState13("");
-  const [gravando, setGravando] = useState13(false);
+  const [form, setForm] = useState14(() => Object.fromEntries(CHAVES_EDICAO.map((k) => [k, nasc[k] ?? ""])));
+  const [erro, setErro] = useState14("");
+  const [gravando, setGravando] = useState14(false);
   const mudar = (k, v) => {
     setForm((f) => ({ ...f, [k]: v }));
     setErro("");
@@ -7242,29 +7512,29 @@ function ModalNascimento({ nasc, dados, onEditar, onFechar, onFeito }) {
     onFechar();
   }
   const titulo = `Nascimento ${nasc.brincoBezerro ? `da cria ${nasc.brincoBezerro}` : "sem n\xFAmero"}`;
-  return /* @__PURE__ */ React14.createElement(Modal, { titulo, onClose: onFechar, rotulo: "Corrigir nascimento" }, /* @__PURE__ */ React14.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Lan\xE7ado em ", nasc.createdAt ? formatarDataBR(String(nasc.createdAt).slice(0, 10)) : "\u2014", ". M\xE3e, sexo e brinco n\xE3o podem ser apagados, s\xF3 trocados. Mudar o brinco leva junto as pesagens, a desmama e a novilha dessa cria."), /* @__PURE__ */ React14.createElement("div", { className: "grid2" }, CAMPOS.nascimento.filter((c) => CHAVES_EDICAO.includes(c.key)).map((c) => /* @__PURE__ */ React14.createElement("div", { key: c.key, style: c.type === "matriz" || c.key === "observacoes" ? { gridColumn: "1 / -1" } : void 0 }, /* @__PURE__ */ React14.createElement(Campo, { campo: c, value: form[c.key], onChange: mudar, matrizes: dados.matrizes, touros: dados.touros })))), erro && /* @__PURE__ */ React14.createElement(Aviso, null, erro), /* @__PURE__ */ React14.createElement("button", { className: "btn wide", onClick: salvar2, disabled: gravando }, gravando ? /* @__PURE__ */ React14.createElement(Loader28, { size: 17, className: "spin" }) : /* @__PURE__ */ React14.createElement(Save7, { size: 17 }), " Salvar corre\xE7\xE3o"));
+  return /* @__PURE__ */ React15.createElement(Modal, { titulo, onClose: onFechar, rotulo: "Corrigir nascimento" }, /* @__PURE__ */ React15.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Lan\xE7ado em ", nasc.createdAt ? formatarDataBR(String(nasc.createdAt).slice(0, 10)) : "\u2014", ". M\xE3e, sexo e brinco n\xE3o podem ser apagados, s\xF3 trocados. Mudar o brinco leva junto as pesagens, a desmama e a novilha dessa cria."), /* @__PURE__ */ React15.createElement("div", { className: "grid2" }, CAMPOS.nascimento.filter((c) => CHAVES_EDICAO.includes(c.key)).map((c) => /* @__PURE__ */ React15.createElement("div", { key: c.key, style: c.type === "matriz" || c.key === "observacoes" ? { gridColumn: "1 / -1" } : void 0 }, /* @__PURE__ */ React15.createElement(Campo, { campo: c, value: form[c.key], onChange: mudar, matrizes: dados.matrizes, touros: dados.touros })))), erro && /* @__PURE__ */ React15.createElement(Aviso, null, erro), /* @__PURE__ */ React15.createElement("button", { className: "btn wide", onClick: salvar2, disabled: gravando }, gravando ? /* @__PURE__ */ React15.createElement(Loader28, { size: 17, className: "spin" }) : /* @__PURE__ */ React15.createElement(Save8, { size: 17 }), " Salvar corre\xE7\xE3o"));
 }
 function ListaNascimentos({ dados, onEditar }) {
-  const [busca, setBusca] = useState13("");
-  const [filtro, setFiltro] = useState13("todos");
-  const [aberto, setAberto] = useState13(null);
-  const [aviso, setAviso] = useState13("");
-  const brincos = useMemo11(() => mapaBrincos(dados.matrizes), [dados.matrizes]);
-  const todos = useMemo11(
+  const [busca, setBusca] = useState14("");
+  const [filtro, setFiltro] = useState14("todos");
+  const [aberto, setAberto] = useState14(null);
+  const [aviso, setAviso] = useState14("");
+  const brincos = useMemo12(() => mapaBrincos(dados.matrizes), [dados.matrizes]);
+  const todos = useMemo12(
     () => dados.eventos.filter((e) => e.tipo === "nascimento").sort((a, b) => (b.data || "").localeCompare(a.data || "") || (b.createdAt || "").localeCompare(a.createdAt || "")),
     [dados.eventos]
   );
   const faltando = todos.filter((e) => faltaNoNascimento(e).length > 0);
-  const lista5 = useMemo11(() => {
+  const lista5 = useMemo12(() => {
     const q = busca.trim().toLowerCase();
     return (filtro === "faltando" ? faltando : todos).filter((e) => !q || String(e.brincoBezerro).toLowerCase().includes(q) || String(brincos[e.matrizId] || "").toLowerCase().includes(q));
   }, [todos, faltando, filtro, busca, brincos]);
   const mostradas = lista5.slice(0, 40);
   const nasc = aberto ? todos.find((e) => e.id === aberto) : null;
-  return /* @__PURE__ */ React14.createElement(React14.Fragment, null, /* @__PURE__ */ React14.createElement("h2", { className: "h2" }, "Nascimentos lan\xE7ados", /* @__PURE__ */ React14.createElement("small", null, todos.length, " no total \xB7 toque para corrigir")), aviso && /* @__PURE__ */ React14.createElement(Aviso, { tipo: "ok", onClose: () => setAviso("") }, aviso), /* @__PURE__ */ React14.createElement("div", { className: "sheet" }, /* @__PURE__ */ React14.createElement("label", { className: "search" }, /* @__PURE__ */ React14.createElement(Search5, null), /* @__PURE__ */ React14.createElement("input", { placeholder: "Buscar pelo brinco da cria ou da m\xE3e", "aria-label": "Buscar nascimento", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React14.createElement("div", { className: "filtros" }, /* @__PURE__ */ React14.createElement("div", { className: "seg", role: "group", "aria-label": "Filtrar nascimentos" }, /* @__PURE__ */ React14.createElement("button", { "aria-pressed": filtro === "todos", onClick: () => setFiltro("todos") }, "Todos ", todos.length), /* @__PURE__ */ React14.createElement("button", { "aria-pressed": filtro === "faltando", onClick: () => setFiltro("faltando") }, "Faltando dados ", faltando.length))), mostradas.length === 0 && /* @__PURE__ */ React14.createElement("div", { className: "empty" }, filtro === "faltando" ? "Nenhum nascimento com dado faltando." : "Nenhum nascimento encontrado."), mostradas.map((e) => {
+  return /* @__PURE__ */ React15.createElement(React15.Fragment, null, /* @__PURE__ */ React15.createElement("h2", { className: "h2" }, "Nascimentos lan\xE7ados", /* @__PURE__ */ React15.createElement("small", null, todos.length, " no total \xB7 toque para corrigir")), aviso && /* @__PURE__ */ React15.createElement(Aviso, { tipo: "ok", onClose: () => setAviso("") }, aviso), /* @__PURE__ */ React15.createElement("div", { className: "sheet" }, /* @__PURE__ */ React15.createElement("label", { className: "search" }, /* @__PURE__ */ React15.createElement(Search5, null), /* @__PURE__ */ React15.createElement("input", { placeholder: "Buscar pelo brinco da cria ou da m\xE3e", "aria-label": "Buscar nascimento", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React15.createElement("div", { className: "filtros" }, /* @__PURE__ */ React15.createElement("div", { className: "seg", role: "group", "aria-label": "Filtrar nascimentos" }, /* @__PURE__ */ React15.createElement("button", { "aria-pressed": filtro === "todos", onClick: () => setFiltro("todos") }, "Todos ", todos.length), /* @__PURE__ */ React15.createElement("button", { "aria-pressed": filtro === "faltando", onClick: () => setFiltro("faltando") }, "Faltando dados ", faltando.length))), mostradas.length === 0 && /* @__PURE__ */ React15.createElement("div", { className: "empty" }, filtro === "faltando" ? "Nenhum nascimento com dado faltando." : "Nenhum nascimento encontrado."), mostradas.map((e) => {
     const falta = faltaNoNascimento(e);
-    return /* @__PURE__ */ React14.createElement("button", { key: e.id, className: "led-r", style: { "--cols": "minmax(0,1fr) auto", minHeight: 56 }, onClick: () => setAberto(e.id), "aria-label": `Corrigir nascimento ${e.brincoBezerro || "sem n\xFAmero"}` }, /* @__PURE__ */ React14.createElement("span", { className: "two", style: { minWidth: 0 } }, /* @__PURE__ */ React14.createElement("b", null, e.brincoBezerro ? `Cria ${e.brincoBezerro}` : "Cria sem n\xFAmero", " \xB7 ", e.sexo || "sexo ?", e.resultadoParto === "Natimorto" ? " \xB7 natimorto" : ""), /* @__PURE__ */ React14.createElement("span", null, "m\xE3e ", brincos[e.matrizId] || "?", falta.length ? ` \xB7 falta: ${falta.join(", ")}` : "")), /* @__PURE__ */ React14.createElement("span", { className: "m mut" }, formatarDataBR(e.data)));
-  }), lista5.length > mostradas.length && /* @__PURE__ */ React14.createElement("div", { className: "empty", style: { fontSize: 13 } }, "Mostrando os ", mostradas.length, " mais recentes de ", lista5.length, ". Use a busca para achar os outros.")), nasc && /* @__PURE__ */ React14.createElement(ModalNascimento, { key: nasc.id, nasc, dados, onEditar, onFechar: () => setAberto(null), onFeito: setAviso }));
+    return /* @__PURE__ */ React15.createElement("button", { key: e.id, className: "led-r", style: { "--cols": "minmax(0,1fr) auto", minHeight: 56 }, onClick: () => setAberto(e.id), "aria-label": `Corrigir nascimento ${e.brincoBezerro || "sem n\xFAmero"}` }, /* @__PURE__ */ React15.createElement("span", { className: "two", style: { minWidth: 0 } }, /* @__PURE__ */ React15.createElement("b", null, e.brincoBezerro ? `Cria ${e.brincoBezerro}` : "Cria sem n\xFAmero", " \xB7 ", e.sexo || "sexo ?", e.resultadoParto === "Natimorto" ? " \xB7 natimorto" : ""), /* @__PURE__ */ React15.createElement("span", null, "m\xE3e ", brincos[e.matrizId] || "?", falta.length ? ` \xB7 falta: ${falta.join(", ")}` : "")), /* @__PURE__ */ React15.createElement("span", { className: "m mut" }, formatarDataBR(e.data)));
+  }), lista5.length > mostradas.length && /* @__PURE__ */ React15.createElement("div", { className: "empty", style: { fontSize: 13 } }, "Mostrando os ", mostradas.length, " mais recentes de ", lista5.length, ". Use a busca para achar os outros.")), nasc && /* @__PURE__ */ React15.createElement(ModalNascimento, { key: nasc.id, nasc, dados, onEditar, onFechar: () => setAberto(null), onFeito: setAviso }));
 }
 
 // src/telas/Lancar.jsx
@@ -7294,12 +7564,12 @@ function Lancar({
     ...tiposVisiveis.map((id) => ({ id, label: ROTULO_CURTO[id] })),
     ...ownerMode ? [{ id: "lote", label: "Lote por foto" }] : []
   ];
-  const [tipo, setTipo] = useState14("nascimento");
-  const [form, setForm] = useState14(() => formularioInicial("nascimento", hoje));
-  const [erro, setErro] = useState14("");
-  const [dup, setDup] = useState14(false);
-  const [salvo, setSalvo] = useState14("");
-  const [travado, setTravado] = useState14(false);
+  const [tipo, setTipo] = useState15("nascimento");
+  const [form, setForm] = useState15(() => formularioInicial("nascimento", hoje));
+  const [erro, setErro] = useState15("");
+  const [dup, setDup] = useState15(false);
+  const [salvo, setSalvo] = useState15("");
+  const [travado, setTravado] = useState15(false);
   const timer2 = useRef6(null);
   const timerTrava = useRef6(null);
   useEffect6(() => () => {
@@ -7338,7 +7608,7 @@ function Lancar({
       return prox;
     });
   }
-  const fichaDesmama = useMemo12(
+  const fichaDesmama = useMemo13(
     () => tipo === "desmama" && form.brincoBezerro && String(form.brincoBezerro).trim() ? fichaAnimal(dados, form.brincoBezerro, form.data || hoje) : null,
     [tipo, form.brincoBezerro, form.data, dados, hoje]
   );
@@ -7379,27 +7649,27 @@ function Lancar({
     clearTimeout(timerTrava.current);
     timerTrava.current = setTimeout(() => setTravado(false), 1500);
   }
-  const ultimos = useMemo12(() => {
+  const ultimos = useMemo13(() => {
     const nasc = dados.eventos.filter((e) => e.tipo === "nascimento" && e.brincoBezerro);
     const recente = (sexo) => nasc.filter((e) => e.sexo === sexo).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))[0];
     return { Macho: recente("Macho"), "F\xEAmea": recente("F\xEAmea") };
   }, [dados.eventos]);
-  const recentes = useMemo12(
+  const recentes = useMemo13(
     () => [...dados.eventos].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).slice(0, 6),
     [dados.eventos]
   );
   const campos = (CAMPOS[tipo] || []).filter((c) => (!c.showIf || c.showIf(form)) && !(tipo === "desmama" && c.key === "idadeDias"));
   const semMatrizes = dados.matrizes.length === 0 && tipo !== "cadastro";
-  return /* @__PURE__ */ React15.createElement("div", { className: "wrap" }, /* @__PURE__ */ React15.createElement("div", { className: "head" }, /* @__PURE__ */ React15.createElement("div", null, /* @__PURE__ */ React15.createElement("small", null, "Livro do rebanho"), /* @__PURE__ */ React15.createElement("h1", null, "Lan\xE7ar"))), /* @__PURE__ */ React15.createElement(IndexTabs, { tabs: abas, value: tipo, onChange: trocarTipo, rotulo: "Tipo de lan\xE7amento" }), /* @__PURE__ */ React15.createElement("div", { className: "sheet pad" }, tipo === "lote" ? /* @__PURE__ */ React15.createElement(LoteFoto, { dados, hoje, onGravarLote, modoTeste }) : tipo === "morte" ? /* @__PURE__ */ React15.createElement(React15.Fragment, null, /* @__PURE__ */ React15.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rotuloEvento(tipo)), /* @__PURE__ */ React15.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Vale para qualquer animal: cria, novilha, vaca, touro ou animal sem cadastro. A vaca que morre sai da lista de vacas."), /* @__PURE__ */ React15.createElement(FormMorte, { dados, hoje, onRegistrar: onRegistrarMorte, modoTeste })) : /* @__PURE__ */ React15.createElement(React15.Fragment, null, /* @__PURE__ */ React15.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rotuloEvento(tipo)), semMatrizes && /* @__PURE__ */ React15.createElement(Aviso, { tipo: "info" }, ownerMode ? 'Cadastre pelo menos uma matriz em "Nova matriz" para poder lig\xE1-la aos outros lan\xE7amentos.' : "Ainda n\xE3o h\xE1 matrizes no sistema. Fale com o propriet\xE1rio."), tipo === "nascimento" && (ultimos.Macho || ultimos["F\xEAmea"]) && /* @__PURE__ */ React15.createElement("div", { style: { marginBottom: 16 } }, ["F\xEAmea", "Macho"].map((sx) => ultimos[sx] ? /* @__PURE__ */ React15.createElement(Lead, { key: sx, rotulo: sx === "Macho" ? "\xDAltimo macho" : "\xDAltima f\xEAmea", valor: `${ultimos[sx].brincoBezerro} \xB7 ${formatarDataBR(ultimos[sx].data)}` }) : null)), /* @__PURE__ */ React15.createElement("div", { className: "grid2" }, campos.map((c) => /* @__PURE__ */ React15.createElement("div", { key: c.key, style: c.type === "matriz" || c.key === "observacoes" || c.key === "motivo" ? { gridColumn: "1 / -1" } : void 0 }, /* @__PURE__ */ React15.createElement(Campo, { campo: c, value: form[c.key], onChange: atualizar, matrizes: dados.matrizes, touros: dados.touros }), tipo === "desmama" && c.key === "brincoBezerro" && /* @__PURE__ */ React15.createElement(FichaRapida, { ficha: fichaDesmama, digitado: form.brincoBezerro }))), tipo === "desmama" && /* @__PURE__ */ React15.createElement("div", { className: "fld", style: { gridColumn: "1 / -1" }, role: "group", "aria-label": "Idade na desmama" }, /* @__PURE__ */ React15.createElement("span", { className: "lbl", style: { display: "block", font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 6 } }, "Idade na desmama"), /* @__PURE__ */ React15.createElement("div", { className: "idade-md" }, /* @__PURE__ */ React15.createElement("div", { className: "fld", style: { margin: 0 } }, /* @__PURE__ */ React15.createElement("label", { htmlFor: "idade-meses" }, "Meses"), /* @__PURE__ */ React15.createElement("input", { id: "idade-meses", type: "number", inputMode: "numeric", min: "0", value: idadeMeses, onChange: (e) => editarIdade("m", e.target.value) })), /* @__PURE__ */ React15.createElement("div", { className: "fld", style: { margin: 0 } }, /* @__PURE__ */ React15.createElement("label", { htmlFor: "idade-dias" }, "Dias"), /* @__PURE__ */ React15.createElement("input", { id: "idade-dias", type: "number", inputMode: "numeric", min: "0", value: idadeDiasTxt, onChange: (e) => editarIdade("d", e.target.value) }))), /* @__PURE__ */ React15.createElement("div", { className: "hint", style: { fontSize: 12.5, color: "var(--mut)", marginTop: 4 }, "data-testid": "hint-idade" }, form._idadeManual ? /* @__PURE__ */ React15.createElement(React15.Fragment, null, "Idade digitada \xE0 m\xE3o.", idadeAuto ? /* @__PURE__ */ React15.createElement(React15.Fragment, null, " Pelo nascimento seria ", idadeAuto.texto, ". ", /* @__PURE__ */ React15.createElement("button", { type: "button", className: "btn quiet sm", style: { minHeight: 30, marginLeft: 6 }, onClick: () => setForm((f) => ({ ...f, _idadeManual: false, _meses: "", _dias: "" })) }, "Usar a calculada")) : null) : idadeAuto ? `Calculada pelo nascimento (${formatarDataBR(fichaDesmama.nascData)}) at\xE9 a data da desmama. Pode alterar se precisar.` : "Digite o brinco da cria para calcular a idade, ou preencha \xE0 m\xE3o."))), erro && /* @__PURE__ */ React15.createElement(Aviso, null, erro), dup && /* @__PURE__ */ React15.createElement(Aviso, { tipo: "info" }, "Esse lan\xE7amento parece j\xE1 existir (mesma vaca e mesma data). Confira antes de salvar de novo.", /* @__PURE__ */ React15.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React15.createElement("button", { className: "btn sm", onClick: () => salvar2(true), disabled: travado }, "Salvar mesmo assim"), /* @__PURE__ */ React15.createElement("button", { className: "btn quiet sm", onClick: () => setDup(false) }, "Cancelar"))), salvo && /* @__PURE__ */ React15.createElement(Aviso, { tipo: "ok" }, salvo, modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : ""), /* @__PURE__ */ React15.createElement("button", { className: "btn wide", onClick: () => salvar2(false), disabled: travado, style: { marginTop: 6 } }, /* @__PURE__ */ React15.createElement(Save8, { size: 18 }), " Salvar registro"))), tipo === "morte" && /* @__PURE__ */ React15.createElement(ListaMortes, { dados, ownerMode, onEditar: onEditarMorte, onAnular: onAnularMorte }), tipo === "nascimento" && ownerMode && /* @__PURE__ */ React15.createElement(ListaNascimentos, { dados, onEditar: onEditarNascimento }), tipo !== "lote" && tipo !== "morte" && !(tipo === "nascimento" && ownerMode) && /* @__PURE__ */ React15.createElement(React15.Fragment, null, /* @__PURE__ */ React15.createElement("h2", { className: "h2" }, "\xDAltimos lan\xE7amentos"), /* @__PURE__ */ React15.createElement("div", { className: "sheet" }, recentes.length === 0 ? /* @__PURE__ */ React15.createElement("div", { className: "empty" }, "Nada lan\xE7ado ainda.") : recentes.map((e) => /* @__PURE__ */ React15.createElement("div", { className: "led-r", key: e.id, style: { "--cols": "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React15.createElement("span", { style: { fontSize: 14.5 } }, descreverEvento(e, dados)), /* @__PURE__ */ React15.createElement("span", { className: "m mut" }, formatarDataBR(e.data)))))));
+  return /* @__PURE__ */ React16.createElement("div", { className: "wrap" }, /* @__PURE__ */ React16.createElement("div", { className: "head" }, /* @__PURE__ */ React16.createElement("div", null, /* @__PURE__ */ React16.createElement("small", null, "Livro do rebanho"), /* @__PURE__ */ React16.createElement("h1", null, "Lan\xE7ar"))), /* @__PURE__ */ React16.createElement(IndexTabs, { tabs: abas, value: tipo, onChange: trocarTipo, rotulo: "Tipo de lan\xE7amento" }), /* @__PURE__ */ React16.createElement("div", { className: "sheet pad" }, tipo === "lote" ? /* @__PURE__ */ React16.createElement(LoteFoto, { dados, hoje, onGravarLote, modoTeste }) : tipo === "morte" ? /* @__PURE__ */ React16.createElement(React16.Fragment, null, /* @__PURE__ */ React16.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rotuloEvento(tipo)), /* @__PURE__ */ React16.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Vale para qualquer animal: cria, novilha, vaca, touro ou animal sem cadastro. A vaca que morre sai da lista de vacas."), /* @__PURE__ */ React16.createElement(FormMorte, { dados, hoje, onRegistrar: onRegistrarMorte, modoTeste })) : /* @__PURE__ */ React16.createElement(React16.Fragment, null, /* @__PURE__ */ React16.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rotuloEvento(tipo)), semMatrizes && /* @__PURE__ */ React16.createElement(Aviso, { tipo: "info" }, ownerMode ? 'Cadastre pelo menos uma matriz em "Nova matriz" para poder lig\xE1-la aos outros lan\xE7amentos.' : "Ainda n\xE3o h\xE1 matrizes no sistema. Fale com o propriet\xE1rio."), tipo === "nascimento" && (ultimos.Macho || ultimos["F\xEAmea"]) && /* @__PURE__ */ React16.createElement("div", { style: { marginBottom: 16 } }, ["F\xEAmea", "Macho"].map((sx) => ultimos[sx] ? /* @__PURE__ */ React16.createElement(Lead, { key: sx, rotulo: sx === "Macho" ? "\xDAltimo macho" : "\xDAltima f\xEAmea", valor: `${ultimos[sx].brincoBezerro} \xB7 ${formatarDataBR(ultimos[sx].data)}` }) : null)), /* @__PURE__ */ React16.createElement("div", { className: "grid2" }, campos.map((c) => /* @__PURE__ */ React16.createElement("div", { key: c.key, style: c.type === "matriz" || c.key === "observacoes" || c.key === "motivo" ? { gridColumn: "1 / -1" } : void 0 }, /* @__PURE__ */ React16.createElement(Campo, { campo: c, value: form[c.key], onChange: atualizar, matrizes: dados.matrizes, touros: dados.touros }), tipo === "desmama" && c.key === "brincoBezerro" && /* @__PURE__ */ React16.createElement(FichaRapida, { ficha: fichaDesmama, digitado: form.brincoBezerro }))), tipo === "desmama" && /* @__PURE__ */ React16.createElement("div", { className: "fld", style: { gridColumn: "1 / -1" }, role: "group", "aria-label": "Idade na desmama" }, /* @__PURE__ */ React16.createElement("span", { className: "lbl", style: { display: "block", font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 6 } }, "Idade na desmama"), /* @__PURE__ */ React16.createElement("div", { className: "idade-md" }, /* @__PURE__ */ React16.createElement("div", { className: "fld", style: { margin: 0 } }, /* @__PURE__ */ React16.createElement("label", { htmlFor: "idade-meses" }, "Meses"), /* @__PURE__ */ React16.createElement("input", { id: "idade-meses", type: "number", inputMode: "numeric", min: "0", value: idadeMeses, onChange: (e) => editarIdade("m", e.target.value) })), /* @__PURE__ */ React16.createElement("div", { className: "fld", style: { margin: 0 } }, /* @__PURE__ */ React16.createElement("label", { htmlFor: "idade-dias" }, "Dias"), /* @__PURE__ */ React16.createElement("input", { id: "idade-dias", type: "number", inputMode: "numeric", min: "0", value: idadeDiasTxt, onChange: (e) => editarIdade("d", e.target.value) }))), /* @__PURE__ */ React16.createElement("div", { className: "hint", style: { fontSize: 12.5, color: "var(--mut)", marginTop: 4 }, "data-testid": "hint-idade" }, form._idadeManual ? /* @__PURE__ */ React16.createElement(React16.Fragment, null, "Idade digitada \xE0 m\xE3o.", idadeAuto ? /* @__PURE__ */ React16.createElement(React16.Fragment, null, " Pelo nascimento seria ", idadeAuto.texto, ". ", /* @__PURE__ */ React16.createElement("button", { type: "button", className: "btn quiet sm", style: { minHeight: 30, marginLeft: 6 }, onClick: () => setForm((f) => ({ ...f, _idadeManual: false, _meses: "", _dias: "" })) }, "Usar a calculada")) : null) : idadeAuto ? `Calculada pelo nascimento (${formatarDataBR(fichaDesmama.nascData)}) at\xE9 a data da desmama. Pode alterar se precisar.` : "Digite o brinco da cria para calcular a idade, ou preencha \xE0 m\xE3o."))), erro && /* @__PURE__ */ React16.createElement(Aviso, null, erro), dup && /* @__PURE__ */ React16.createElement(Aviso, { tipo: "info" }, "Esse lan\xE7amento parece j\xE1 existir (mesma vaca e mesma data). Confira antes de salvar de novo.", /* @__PURE__ */ React16.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React16.createElement("button", { className: "btn sm", onClick: () => salvar2(true), disabled: travado }, "Salvar mesmo assim"), /* @__PURE__ */ React16.createElement("button", { className: "btn quiet sm", onClick: () => setDup(false) }, "Cancelar"))), salvo && /* @__PURE__ */ React16.createElement(Aviso, { tipo: "ok" }, salvo, modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : ""), /* @__PURE__ */ React16.createElement("button", { className: "btn wide", onClick: () => salvar2(false), disabled: travado, style: { marginTop: 6 } }, /* @__PURE__ */ React16.createElement(Save9, { size: 18 }), " Salvar registro"))), tipo === "morte" && /* @__PURE__ */ React16.createElement(ListaMortes, { dados, ownerMode, onEditar: onEditarMorte, onAnular: onAnularMorte }), tipo === "nascimento" && ownerMode && /* @__PURE__ */ React16.createElement(ListaNascimentos, { dados, onEditar: onEditarNascimento }), tipo !== "lote" && tipo !== "morte" && !(tipo === "nascimento" && ownerMode) && /* @__PURE__ */ React16.createElement(React16.Fragment, null, /* @__PURE__ */ React16.createElement("h2", { className: "h2" }, "\xDAltimos lan\xE7amentos"), /* @__PURE__ */ React16.createElement("div", { className: "sheet" }, recentes.length === 0 ? /* @__PURE__ */ React16.createElement("div", { className: "empty" }, "Nada lan\xE7ado ainda.") : recentes.map((e) => /* @__PURE__ */ React16.createElement("div", { className: "led-r", key: e.id, style: { "--cols": "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React16.createElement("span", { style: { fontSize: 14.5 } }, descreverEvento(e, dados)), /* @__PURE__ */ React16.createElement("span", { className: "m mut" }, formatarDataBR(e.data)))))));
 }
 
 // src/telas/Parto.jsx
-import React17, { useMemo as useMemo14, useState as useState16 } from "react";
+import React18, { useMemo as useMemo15, useState as useState17 } from "react";
 import { Search as Search7 } from "lucide-react";
 
 // src/telas/Toque.jsx
-import React16, { useEffect as useEffect7, useMemo as useMemo13, useRef as useRef7, useState as useState15 } from "react";
-import { Save as Save9, Loader2 as Loader210, FileDown as FileDown4, Search as Search6, ClipboardList } from "lucide-react";
+import React17, { useEffect as useEffect7, useMemo as useMemo14, useRef as useRef7, useState as useState16 } from "react";
+import { Save as Save10, Loader2 as Loader210, FileDown as FileDown4, Search as Search6, ClipboardList } from "lucide-react";
 var CHAVE2 = "toque-sessao-v1";
 function Linha2({ dados, m, info, marca, data, cfg, onMarcar, gravada }) {
   const novilha = m.categoria === "Novilha" && info.crias === 0;
@@ -7410,7 +7680,7 @@ function Linha2({ dados, m, info, marca, data, cfg, onMarcar, gravada }) {
   const classe = res === "Cheia" ? "cheia" : res === "Vazia" ? "vazia" : res === "Descarte" ? "descarte" : res === "Ausente" ? "ausente" : "";
   const prevAnt = m.status === "Cheia" ? previsaoPartoInfo(m.id, dados.eventos) : null;
   const set = (x) => onMarcar(m.id, x);
-  const bt = (rotulo, valor, cls, extra) => /* @__PURE__ */ React16.createElement(
+  const bt = (rotulo, valor, cls, extra) => /* @__PURE__ */ React17.createElement(
     "button",
     {
       type: "button",
@@ -7421,13 +7691,13 @@ function Linha2({ dados, m, info, marca, data, cfg, onMarcar, gravada }) {
     },
     rotulo
   );
-  return /* @__PURE__ */ React16.createElement("div", { className: `toque-lin ${classe}`, "data-testid": `toque-${m.brinco}` }, /* @__PURE__ */ React16.createElement("div", { className: "cab" }, /* @__PURE__ */ React16.createElement("span", { className: "b" }, m.brinco), /* @__PURE__ */ React16.createElement("span", { style: { fontWeight: 600 } }, m.categoria || ""), /* @__PURE__ */ React16.createElement("span", { className: "mut", style: { fontSize: 13 } }, [m.lote, m.status].filter(Boolean).join(" \xB7 ")), gravada && /* @__PURE__ */ React16.createElement("span", { className: "vac-tag ok" }, "gravado")), /* @__PURE__ */ React16.createElement("div", { className: "info" }, /* @__PURE__ */ React16.createElement("b", null, info.crias), " cria(s) \xB7 \xFAltimo parto ", /* @__PURE__ */ React16.createElement("b", null, info.ultimoParto ? `${formatarDataBR(info.ultimoParto)} (${info.diasParida} d)` : "nenhum"), /* @__PURE__ */ React16.createElement("br", null), info.ultimoServico.texto ? /* @__PURE__ */ React16.createElement(React16.Fragment, null, "Servi\xE7o: ", /* @__PURE__ */ React16.createElement("b", null, info.ultimoServico.texto)) : "Sem IATF nem monta registrada", info.ultimoToque ? /* @__PURE__ */ React16.createElement(React16.Fragment, null, /* @__PURE__ */ React16.createElement("br", null), "\xDAltimo toque: ", formatarDataBR(info.ultimoToque.data), " ", info.ultimoToque.resultado, info.ultimoToque.dg ? ` (${info.ultimoToque.dg} dias)` : "", prevAnt && prevAnt.data ? ` \xB7 parto previsto ${formatarDataBR(prevAnt.data)}` : "") : null, info.vacina && info.vacina.texto ? /* @__PURE__ */ React16.createElement(React16.Fragment, null, /* @__PURE__ */ React16.createElement("br", null), /* @__PURE__ */ React16.createElement("span", { className: `vac-tag ${info.vacina.nivel}` }, info.vacina.texto)) : null), /* @__PURE__ */ React16.createElement("div", { className: "res-bts" }, novilha ? /* @__PURE__ */ React16.createElement(React16.Fragment, null, bt("Apta", "Vazia", "cheia", { apta: "Sim" }), bt("N\xE3o apta", "Vazia", "vazia", { apta: "N\xE3o" }), bt("Cheia", "Cheia", "cheia"), bt("Vazia", "Vazia", "vazia", { apta: "" }), bt("Descarte", "Descarte", "descarte")) : /* @__PURE__ */ React16.createElement(React16.Fragment, null, bt("Cheia", "Cheia", "cheia"), bt("Vazia", "Vazia", "vazia"), bt("Descarte", "Descarte", "descarte")), bt("Ausente", "Ausente", "aus")), marca && res === "Cheia" && /* @__PURE__ */ React16.createElement("div", { className: "mais" }, /* @__PURE__ */ React16.createElement("input", { "aria-label": `Dias de prenhez da ${m.brinco}`, inputMode: "numeric", placeholder: "Dias", value: marca.dg ?? "", disabled: gravada, onChange: (e) => set({ ...marca, dg: e.target.value.replace(/\D/g, "") }) }), /* @__PURE__ */ React16.createElement("input", { "aria-label": `Observa\xE7\xE3o da ${m.brinco}`, placeholder: "Observa\xE7\xE3o", value: marca.observacoes || "", disabled: gravada, onChange: (e) => set({ ...marca, observacoes: e.target.value }) })), marca && res === "Descarte" && /* @__PURE__ */ React16.createElement("div", { className: "mais" }, /* @__PURE__ */ React16.createElement("select", { "aria-label": `Motivo do descarte da ${m.brinco}`, value: marca.motivo || "", disabled: gravada, onChange: (e) => set({ ...marca, motivo: e.target.value }) }, /* @__PURE__ */ React16.createElement("option", { value: "" }, "Motivo"), opcoesAtuais("motivosDescarte", "", MOTIVOS_DESCARTE).map((x) => /* @__PURE__ */ React16.createElement("option", { key: x }, x))), /* @__PURE__ */ React16.createElement("input", { "aria-label": `Observa\xE7\xE3o da ${m.brinco}`, placeholder: "Observa\xE7\xE3o", value: marca.observacoes || "", disabled: gravada, onChange: (e) => set({ ...marca, observacoes: e.target.value }) })), marca && res === "Vazia" && /* @__PURE__ */ React16.createElement("div", { className: "mais", style: { gridTemplateColumns: "1fr" } }, /* @__PURE__ */ React16.createElement("input", { "aria-label": `Observa\xE7\xE3o da ${m.brinco}`, placeholder: "Observa\xE7\xE3o (opcional)", value: marca.observacoes || "", disabled: gravada, onChange: (e) => set({ ...marca, observacoes: e.target.value }) })), c && marca.dg !== "" && /* @__PURE__ */ React16.createElement("div", { className: "calc" }, "Concep\xE7\xE3o ", formatarDataBR(c), " \xB7 parto previsto ", formatarDataBR(previsaoPeloToque(data, marca.dg)), ori ? ` \xB7 ${ori.rotulo}` : ""), avs.length > 0 && /* @__PURE__ */ React16.createElement("div", { className: "avs" }, avs.join(" \xB7 ")));
+  return /* @__PURE__ */ React17.createElement("div", { className: `toque-lin ${classe}`, "data-testid": `toque-${m.brinco}` }, /* @__PURE__ */ React17.createElement("div", { className: "cab" }, /* @__PURE__ */ React17.createElement("span", { className: "b" }, m.brinco), /* @__PURE__ */ React17.createElement("span", { style: { fontWeight: 600 } }, m.categoria || ""), /* @__PURE__ */ React17.createElement("span", { className: "mut", style: { fontSize: 13 } }, [m.lote, m.status].filter(Boolean).join(" \xB7 ")), gravada && /* @__PURE__ */ React17.createElement("span", { className: "vac-tag ok" }, "gravado")), /* @__PURE__ */ React17.createElement("div", { className: "info" }, /* @__PURE__ */ React17.createElement("b", null, info.crias), " cria(s) \xB7 \xFAltimo parto ", /* @__PURE__ */ React17.createElement("b", null, info.ultimoParto ? `${formatarDataBR(info.ultimoParto)} (${info.diasParida} d)` : "nenhum"), /* @__PURE__ */ React17.createElement("br", null), info.ultimoServico.texto ? /* @__PURE__ */ React17.createElement(React17.Fragment, null, "Servi\xE7o: ", /* @__PURE__ */ React17.createElement("b", null, info.ultimoServico.texto)) : "Sem IATF nem monta registrada", info.ultimoToque ? /* @__PURE__ */ React17.createElement(React17.Fragment, null, /* @__PURE__ */ React17.createElement("br", null), "\xDAltimo toque: ", formatarDataBR(info.ultimoToque.data), " ", info.ultimoToque.resultado, info.ultimoToque.dg ? ` (${info.ultimoToque.dg} dias)` : "", prevAnt && prevAnt.data ? ` \xB7 parto previsto ${formatarDataBR(prevAnt.data)}` : "") : null, info.vacina && info.vacina.texto ? /* @__PURE__ */ React17.createElement(React17.Fragment, null, /* @__PURE__ */ React17.createElement("br", null), /* @__PURE__ */ React17.createElement("span", { className: `vac-tag ${info.vacina.nivel}` }, info.vacina.texto)) : null), /* @__PURE__ */ React17.createElement("div", { className: "res-bts" }, novilha ? /* @__PURE__ */ React17.createElement(React17.Fragment, null, bt("Apta", "Vazia", "cheia", { apta: "Sim" }), bt("N\xE3o apta", "Vazia", "vazia", { apta: "N\xE3o" }), bt("Cheia", "Cheia", "cheia"), bt("Vazia", "Vazia", "vazia", { apta: "" }), bt("Descarte", "Descarte", "descarte")) : /* @__PURE__ */ React17.createElement(React17.Fragment, null, bt("Cheia", "Cheia", "cheia"), bt("Vazia", "Vazia", "vazia"), bt("Descarte", "Descarte", "descarte")), bt("Ausente", "Ausente", "aus")), marca && res === "Cheia" && /* @__PURE__ */ React17.createElement("div", { className: "mais" }, /* @__PURE__ */ React17.createElement("input", { "aria-label": `Dias de prenhez da ${m.brinco}`, inputMode: "numeric", placeholder: "Dias", value: marca.dg ?? "", disabled: gravada, onChange: (e) => set({ ...marca, dg: e.target.value.replace(/\D/g, "") }) }), /* @__PURE__ */ React17.createElement("input", { "aria-label": `Observa\xE7\xE3o da ${m.brinco}`, placeholder: "Observa\xE7\xE3o", value: marca.observacoes || "", disabled: gravada, onChange: (e) => set({ ...marca, observacoes: e.target.value }) })), marca && res === "Descarte" && /* @__PURE__ */ React17.createElement("div", { className: "mais" }, /* @__PURE__ */ React17.createElement("select", { "aria-label": `Motivo do descarte da ${m.brinco}`, value: marca.motivo || "", disabled: gravada, onChange: (e) => set({ ...marca, motivo: e.target.value }) }, /* @__PURE__ */ React17.createElement("option", { value: "" }, "Motivo"), opcoesAtuais("motivosDescarte", "", MOTIVOS_DESCARTE).map((x) => /* @__PURE__ */ React17.createElement("option", { key: x }, x))), /* @__PURE__ */ React17.createElement("input", { "aria-label": `Observa\xE7\xE3o da ${m.brinco}`, placeholder: "Observa\xE7\xE3o", value: marca.observacoes || "", disabled: gravada, onChange: (e) => set({ ...marca, observacoes: e.target.value }) })), marca && res === "Vazia" && /* @__PURE__ */ React17.createElement("div", { className: "mais", style: { gridTemplateColumns: "1fr" } }, /* @__PURE__ */ React17.createElement("input", { "aria-label": `Observa\xE7\xE3o da ${m.brinco}`, placeholder: "Observa\xE7\xE3o (opcional)", value: marca.observacoes || "", disabled: gravada, onChange: (e) => set({ ...marca, observacoes: e.target.value }) })), c && marca.dg !== "" && /* @__PURE__ */ React17.createElement("div", { className: "calc" }, "Concep\xE7\xE3o ", formatarDataBR(c), " \xB7 parto previsto ", formatarDataBR(previsaoPeloToque(data, marca.dg)), ori ? ` \xB7 ${ori.rotulo}` : ""), avs.length > 0 && /* @__PURE__ */ React17.createElement("div", { className: "avs" }, avs.join(" \xB7 ")));
 }
 function ResumoToque({ dados, toqueId, ownerMode, onMontarProtocolo, onVoltar }) {
-  const rel = useMemo13(() => relatorioToque(dados, toqueId), [dados, toqueId]);
-  const r = useMemo13(() => resumoToque(dados, toqueId), [dados, toqueId]);
-  const [pdf, setPdf] = useState15(false);
-  return /* @__PURE__ */ React16.createElement("section", { className: "sheet pad", "data-testid": "resumo-toque" }, /* @__PURE__ */ React16.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rel.titulo), /* @__PURE__ */ React16.createElement(Kpis, { itens: rel.resumo }), /* @__PURE__ */ React16.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" } }, /* @__PURE__ */ React16.createElement("button", { className: "btn ghost sm", disabled: pdf, onClick: async () => {
+  const rel = useMemo14(() => relatorioToque(dados, toqueId), [dados, toqueId]);
+  const r = useMemo14(() => resumoToque(dados, toqueId), [dados, toqueId]);
+  const [pdf, setPdf] = useState16(false);
+  return /* @__PURE__ */ React17.createElement("section", { className: "sheet pad", "data-testid": "resumo-toque" }, /* @__PURE__ */ React17.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rel.titulo), /* @__PURE__ */ React17.createElement(Kpis, { itens: rel.resumo }), /* @__PURE__ */ React17.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" } }, /* @__PURE__ */ React17.createElement("button", { className: "btn ghost sm", disabled: pdf, onClick: async () => {
     setPdf(true);
     try {
       await baixarPDF(rel);
@@ -7435,28 +7705,28 @@ function ResumoToque({ dados, toqueId, ownerMode, onMontarProtocolo, onVoltar })
       console.error(e);
     }
     setPdf(false);
-  } }, pdf ? /* @__PURE__ */ React16.createElement(Loader210, { size: 15, className: "spin" }) : /* @__PURE__ */ React16.createElement(FileDown4, { size: 15 }), " PDF do toque"), ownerMode ? /* @__PURE__ */ React16.createElement("button", { className: "btn sm", onClick: () => onMontarProtocolo([...r.vaziasIds, ...r.aptasIds]) }, /* @__PURE__ */ React16.createElement(ClipboardList, { size: 15 }), " Montar protocolo com vazias e novilhas aptas (", r.vaziasIds.length + r.aptasIds.length, ")") : /* @__PURE__ */ React16.createElement("span", { className: "sub", style: { alignSelf: "center" } }, "O propriet\xE1rio monta o pr\xF3ximo protocolo com as vazias e as novilhas aptas."), onVoltar && /* @__PURE__ */ React16.createElement("button", { className: "btn quiet sm", onClick: onVoltar }, "Voltar")), rel.secoes.map((s) => /* @__PURE__ */ React16.createElement(SecaoRelatorio, { key: s.titulo, secao: s })));
+  } }, pdf ? /* @__PURE__ */ React17.createElement(Loader210, { size: 15, className: "spin" }) : /* @__PURE__ */ React17.createElement(FileDown4, { size: 15 }), " PDF do toque"), ownerMode ? /* @__PURE__ */ React17.createElement("button", { className: "btn sm", onClick: () => onMontarProtocolo([...r.vaziasIds, ...r.aptasIds]) }, /* @__PURE__ */ React17.createElement(ClipboardList, { size: 15 }), " Montar protocolo com vazias e novilhas aptas (", r.vaziasIds.length + r.aptasIds.length, ")") : /* @__PURE__ */ React17.createElement("span", { className: "sub", style: { alignSelf: "center" } }, "O propriet\xE1rio monta o pr\xF3ximo protocolo com as vazias e as novilhas aptas."), onVoltar && /* @__PURE__ */ React17.createElement("button", { className: "btn quiet sm", onClick: onVoltar }, "Voltar")), rel.secoes.map((s2) => /* @__PURE__ */ React17.createElement(SecaoRelatorio, { key: s2.titulo, secao: s2 })));
 }
 function Toque({ dados, hoje, ownerMode, modoTeste, onGravarLote, onMontarProtocolo }) {
-  const [sessao, setSessao] = useState15(() => lerLocal(CHAVE2, null));
-  const [cab, setCab] = useState15({ data: hoje, veterinario: "", metodo: "Toque retal", aplicacoes: [], observacoes: "" });
-  const [filtro, setFiltro] = useState15("faltam");
-  const [busca, setBusca] = useState15("");
-  const [msg, setMsg] = useState15(null);
-  const [gravando, setGravando] = useState15(false);
-  const [verResumo, setVerResumo] = useState15(null);
-  const [confEncerrar, setConfEncerrar] = useState15(false);
+  const [sessao, setSessao] = useState16(() => lerLocal(CHAVE2, null));
+  const [cab, setCab] = useState16({ data: hoje, veterinario: "", metodo: "Toque retal", aplicacoes: [], observacoes: "" });
+  const [filtro, setFiltro] = useState16("faltam");
+  const [busca, setBusca] = useState16("");
+  const [msg, setMsg] = useState16(null);
+  const [gravando, setGravando] = useState16(false);
+  const [verResumo, setVerResumo] = useState16(null);
+  const [confEncerrar, setConfEncerrar] = useState16(false);
   const topo = useRef7(null);
   useEffect7(() => {
     if (sessao) gravarNoCelular(CHAVE2, sessao);
     else apagarLocal(CHAVE2);
   }, [sessao]);
-  const eleg = useMemo13(() => elegiveisToque(dados), [dados]);
-  const infos = useMemo13(() => new Map(eleg.map((m) => [m.id, infoVaca(dados, m, sessao ? sessao.data : hoje)])), [eleg, dados, sessao && sessao.data, hoje]);
-  const toques = useMemo13(() => listarToques(dados), [dados]);
-  if (verResumo) return /* @__PURE__ */ React16.createElement(ResumoToque, { dados, toqueId: verResumo, ownerMode, onMontarProtocolo, onVoltar: () => setVerResumo(null) });
+  const eleg = useMemo14(() => elegiveisToque(dados), [dados]);
+  const infos = useMemo14(() => new Map(eleg.map((m) => [m.id, infoVaca(dados, m, sessao ? sessao.data : hoje)])), [eleg, dados, sessao && sessao.data, hoje]);
+  const toques = useMemo14(() => listarToques(dados), [dados]);
+  if (verResumo) return /* @__PURE__ */ React17.createElement(ResumoToque, { dados, toqueId: verResumo, ownerMode, onMontarProtocolo, onVoltar: () => setVerResumo(null) });
   if (!sessao) {
-    return /* @__PURE__ */ React16.createElement("section", { className: "sheet pad", "data-testid": "toque-inicio" }, /* @__PURE__ */ React16.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Toque geral"), /* @__PURE__ */ React16.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Preencha o cabe\xE7alho e comece. Aparecem todas as matrizes e novilhas (", eleg.length, ") com o hist\xF3rico de cada uma. As marca\xE7\xF5es ficam guardadas neste celular at\xE9 gravar."), /* @__PURE__ */ React16.createElement("div", { className: "grid2" }, /* @__PURE__ */ React16.createElement("div", { className: "fld" }, /* @__PURE__ */ React16.createElement("label", { htmlFor: "tq-data" }, "Data do toque"), /* @__PURE__ */ React16.createElement("input", { id: "tq-data", type: "date", value: cab.data, onChange: (e) => setCab({ ...cab, data: e.target.value }) })), /* @__PURE__ */ React16.createElement("div", { className: "fld" }, /* @__PURE__ */ React16.createElement("label", { htmlFor: "tq-vet" }, "Veterin\xE1rio"), /* @__PURE__ */ React16.createElement("input", { id: "tq-vet", value: cab.veterinario, onChange: (e) => setCab({ ...cab, veterinario: e.target.value }) }))), /* @__PURE__ */ React16.createElement("div", { className: "seg", style: { marginBottom: 12 } }, ["Toque retal", "Ultrassom"].map((x) => /* @__PURE__ */ React16.createElement("button", { key: x, type: "button", "aria-pressed": cab.metodo === x, onClick: () => setCab({ ...cab, metodo: x }) }, x))), /* @__PURE__ */ React16.createElement(AplicacoesEditor, { valor: cab.aplicacoes, onChange: (a) => setCab({ ...cab, aplicacoes: a }) }), /* @__PURE__ */ React16.createElement("button", { className: "btn wide", onClick: () => setSessao({ ...cab, id: `tq-${novoId()}`, marcas: {}, gravadas: [] }), disabled: !cab.data }, "Come\xE7ar o toque"), toques.length > 0 && /* @__PURE__ */ React16.createElement(React16.Fragment, null, /* @__PURE__ */ React16.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Toques j\xE1 feitos"), toques.map((t2) => /* @__PURE__ */ React16.createElement("button", { key: t2.id, className: "card-prot", onClick: () => setVerResumo(t2.id) }, /* @__PURE__ */ React16.createElement("b", null, "Toque de ", formatarDataBR(t2.data)), /* @__PURE__ */ React16.createElement("div", { className: "l2" }, t2.diags.length, " avaliadas", t2.veterinario ? ` \xB7 ${t2.veterinario}` : "")))));
+    return /* @__PURE__ */ React17.createElement("section", { className: "sheet pad", "data-testid": "toque-inicio" }, /* @__PURE__ */ React17.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Toque geral"), /* @__PURE__ */ React17.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Preencha o cabe\xE7alho e comece. Aparecem todas as matrizes e novilhas (", eleg.length, ") com o hist\xF3rico de cada uma. As marca\xE7\xF5es ficam guardadas neste celular at\xE9 gravar."), /* @__PURE__ */ React17.createElement("div", { className: "grid2" }, /* @__PURE__ */ React17.createElement("div", { className: "fld" }, /* @__PURE__ */ React17.createElement("label", { htmlFor: "tq-data" }, "Data do toque"), /* @__PURE__ */ React17.createElement("input", { id: "tq-data", type: "date", value: cab.data, onChange: (e) => setCab({ ...cab, data: e.target.value }) })), /* @__PURE__ */ React17.createElement("div", { className: "fld" }, /* @__PURE__ */ React17.createElement("label", { htmlFor: "tq-vet" }, "Veterin\xE1rio"), /* @__PURE__ */ React17.createElement("input", { id: "tq-vet", value: cab.veterinario, onChange: (e) => setCab({ ...cab, veterinario: e.target.value }) }))), /* @__PURE__ */ React17.createElement("div", { className: "seg", style: { marginBottom: 12 } }, ["Toque retal", "Ultrassom"].map((x) => /* @__PURE__ */ React17.createElement("button", { key: x, type: "button", "aria-pressed": cab.metodo === x, onClick: () => setCab({ ...cab, metodo: x }) }, x))), /* @__PURE__ */ React17.createElement(AplicacoesEditor, { valor: cab.aplicacoes, onChange: (a) => setCab({ ...cab, aplicacoes: a }) }), /* @__PURE__ */ React17.createElement("button", { className: "btn wide", onClick: () => setSessao({ ...cab, id: `tq-${novoId()}`, marcas: {}, gravadas: [] }), disabled: !cab.data }, "Come\xE7ar o toque"), toques.length > 0 && /* @__PURE__ */ React17.createElement(React17.Fragment, null, /* @__PURE__ */ React17.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Toques j\xE1 feitos"), toques.map((t2) => /* @__PURE__ */ React17.createElement("button", { key: t2.id, className: "card-prot", onClick: () => setVerResumo(t2.id) }, /* @__PURE__ */ React17.createElement("b", null, "Toque de ", formatarDataBR(t2.data)), /* @__PURE__ */ React17.createElement("div", { className: "l2" }, t2.diags.length, " avaliadas", t2.veterinario ? ` \xB7 ${t2.veterinario}` : "")))));
   }
   const marcas = sessao.marcas || {};
   const gravadas = new Set(sessao.gravadas || []);
@@ -7465,7 +7735,7 @@ function Toque({ dados, hoje, ownerMode, modoTeste, onGravarLote, onMontarProtoc
   const contagem = (r) => Object.values(marcas).filter((mk) => mk && mk.resultado === r).length;
   function marcar(id, mk) {
     setMsg(null);
-    setSessao((s) => ({ ...s, marcas: { ...s.marcas, [id]: mk } }));
+    setSessao((s2) => ({ ...s2, marcas: { ...s2.marcas, [id]: mk } }));
   }
   const t = busca.trim();
   const lista5 = eleg.filter((m) => {
@@ -7499,7 +7769,7 @@ function Toque({ dados, hoje, ownerMode, modoTeste, onGravarLote, onMontarProtoc
     }
     const ids4 = r.aplicados.map((a) => a.matriz.id);
     const recusadas = r.rejeitados.map((x) => x.marca.matrizId);
-    setSessao((s) => ({ ...s, gravadas: [.../* @__PURE__ */ new Set([...s.gravadas || [], ...ids4, ...recusadas])] }));
+    setSessao((s2) => ({ ...s2, gravadas: [.../* @__PURE__ */ new Set([...s2.gravadas || [], ...ids4, ...recusadas])] }));
     setMsg({ tipo: "ok", texto: `${ids4.length} avalia\xE7\xE3o(\xF5es) gravada(s).${r.rejeitados.length ? ` N\xE3o gravadas: ${r.rejeitados.map((x) => x.motivo).join("; ")}.` : ""}${res.offline ? " Sem internet: ficou no celular e vai para a planilha quando a internet voltar." : ""}${modoTeste ? " (modo teste: s\xF3 na tela)" : ""}` });
   }
   function encerrar() {
@@ -7508,10 +7778,10 @@ function Toque({ dados, hoje, ownerMode, modoTeste, onGravarLote, onMontarProtoc
     setConfEncerrar(false);
     if ((sessao.gravadas || []).length) setVerResumo(id);
   }
-  return /* @__PURE__ */ React16.createElement("section", { "data-testid": "toque-sessao" }, /* @__PURE__ */ React16.createElement("div", { className: "sheet pad", ref: topo }, /* @__PURE__ */ React16.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Toque de ", formatarDataBR(sessao.data), /* @__PURE__ */ React16.createElement("small", null, sessao.veterinario || "sem veterin\xE1rio", " \xB7 ", sessao.metodo)), /* @__PURE__ */ React16.createElement("div", { className: "bar-sum", style: { padding: 0, border: "none" }, "data-testid": "placar-toque" }, /* @__PURE__ */ React16.createElement("span", { className: "mut" }, avaliadas, " de ", eleg.length, " avaliadas"), /* @__PURE__ */ React16.createElement("span", { className: "good" }, contagem("Cheia"), " cheias"), /* @__PURE__ */ React16.createElement("span", { className: "soon" }, contagem("Vazia"), " vazias"), /* @__PURE__ */ React16.createElement("span", { className: "late" }, contagem("Descarte"), " descarte"), /* @__PURE__ */ React16.createElement("span", { className: "mut" }, gravadas.size, " gravadas")), /* @__PURE__ */ React16.createElement("div", { className: "pills" }, [["faltam", "Faltam"], ["todas", "Todas"], ["cheias", "Cheias"], ["vazias", "Vazias"], ["novilhas", "Novilhas"]].map(([id, r]) => /* @__PURE__ */ React16.createElement("button", { key: id, type: "button", "aria-pressed": filtro === id && !t, onClick: () => {
+  return /* @__PURE__ */ React17.createElement("section", { "data-testid": "toque-sessao" }, /* @__PURE__ */ React17.createElement("div", { className: "sheet pad", ref: topo }, /* @__PURE__ */ React17.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Toque de ", formatarDataBR(sessao.data), /* @__PURE__ */ React17.createElement("small", null, sessao.veterinario || "sem veterin\xE1rio", " \xB7 ", sessao.metodo)), /* @__PURE__ */ React17.createElement("div", { className: "bar-sum", style: { padding: 0, border: "none" }, "data-testid": "placar-toque" }, /* @__PURE__ */ React17.createElement("span", { className: "mut" }, avaliadas, " de ", eleg.length, " avaliadas"), /* @__PURE__ */ React17.createElement("span", { className: "good" }, contagem("Cheia"), " cheias"), /* @__PURE__ */ React17.createElement("span", { className: "soon" }, contagem("Vazia"), " vazias"), /* @__PURE__ */ React17.createElement("span", { className: "late" }, contagem("Descarte"), " descarte"), /* @__PURE__ */ React17.createElement("span", { className: "mut" }, gravadas.size, " gravadas")), /* @__PURE__ */ React17.createElement("div", { className: "pills" }, [["faltam", "Faltam"], ["todas", "Todas"], ["cheias", "Cheias"], ["vazias", "Vazias"], ["novilhas", "Novilhas"]].map(([id, r]) => /* @__PURE__ */ React17.createElement("button", { key: id, type: "button", "aria-pressed": filtro === id && !t, onClick: () => {
     setFiltro(id);
     setBusca("");
-  } }, r))), /* @__PURE__ */ React16.createElement("label", { className: "search", style: { border: "1px solid var(--line)", borderRadius: 6 } }, /* @__PURE__ */ React16.createElement(Search6, null), /* @__PURE__ */ React16.createElement("input", { inputMode: "numeric", placeholder: "Digite o brinco da vaca no brete", "aria-label": "Buscar brinco no toque", value: busca, onChange: (e) => setBusca(e.target.value) }))), /* @__PURE__ */ React16.createElement("div", { className: "sheet", style: { marginTop: 10 } }, lista5.length === 0 && /* @__PURE__ */ React16.createElement("div", { className: "empty" }, t ? `Nenhuma vaca com o brinco ${t} no toque.` : filtro === "faltam" ? "Todas avaliadas." : "Nada aqui."), lista5.map((m) => /* @__PURE__ */ React16.createElement(Linha2, { key: m.id, dados, m, info: infos.get(m.id), marca: marcas[m.id], data: sessao.data, cfg: dados.config, onMarcar: marcar, gravada: gravadas.has(m.id) }))), /* @__PURE__ */ React16.createElement("div", { className: "sheet pad", style: { marginTop: 10, position: "sticky", bottom: 70, zIndex: 5 } }, msg && /* @__PURE__ */ React16.createElement(Aviso, { tipo: msg.tipo === "erro" ? void 0 : "ok" }, msg.texto), /* @__PURE__ */ React16.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React16.createElement("button", { className: "btn", style: { flex: "1 1 200px" }, onClick: gravar, disabled: gravando || naoGravadas.length === 0 }, gravando ? /* @__PURE__ */ React16.createElement(Loader210, { size: 18, className: "spin" }) : /* @__PURE__ */ React16.createElement(Save9, { size: 18 }), " Gravar ", naoGravadas.length, " avalia\xE7\xE3o(\xF5es)"), confEncerrar ? /* @__PURE__ */ React16.createElement("button", { className: "btn quiet", onClick: encerrar }, naoGravadas.length ? `Encerrar sem gravar ${naoGravadas.length}` : "Confirmar encerrar") : /* @__PURE__ */ React16.createElement("button", { className: "btn quiet", onClick: () => setConfEncerrar(true) }, "Encerrar toque"))));
+  } }, r))), /* @__PURE__ */ React17.createElement("label", { className: "search", style: { border: "1px solid var(--line)", borderRadius: 6 } }, /* @__PURE__ */ React17.createElement(Search6, null), /* @__PURE__ */ React17.createElement("input", { inputMode: "numeric", placeholder: "Digite o brinco da vaca no brete", "aria-label": "Buscar brinco no toque", value: busca, onChange: (e) => setBusca(e.target.value) }))), /* @__PURE__ */ React17.createElement("div", { className: "sheet", style: { marginTop: 10 } }, lista5.length === 0 && /* @__PURE__ */ React17.createElement("div", { className: "empty" }, t ? `Nenhuma vaca com o brinco ${t} no toque.` : filtro === "faltam" ? "Todas avaliadas." : "Nada aqui."), lista5.map((m) => /* @__PURE__ */ React17.createElement(Linha2, { key: m.id, dados, m, info: infos.get(m.id), marca: marcas[m.id], data: sessao.data, cfg: dados.config, onMarcar: marcar, gravada: gravadas.has(m.id) }))), /* @__PURE__ */ React17.createElement("div", { className: "sheet pad", style: { marginTop: 10, position: "sticky", bottom: 70, zIndex: 5 } }, msg && /* @__PURE__ */ React17.createElement(Aviso, { tipo: msg.tipo === "erro" ? void 0 : "ok" }, msg.texto), /* @__PURE__ */ React17.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React17.createElement("button", { className: "btn", style: { flex: "1 1 200px" }, onClick: gravar, disabled: gravando || naoGravadas.length === 0 }, gravando ? /* @__PURE__ */ React17.createElement(Loader210, { size: 18, className: "spin" }) : /* @__PURE__ */ React17.createElement(Save10, { size: 18 }), " Gravar ", naoGravadas.length, " avalia\xE7\xE3o(\xF5es)"), confEncerrar ? /* @__PURE__ */ React17.createElement("button", { className: "btn quiet", onClick: encerrar }, naoGravadas.length ? `Encerrar sem gravar ${naoGravadas.length}` : "Confirmar encerrar") : /* @__PURE__ */ React17.createElement("button", { className: "btn quiet", onClick: () => setConfEncerrar(true) }, "Encerrar toque"))));
 }
 
 // src/telas/Parto.jsx
@@ -7525,13 +7795,13 @@ function textoDias(dias) {
 }
 function Calculo({ info }) {
   if (!info) return null;
-  if (info.origem === "toque") return /* @__PURE__ */ React17.createElement(React17.Fragment, null, "C\xE1lculo: toque de ", /* @__PURE__ */ React17.createElement("b", null, formatarDataBR(info.base)), " com ", /* @__PURE__ */ React17.createElement("b", null, info.dg), " dias de gesta\xE7\xE3o, completando ", PERIODO_GESTACAO_DIAS, " dias.");
-  if (info.origem === "iatf") return /* @__PURE__ */ React17.createElement(React17.Fragment, null, "C\xE1lculo: IATF de ", /* @__PURE__ */ React17.createElement("b", null, formatarDataBR(info.base)), " mais ", PERIODO_GESTACAO_DIAS, " dias.");
-  return /* @__PURE__ */ React17.createElement(React17.Fragment, null, "Toque de ", /* @__PURE__ */ React17.createElement("b", null, formatarDataBR(info.base)), " sem os dias de gesta\xE7\xE3o (DG) anotados: n\xE3o d\xE1 para calcular a data.");
+  if (info.origem === "toque") return /* @__PURE__ */ React18.createElement(React18.Fragment, null, "C\xE1lculo: toque de ", /* @__PURE__ */ React18.createElement("b", null, formatarDataBR(info.base)), " com ", /* @__PURE__ */ React18.createElement("b", null, info.dg), " dias de gesta\xE7\xE3o, completando ", PERIODO_GESTACAO_DIAS, " dias.");
+  if (info.origem === "iatf") return /* @__PURE__ */ React18.createElement(React18.Fragment, null, "C\xE1lculo: IATF de ", /* @__PURE__ */ React18.createElement("b", null, formatarDataBR(info.base)), " mais ", PERIODO_GESTACAO_DIAS, " dias.");
+  return /* @__PURE__ */ React18.createElement(React18.Fragment, null, "Toque de ", /* @__PURE__ */ React18.createElement("b", null, formatarDataBR(info.base)), " sem os dias de gesta\xE7\xE3o (DG) anotados: n\xE3o d\xE1 para calcular a data.");
 }
 function VacinaCheia({ m, sit, hoje, dados, onGravarLote }) {
-  const [data, setData] = useState16(hoje);
-  const [msg, setMsg] = useState16("");
+  const [data, setData] = useState17(hoje);
+  const [msg, setMsg] = useState17("");
   async function confirmar(tipo) {
     const ev = manejoConfirmacaoVacina([m.id], data, tipo);
     const r = await onGravarLote({ estado: { ...dados, eventos: [...dados.eventos, ev] }, eventosParaGravar: [{ tipo: "manejo", evento: ev }], matrizesParaGravar: [], tourosParaGravar: [] }, `vacina ${m.brinco}`);
@@ -7539,49 +7809,49 @@ function VacinaCheia({ m, sit, hoje, dados, onGravarLote }) {
   }
   const pedeInicial = !sit.inicial;
   const pedeReforco = sit.reforco && !sit.reforco.feito && (sit.reforco.atrasoDias || sit.reforco.faltam <= 30);
-  const pergunta = (texto, tipo) => /* @__PURE__ */ React17.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8, color: "var(--tx)" } }, texto, /* @__PURE__ */ React17.createElement("input", { type: "date", "aria-label": `Data: ${tipo}`, value: data, onChange: (e) => setData(e.target.value), style: { width: "auto", minHeight: 34 } }), /* @__PURE__ */ React17.createElement("button", { className: "btn sm", style: { minHeight: 34 }, onClick: () => confirmar(tipo) }, "Sim"), /* @__PURE__ */ React17.createElement("button", { className: "btn quiet sm", style: { minHeight: 34 }, onClick: () => setMsg("Continua pendente. Vacine em Manejo > Vacinas.") }, "N\xE3o"));
-  return /* @__PURE__ */ React17.createElement("div", { style: { marginTop: 8 }, "data-testid": `vacina-${m.brinco}` }, /* @__PURE__ */ React17.createElement("span", { className: `vac-tag ${sit.nivel}` }, sit.texto || "Sem vacina registrada"), pedeReforco && onGravarLote && pergunta("J\xE1 tomou o refor\xE7o da Lepto?", "Refor\xE7o Lepto"), pedeInicial && onGravarLote && pergunta("Foi vacinada (vacina reprodutiva)?", "Vacina reprodutiva"), msg && /* @__PURE__ */ React17.createElement("div", { className: "hint", style: { marginTop: 4 } }, msg));
+  const pergunta = (texto, tipo) => /* @__PURE__ */ React18.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8, color: "var(--tx)" } }, texto, /* @__PURE__ */ React18.createElement("input", { type: "date", "aria-label": `Data: ${tipo}`, value: data, onChange: (e) => setData(e.target.value), style: { width: "auto", minHeight: 34 } }), /* @__PURE__ */ React18.createElement("button", { className: "btn sm", style: { minHeight: 34 }, onClick: () => confirmar(tipo) }, "Sim"), /* @__PURE__ */ React18.createElement("button", { className: "btn quiet sm", style: { minHeight: 34 }, onClick: () => setMsg("Continua pendente. Vacine em Manejo > Vacinas.") }, "N\xE3o"));
+  return /* @__PURE__ */ React18.createElement("div", { style: { marginTop: 8 }, "data-testid": `vacina-${m.brinco}` }, /* @__PURE__ */ React18.createElement("span", { className: `vac-tag ${sit.nivel}` }, sit.texto || "Sem vacina registrada"), pedeReforco && onGravarLote && pergunta("J\xE1 tomou o refor\xE7o da Lepto?", "Refor\xE7o Lepto"), pedeInicial && onGravarLote && pergunta("Foi vacinada (vacina reprodutiva)?", "Vacina reprodutiva"), msg && /* @__PURE__ */ React18.createElement("div", { className: "hint", style: { marginTop: 4 } }, msg));
 }
 function PartoDetalhe({ e, c, hoje }) {
   const natimorto = e.resultadoParto === "Natimorto";
   const sexo = e.sexo === "F\xEAmea" ? "f\xEAmea" : e.sexo === "Macho" ? "macho" : "";
   const pesoNascer = String(e.pesoNascer ?? "").trim();
   const partes = [];
-  if (natimorto) partes.push(/* @__PURE__ */ React17.createElement("b", { key: "n", className: "late" }, "natimorto"));
-  else partes.push(/* @__PURE__ */ React17.createElement("span", { key: "b" }, "cria ", /* @__PURE__ */ React17.createElement("b", null, e.brincoBezerro || "s/ n\xBA")));
-  if (sexo) partes.push(/* @__PURE__ */ React17.createElement("span", { key: "s" }, sexo));
-  if (c && !natimorto) partes.push(/* @__PURE__ */ React17.createElement("span", { key: "st", "data-testid": "parto-cria-situacao" }, rotuloSituacao(c).toLowerCase(), c.orfa ? " (\xF3rf\xE3)" : ""));
-  if (c && c.origem && c.origem.rotulo && c.origem.origem !== "Sem m\xE3e") partes.push(/* @__PURE__ */ React17.createElement("span", { key: "o" }, c.origem.rotulo));
-  if (pesoNascer) partes.push(/* @__PURE__ */ React17.createElement("span", { key: "pn" }, "nasceu com ", pesoNascer.replace(".", ","), " kg"));
-  if (c && c.pesoAtual && c.pesoData !== e.data) partes.push(/* @__PURE__ */ React17.createElement("span", { key: "pa" }, "\xFAltimo peso ", String(c.pesoAtual).replace(".", ","), " kg (", formatarDataBR(c.pesoData), ")"));
-  if (e.tipoParto && e.tipoParto !== "Normal") partes.push(/* @__PURE__ */ React17.createElement("span", { key: "tp" }, "parto ", String(e.tipoParto).toLowerCase()));
-  return /* @__PURE__ */ React17.createElement("div", { className: "parto-lin", "data-testid": "parto-lin" }, /* @__PURE__ */ React17.createElement("b", { className: "m" }, formatarDataBR(e.data)), " ", /* @__PURE__ */ React17.createElement("span", { className: "mut" }, "(h\xE1 ", diasEntre(e.data, hoje), " dias)"), /* @__PURE__ */ React17.createElement("div", { className: "parto-cria" }, partes.map((x, i) => /* @__PURE__ */ React17.createElement(React17.Fragment, { key: i }, i ? " \xB7 " : "", x))));
+  if (natimorto) partes.push(/* @__PURE__ */ React18.createElement("b", { key: "n", className: "late" }, "natimorto"));
+  else partes.push(/* @__PURE__ */ React18.createElement("span", { key: "b" }, "cria ", /* @__PURE__ */ React18.createElement("b", null, e.brincoBezerro || "s/ n\xBA")));
+  if (sexo) partes.push(/* @__PURE__ */ React18.createElement("span", { key: "s" }, sexo));
+  if (c && !natimorto) partes.push(/* @__PURE__ */ React18.createElement("span", { key: "st", "data-testid": "parto-cria-situacao" }, rotuloSituacao(c).toLowerCase(), c.orfa ? " (\xF3rf\xE3)" : ""));
+  if (c && c.origem && c.origem.rotulo && c.origem.origem !== "Sem m\xE3e") partes.push(/* @__PURE__ */ React18.createElement("span", { key: "o" }, c.origem.rotulo));
+  if (pesoNascer) partes.push(/* @__PURE__ */ React18.createElement("span", { key: "pn" }, "nasceu com ", pesoNascer.replace(".", ","), " kg"));
+  if (c && c.pesoAtual && c.pesoData !== e.data) partes.push(/* @__PURE__ */ React18.createElement("span", { key: "pa" }, "\xFAltimo peso ", String(c.pesoAtual).replace(".", ","), " kg (", formatarDataBR(c.pesoData), ")"));
+  if (e.tipoParto && e.tipoParto !== "Normal") partes.push(/* @__PURE__ */ React18.createElement("span", { key: "tp" }, "parto ", String(e.tipoParto).toLowerCase()));
+  return /* @__PURE__ */ React18.createElement("div", { className: "parto-lin", "data-testid": "parto-lin" }, /* @__PURE__ */ React18.createElement("b", { className: "m" }, formatarDataBR(e.data)), " ", /* @__PURE__ */ React18.createElement("span", { className: "mut" }, "(h\xE1 ", diasEntre(e.data, hoje), " dias)"), /* @__PURE__ */ React18.createElement("div", { className: "parto-cria" }, partes.map((x, i) => /* @__PURE__ */ React18.createElement(React18.Fragment, { key: i }, i ? " \xB7 " : "", x))));
 }
 function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onGravarLote, onMontarProtocolo, onAbrirProdutividade }) {
   const { abrir } = useFicha();
-  const [aba, setAba] = useState16("Cheia");
-  const [so6, setSo6] = useState16(false);
-  const [busca, setBusca] = useState16("");
-  const [aberta, setAberta] = useState16(null);
-  const todasCheias = useMemo14(() => linhasPrevisao(dados.matrizes, dados.eventos, "Cheia", hoje, ""), [dados, hoje]);
+  const [aba, setAba] = useState17("Cheia");
+  const [so6, setSo6] = useState17(false);
+  const [busca, setBusca] = useState17("");
+  const [aberta, setAberta] = useState17(null);
+  const todasCheias = useMemo15(() => linhasPrevisao(dados.matrizes, dados.eventos, "Cheia", hoje, ""), [dados, hoje]);
   const nVazias = dados.matrizes.filter((m) => m.status === "Vazia").length;
-  const partos = useMemo14(() => partosPorMatriz(dados.eventos), [dados.eventos]);
-  const criaPorNasc = useMemo14(() => aba !== "Toque" ? new Map(listarCrias(dados, hoje).map((c) => [c.id, c])) : /* @__PURE__ */ new Map(), [dados, hoje, aba]);
-  const linhas = useMemo14(() => {
+  const partos = useMemo15(() => partosPorMatriz(dados.eventos), [dados.eventos]);
+  const criaPorNasc = useMemo15(() => aba !== "Toque" ? new Map(listarCrias(dados, hoje).map((c) => [c.id, c])) : /* @__PURE__ */ new Map(), [dados, hoje, aba]);
+  const linhas = useMemo15(() => {
     const q = busca.trim().toLowerCase();
     return linhasPrevisao(dados.matrizes, dados.eventos, aba, hoje, "").filter((l) => !q || String(l.matriz.brinco).toLowerCase().includes(q) || (partos.get(l.matriz.id) || []).some((e) => String(e.brincoBezerro || "").toLowerCase().includes(q))).filter((l) => !(aba === "Vazia" && so6) || l.diasDesdeParto !== null && l.diasDesdeParto > DIAS_6_MESES);
   }, [dados, aba, hoje, busca, partos, so6]);
-  const seisMeses = useMemo14(() => linhasPrevisao(dados.matrizes, dados.eventos, "Vazia", hoje, "").filter((l) => l.diasDesdeParto !== null && l.diasDesdeParto > DIAS_6_MESES).length, [dados, hoje]);
+  const seisMeses = useMemo15(() => linhasPrevisao(dados.matrizes, dados.eventos, "Vazia", hoje, "").filter((l) => l.diasDesdeParto !== null && l.diasDesdeParto > DIAS_6_MESES).length, [dados, hoje]);
   const atrasadas = todasCheias.filter((l) => l.dias !== null && l.dias < 0).length;
   const porVir = todasCheias.filter((l) => l.dias !== null && l.dias >= 0).length;
   const semPrev = todasCheias.filter((l) => l.dias === null).length;
-  const vaziasSemParto = useMemo14(() => linhasPrevisao(dados.matrizes, dados.eventos, "Vazia", hoje, "").filter((l) => !l.ultimoParto).length, [dados, hoje]);
+  const vaziasSemParto = useMemo15(() => linhasPrevisao(dados.matrizes, dados.eventos, "Vazia", hoje, "").filter((l) => !l.ultimoParto).length, [dados, hoje]);
   const cols = "84px minmax(0,1fr) 78px 54px";
   const vazias = aba === "Vazia";
-  const cacheVac = useMemo14(() => aplicacoesPorAnimal(dados), [dados]);
+  const cacheVac = useMemo15(() => aplicacoesPorAnimal(dados), [dados]);
   const vacinaDe = (m) => situacaoVacinaVaca(dados, m, hoje, cacheVac);
   const pendVac = aba === "Cheia" ? todasCheias.filter((l) => vacinaDe(l.matriz).pendente).length : 0;
-  return /* @__PURE__ */ React17.createElement("div", { className: "wrap" }, /* @__PURE__ */ React17.createElement("div", { className: "head" }, /* @__PURE__ */ React17.createElement("div", null, /* @__PURE__ */ React17.createElement("small", null, "Reprodu\xE7\xE3o"), /* @__PURE__ */ React17.createElement("h1", null, "Diagn\xF3stico"))), /* @__PURE__ */ React17.createElement(
+  return /* @__PURE__ */ React18.createElement("div", { className: "wrap" }, /* @__PURE__ */ React18.createElement("div", { className: "head" }, /* @__PURE__ */ React18.createElement("div", null, /* @__PURE__ */ React18.createElement("small", null, "Reprodu\xE7\xE3o"), /* @__PURE__ */ React18.createElement("h1", null, "Diagn\xF3stico"))), /* @__PURE__ */ React18.createElement(
     IndexTabs,
     {
       rotulo: "Situa\xE7\xE3o",
@@ -7592,37 +7862,37 @@ function Parto({ dados, hoje, ownerMode, modoTeste, onLancar, onGravarLote, onMo
       },
       tabs: [{ id: "Cheia", label: "Cheias", count: todasCheias.length }, { id: "Vazia", label: "Vazias", count: nVazias }, { id: "Toque", label: "Toque" }]
     }
-  ), seisMeses > 0 && aba !== "Toque" && /* @__PURE__ */ React17.createElement("div", { className: "pd-alerta", role: "status", "data-testid": "alerta-6meses" }, /* @__PURE__ */ React17.createElement("span", null, /* @__PURE__ */ React17.createElement("b", null, seisMeses), " vaca(s) com mais de ", MESES_SEM_EMPRENHAR, " meses sem emprenhar (vazias, \xFAltimo parto h\xE1 mais de ", MESES_SEM_EMPRENHAR, " meses)."), /* @__PURE__ */ React17.createElement("span", { className: "acts" }, /* @__PURE__ */ React17.createElement("button", { className: "btn sm", onClick: () => {
+  ), seisMeses > 0 && aba !== "Toque" && /* @__PURE__ */ React18.createElement("div", { className: "pd-alerta", role: "status", "data-testid": "alerta-6meses" }, /* @__PURE__ */ React18.createElement("span", null, /* @__PURE__ */ React18.createElement("b", null, seisMeses), " vaca(s) com mais de ", MESES_SEM_EMPRENHAR, " meses sem emprenhar (vazias, \xFAltimo parto h\xE1 mais de ", MESES_SEM_EMPRENHAR, " meses)."), /* @__PURE__ */ React18.createElement("span", { className: "acts" }, /* @__PURE__ */ React18.createElement("button", { className: "btn sm", onClick: () => {
     setAba("Vazia");
     setSo6(true);
     setAberta(null);
-  } }, "Ver em Vazias"), onAbrirProdutividade && /* @__PURE__ */ React17.createElement("button", { className: "btn sm quiet", onClick: () => onAbrirProdutividade("seis") }, "Produtividade"))), aba === "Toque" && /* @__PURE__ */ React17.createElement(Toque, { dados, hoje, ownerMode, modoTeste, onGravarLote, onMontarProtocolo }), aba !== "Toque" && /* @__PURE__ */ React17.createElement("section", { className: "sheet" }, /* @__PURE__ */ React17.createElement("label", { className: "search" }, /* @__PURE__ */ React17.createElement(Search7, null), /* @__PURE__ */ React17.createElement("input", { placeholder: "Buscar pelo brinco da vaca ou da cria", "aria-label": "Buscar pelo brinco", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React17.createElement("div", { className: "bar-sum" }, aba === "Cheia" ? /* @__PURE__ */ React17.createElement(React17.Fragment, null, /* @__PURE__ */ React17.createElement("span", { className: "late" }, atrasadas, " atrasadas"), /* @__PURE__ */ React17.createElement("span", { className: "good" }, porVir, " por vir"), semPrev > 0 && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, semPrev, " sem previs\xE3o"), pendVac > 0 && /* @__PURE__ */ React17.createElement("span", { className: "late" }, pendVac, " com vacina pendente")) : /* @__PURE__ */ React17.createElement(React17.Fragment, null, /* @__PURE__ */ React17.createElement("span", { className: "soon" }, nVazias, " vazias"), vaziasSemParto > 0 && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, vaziasSemParto, " sem parto lan\xE7ado"), seisMeses > 0 && /* @__PURE__ */ React17.createElement("button", { className: `pd-filtro${so6 ? " on" : ""}`, "aria-pressed": so6, onClick: () => setSo6(!so6), "data-testid": "filtro-6meses" }, so6 ? `mostrando ${seisMeses} com mais de 6 meses \xB7 ver todas` : `${seisMeses} com mais de 6 meses sem emprenhar`))), vazias ? /* @__PURE__ */ React17.createElement("div", { className: "led-h cols-reb" }, /* @__PURE__ */ React17.createElement("span", null, "Brinco"), /* @__PURE__ */ React17.createElement("span", null, "Categoria"), /* @__PURE__ */ React17.createElement("span", null, "Partos"), /* @__PURE__ */ React17.createElement("span", { className: "r" }, "Crias")) : /* @__PURE__ */ React17.createElement("div", { className: "led-h cols-cheia" }, /* @__PURE__ */ React17.createElement("span", null, "Brinco"), /* @__PURE__ */ React17.createElement("span", null, "Categoria"), /* @__PURE__ */ React17.createElement("span", null, "Partos"), /* @__PURE__ */ React17.createElement("span", { className: "r" }, "Crias"), /* @__PURE__ */ React17.createElement("span", { className: "r" }, "Previs\xE3o")), linhas.length === 0 && /* @__PURE__ */ React17.createElement("div", { className: "empty" }, busca ? "Nenhuma matriz com esse brinco aqui." : `Nenhuma matriz ${aba === "Cheia" ? "cheia" : "vazia"}.`), vazias && linhas.map((l) => {
+  } }, "Ver em Vazias"), onAbrirProdutividade && /* @__PURE__ */ React18.createElement("button", { className: "btn sm quiet", onClick: () => onAbrirProdutividade("seis") }, "Produtividade"))), aba === "Toque" && /* @__PURE__ */ React18.createElement(Toque, { dados, hoje, ownerMode, modoTeste, onGravarLote, onMontarProtocolo }), aba !== "Toque" && /* @__PURE__ */ React18.createElement("section", { className: "sheet" }, /* @__PURE__ */ React18.createElement("label", { className: "search" }, /* @__PURE__ */ React18.createElement(Search7, null), /* @__PURE__ */ React18.createElement("input", { placeholder: "Buscar pelo brinco da vaca ou da cria", "aria-label": "Buscar pelo brinco", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React18.createElement("div", { className: "bar-sum" }, aba === "Cheia" ? /* @__PURE__ */ React18.createElement(React18.Fragment, null, /* @__PURE__ */ React18.createElement("span", { className: "late" }, atrasadas, " atrasadas"), /* @__PURE__ */ React18.createElement("span", { className: "good" }, porVir, " por vir"), semPrev > 0 && /* @__PURE__ */ React18.createElement("span", { className: "mut" }, semPrev, " sem previs\xE3o"), pendVac > 0 && /* @__PURE__ */ React18.createElement("span", { className: "late" }, pendVac, " com vacina pendente")) : /* @__PURE__ */ React18.createElement(React18.Fragment, null, /* @__PURE__ */ React18.createElement("span", { className: "soon" }, nVazias, " vazias"), vaziasSemParto > 0 && /* @__PURE__ */ React18.createElement("span", { className: "mut" }, vaziasSemParto, " sem parto lan\xE7ado"), seisMeses > 0 && /* @__PURE__ */ React18.createElement("button", { className: `pd-filtro${so6 ? " on" : ""}`, "aria-pressed": so6, onClick: () => setSo6(!so6), "data-testid": "filtro-6meses" }, so6 ? `mostrando ${seisMeses} com mais de 6 meses \xB7 ver todas` : `${seisMeses} com mais de 6 meses sem emprenhar`))), vazias ? /* @__PURE__ */ React18.createElement("div", { className: "led-h cols-reb" }, /* @__PURE__ */ React18.createElement("span", null, "Brinco"), /* @__PURE__ */ React18.createElement("span", null, "Categoria"), /* @__PURE__ */ React18.createElement("span", null, "Partos"), /* @__PURE__ */ React18.createElement("span", { className: "r" }, "Crias")) : /* @__PURE__ */ React18.createElement("div", { className: "led-h cols-cheia" }, /* @__PURE__ */ React18.createElement("span", null, "Brinco"), /* @__PURE__ */ React18.createElement("span", null, "Categoria"), /* @__PURE__ */ React18.createElement("span", null, "Partos"), /* @__PURE__ */ React18.createElement("span", { className: "r" }, "Crias"), /* @__PURE__ */ React18.createElement("span", { className: "r" }, "Previs\xE3o")), linhas.length === 0 && /* @__PURE__ */ React18.createElement("div", { className: "empty" }, busca ? "Nenhuma matriz com esse brinco aqui." : `Nenhuma matriz ${aba === "Cheia" ? "cheia" : "vazia"}.`), vazias && linhas.map((l) => {
     const m = l.matriz;
     const ps = partos.get(m.id) || [];
     const antes = parseInt(m.partosAnteriores, 10) || 0;
     const aberto = aberta === m.id;
-    return /* @__PURE__ */ React17.createElement(React17.Fragment, { key: m.id }, /* @__PURE__ */ React17.createElement("button", { className: "led-r cols-reb", "aria-expanded": aberto, onClick: () => setAberta(aberto ? null : m.id), "data-testid": `vazia-${m.brinco}` }, /* @__PURE__ */ React17.createElement("span", { className: "b" }, m.brinco), /* @__PURE__ */ React17.createElement("span", { className: "two" }, /* @__PURE__ */ React17.createElement("b", null, m.categoria), /* @__PURE__ */ React17.createElement("span", null, [m.raca, m.lote].filter(Boolean).join(" \xB7 ") || "\u2014"), /* @__PURE__ */ React17.createElement("span", { className: `quebra${l.diasDesdeParto !== null && l.diasDesdeParto > DIAS_6_MESES ? " late" : ""}` }, l.diasDesdeParto === null ? "sem parto lan\xE7ado" : `\xFAltimo parto h\xE1 ${l.diasDesdeParto} dias (${Math.round(l.diasDesdeParto / 30.44)} meses)`)), /* @__PURE__ */ React17.createElement("span", { className: "reb-lista", "data-testid": "parto-datas" }, ps.length === 0 && !antes && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React17.createElement("span", { key: e.id }, formatarDataBR(e.data))), antes > 0 && /* @__PURE__ */ React17.createElement("span", { className: "mut", title: "Partos antes de entrar na fazenda" }, "+", antes, " antes")), /* @__PURE__ */ React17.createElement("span", { className: "reb-lista r", "data-testid": "parto-crias" }, ps.length === 0 && !antes && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React17.createElement("span", { key: e.id, className: e.resultadoParto === "Natimorto" || !e.brincoBezerro ? "mut" : "" }, e.resultadoParto === "Natimorto" ? "natim." : e.brincoBezerro || "s/ n\xBA")), antes > 0 && /* @__PURE__ */ React17.createElement("span", null, "\xA0"))), aberto && /* @__PURE__ */ React17.createElement("div", { className: "detalhe", "data-testid": "vazia-detalhe" }, ps.length === 0 && !antes && /* @__PURE__ */ React17.createElement("div", null, "Nenhum parto lan\xE7ado para esta vaca."), ps.map((e) => /* @__PURE__ */ React17.createElement(PartoDetalhe, { key: e.id, e, c: criaPorNasc.get(e.id), hoje })), antes > 0 && /* @__PURE__ */ React17.createElement("div", { className: "mut", style: { marginTop: 6 } }, "Mais ", antes, " parto(s) antes de entrar na fazenda (sem data lan\xE7ada)."), /* @__PURE__ */ React17.createElement("div", { style: { marginTop: 10 } }, /* @__PURE__ */ React17.createElement("button", { className: "btn sm quiet", onClick: () => abrir(`m:${m.id}`) }, "Ficha completa"))));
+    return /* @__PURE__ */ React18.createElement(React18.Fragment, { key: m.id }, /* @__PURE__ */ React18.createElement("button", { className: "led-r cols-reb", "aria-expanded": aberto, onClick: () => setAberta(aberto ? null : m.id), "data-testid": `vazia-${m.brinco}` }, /* @__PURE__ */ React18.createElement("span", { className: "b" }, m.brinco), /* @__PURE__ */ React18.createElement("span", { className: "two" }, /* @__PURE__ */ React18.createElement("b", null, m.categoria), /* @__PURE__ */ React18.createElement("span", null, [m.raca, m.lote].filter(Boolean).join(" \xB7 ") || "\u2014"), /* @__PURE__ */ React18.createElement("span", { className: `quebra${l.diasDesdeParto !== null && l.diasDesdeParto > DIAS_6_MESES ? " late" : ""}` }, l.diasDesdeParto === null ? "sem parto lan\xE7ado" : `\xFAltimo parto h\xE1 ${l.diasDesdeParto} dias (${Math.round(l.diasDesdeParto / 30.44)} meses)`)), /* @__PURE__ */ React18.createElement("span", { className: "reb-lista", "data-testid": "parto-datas" }, ps.length === 0 && !antes && /* @__PURE__ */ React18.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React18.createElement("span", { key: e.id }, formatarDataBR(e.data))), antes > 0 && /* @__PURE__ */ React18.createElement("span", { className: "mut", title: "Partos antes de entrar na fazenda" }, "+", antes, " antes")), /* @__PURE__ */ React18.createElement("span", { className: "reb-lista r", "data-testid": "parto-crias" }, ps.length === 0 && !antes && /* @__PURE__ */ React18.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React18.createElement("span", { key: e.id, className: e.resultadoParto === "Natimorto" || !e.brincoBezerro ? "mut" : "" }, e.resultadoParto === "Natimorto" ? "natim." : e.brincoBezerro || "s/ n\xBA")), antes > 0 && /* @__PURE__ */ React18.createElement("span", null, "\xA0"))), aberto && /* @__PURE__ */ React18.createElement("div", { className: "detalhe", "data-testid": "vazia-detalhe" }, ps.length === 0 && !antes && /* @__PURE__ */ React18.createElement("div", null, "Nenhum parto lan\xE7ado para esta vaca."), ps.map((e) => /* @__PURE__ */ React18.createElement(PartoDetalhe, { key: e.id, e, c: criaPorNasc.get(e.id), hoje })), antes > 0 && /* @__PURE__ */ React18.createElement("div", { className: "mut", style: { marginTop: 6 } }, "Mais ", antes, " parto(s) antes de entrar na fazenda (sem data lan\xE7ada)."), /* @__PURE__ */ React18.createElement("div", { style: { marginTop: 10 } }, /* @__PURE__ */ React18.createElement("button", { className: "btn sm quiet", onClick: () => abrir(`m:${m.id}`) }, "Ficha completa"))));
   }), !vazias && linhas.map((l) => {
     const m = l.matriz;
     const dd = aba === "Cheia" ? textoDias(l.dias) : { t: l.diasDesdeParto === null ? "\u2014" : String(l.diasDesdeParto), c: "mut" };
     const data = aba === "Cheia" ? l.previsao : l.ultimoParto;
     const aberto = aberta === m.id;
-    return /* @__PURE__ */ React17.createElement(React17.Fragment, { key: m.id }, /* @__PURE__ */ React17.createElement("button", { className: "led-r cols-cheia", "aria-expanded": aberto, onClick: () => setAberta(aberto ? null : m.id), "data-testid": `cheia-${m.brinco}` }, /* @__PURE__ */ React17.createElement("span", { className: "b" }, m.brinco), /* @__PURE__ */ React17.createElement("span", { className: "two" }, /* @__PURE__ */ React17.createElement("b", null, m.categoria), /* @__PURE__ */ React17.createElement("span", null, [m.raca, m.lote].filter(Boolean).join(" \xB7 ") || "\u2014"), aba === "Cheia" && (() => {
+    return /* @__PURE__ */ React18.createElement(React18.Fragment, { key: m.id }, /* @__PURE__ */ React18.createElement("button", { className: "led-r cols-cheia", "aria-expanded": aberto, onClick: () => setAberta(aberto ? null : m.id), "data-testid": `cheia-${m.brinco}` }, /* @__PURE__ */ React18.createElement("span", { className: "b" }, m.brinco), /* @__PURE__ */ React18.createElement("span", { className: "two" }, /* @__PURE__ */ React18.createElement("b", null, m.categoria), /* @__PURE__ */ React18.createElement("span", null, [m.raca, m.lote].filter(Boolean).join(" \xB7 ") || "\u2014"), aba === "Cheia" && (() => {
       const v = vacinaDe(m);
-      return v.pendente ? /* @__PURE__ */ React17.createElement("span", { style: { color: v.nivel === "atrasada" ? "var(--late)" : "var(--amber)" } }, v.reforco && v.reforco.atrasoDias ? "Lepto atrasada" : !v.inicial ? "vacina pendente" : "refor\xE7o Lepto em breve") : null;
+      return v.pendente ? /* @__PURE__ */ React18.createElement("span", { style: { color: v.nivel === "atrasada" ? "var(--late)" : "var(--amber)" } }, v.reforco && v.reforco.atrasoDias ? "Lepto atrasada" : !v.inicial ? "vacina pendente" : "refor\xE7o Lepto em breve") : null;
     })()), (() => {
       const ps = partos.get(m.id) || [];
       const antes = parseInt(m.partosAnteriores, 10) || 0;
-      return /* @__PURE__ */ React17.createElement(React17.Fragment, null, /* @__PURE__ */ React17.createElement("span", { className: "reb-lista", "data-testid": "cheia-datas" }, ps.length === 0 && !antes && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React17.createElement("span", { key: e.id }, formatarDataBR(e.data))), antes > 0 && /* @__PURE__ */ React17.createElement("span", { className: "mut", title: "Partos antes de entrar na fazenda" }, "+", antes, " antes")), /* @__PURE__ */ React17.createElement("span", { className: "reb-lista r", "data-testid": "cheia-crias" }, ps.length === 0 && !antes && /* @__PURE__ */ React17.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React17.createElement("span", { key: e.id, className: e.resultadoParto === "Natimorto" || !e.brincoBezerro ? "mut" : "" }, e.resultadoParto === "Natimorto" ? "natim." : e.brincoBezerro || "s/ n\xBA")), antes > 0 && /* @__PURE__ */ React17.createElement("span", null, "\xA0")));
-    })(), /* @__PURE__ */ React17.createElement("span", { className: "prev-col r" }, /* @__PURE__ */ React17.createElement("b", { className: "m" }, data ? formatarDataBR(data) : "\u2014"), /* @__PURE__ */ React17.createElement("span", { className: dd.c }, dd.t))), aberto && /* @__PURE__ */ React17.createElement("div", { className: "detalhe" }, aba === "Cheia" && /* @__PURE__ */ React17.createElement("div", null, /* @__PURE__ */ React17.createElement(Calculo, { info: l.info })), aba === "Cheia" && /* @__PURE__ */ React17.createElement(VacinaCheia, { key: m.id, m, sit: vacinaDe(m), hoje, dados, onGravarLote }), aba === "Cheia" && (partos.get(m.id) || []).map((e) => /* @__PURE__ */ React17.createElement(PartoDetalhe, { key: e.id, e, c: criaPorNasc.get(e.id), hoje })), l.ultimoParto ? /* @__PURE__ */ React17.createElement("div", null, "\xDAltimo parto: ", /* @__PURE__ */ React17.createElement("b", null, formatarDataBR(l.ultimoParto)), l.numeroCria ? ` (cria ${l.numeroCria})` : "") : /* @__PURE__ */ React17.createElement("div", null, "Nenhum parto lan\xE7ado para esta vaca."), aba === "Cheia" && l.dias !== null && l.dias < 0 && /* @__PURE__ */ React17.createElement("div", { className: "late", style: { marginTop: 4 } }, "A data prevista j\xE1 passou h\xE1 ", Math.abs(l.dias), " dia(s). Confira se ela j\xE1 pariu."), /* @__PURE__ */ React17.createElement("div", { style: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" } }, aba === "Cheia" ? /* @__PURE__ */ React17.createElement("button", { className: "btn sm", onClick: () => onLancar("nascimento", m.id) }, "Lan\xE7ar nascimento desta vaca") : null, /* @__PURE__ */ React17.createElement("button", { className: "btn sm quiet", onClick: () => abrir(`m:${m.id}`) }, "Ficha completa"))));
-  })), /* @__PURE__ */ React17.createElement("p", { className: "sub", style: { marginTop: 14 } }, "Dias negativos: a data prevista j\xE1 passou. Confira se a vaca pariu e lance o nascimento. A previs\xE3o olha o hist\xF3rico inteiro da vaca, n\xE3o s\xF3 o ano escolhido."));
+      return /* @__PURE__ */ React18.createElement(React18.Fragment, null, /* @__PURE__ */ React18.createElement("span", { className: "reb-lista", "data-testid": "cheia-datas" }, ps.length === 0 && !antes && /* @__PURE__ */ React18.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React18.createElement("span", { key: e.id }, formatarDataBR(e.data))), antes > 0 && /* @__PURE__ */ React18.createElement("span", { className: "mut", title: "Partos antes de entrar na fazenda" }, "+", antes, " antes")), /* @__PURE__ */ React18.createElement("span", { className: "reb-lista r", "data-testid": "cheia-crias" }, ps.length === 0 && !antes && /* @__PURE__ */ React18.createElement("span", { className: "mut" }, "\u2014"), ps.map((e) => /* @__PURE__ */ React18.createElement("span", { key: e.id, className: e.resultadoParto === "Natimorto" || !e.brincoBezerro ? "mut" : "" }, e.resultadoParto === "Natimorto" ? "natim." : e.brincoBezerro || "s/ n\xBA")), antes > 0 && /* @__PURE__ */ React18.createElement("span", null, "\xA0")));
+    })(), /* @__PURE__ */ React18.createElement("span", { className: "prev-col r" }, /* @__PURE__ */ React18.createElement("b", { className: "m" }, data ? formatarDataBR(data) : "\u2014"), /* @__PURE__ */ React18.createElement("span", { className: dd.c }, dd.t))), aberto && /* @__PURE__ */ React18.createElement("div", { className: "detalhe" }, aba === "Cheia" && /* @__PURE__ */ React18.createElement("div", null, /* @__PURE__ */ React18.createElement(Calculo, { info: l.info })), aba === "Cheia" && /* @__PURE__ */ React18.createElement(VacinaCheia, { key: m.id, m, sit: vacinaDe(m), hoje, dados, onGravarLote }), aba === "Cheia" && (partos.get(m.id) || []).map((e) => /* @__PURE__ */ React18.createElement(PartoDetalhe, { key: e.id, e, c: criaPorNasc.get(e.id), hoje })), l.ultimoParto ? /* @__PURE__ */ React18.createElement("div", null, "\xDAltimo parto: ", /* @__PURE__ */ React18.createElement("b", null, formatarDataBR(l.ultimoParto)), l.numeroCria ? ` (cria ${l.numeroCria})` : "") : /* @__PURE__ */ React18.createElement("div", null, "Nenhum parto lan\xE7ado para esta vaca."), aba === "Cheia" && l.dias !== null && l.dias < 0 && /* @__PURE__ */ React18.createElement("div", { className: "late", style: { marginTop: 4 } }, "A data prevista j\xE1 passou h\xE1 ", Math.abs(l.dias), " dia(s). Confira se ela j\xE1 pariu."), /* @__PURE__ */ React18.createElement("div", { style: { marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" } }, aba === "Cheia" ? /* @__PURE__ */ React18.createElement("button", { className: "btn sm", onClick: () => onLancar("nascimento", m.id) }, "Lan\xE7ar nascimento desta vaca") : null, /* @__PURE__ */ React18.createElement("button", { className: "btn sm quiet", onClick: () => abrir(`m:${m.id}`) }, "Ficha completa"))));
+  })), /* @__PURE__ */ React18.createElement("p", { className: "sub", style: { marginTop: 14 } }, "Dias negativos: a data prevista j\xE1 passou. Confira se a vaca pariu e lance o nascimento. A previs\xE3o olha o hist\xF3rico inteiro da vaca, n\xE3o s\xF3 o ano escolhido."));
 }
 
 // src/telas/Crias.jsx
-import React25, { useState as useState24, useMemo as useMemo22, useEffect as useEffect11 } from "react";
+import React26, { useState as useState25, useMemo as useMemo23, useEffect as useEffect11 } from "react";
 
 // src/telas/CriasLista.jsx
-import React18, { useMemo as useMemo15, useState as useState17, useRef as useRef8, useEffect as useEffect8 } from "react";
+import React19, { useMemo as useMemo16, useState as useState18, useRef as useRef8, useEffect as useEffect8 } from "react";
 import { Search as Search8, Scale, ShoppingCart } from "lucide-react";
 var NO_REBANHO = ["mamando", "desmamado", "novilha"];
 var FILTROS_SIT = [
@@ -7638,7 +7908,7 @@ var FILTROS_SIT = [
   ["todas", "Todas"]
 ];
 var ORDENS = [["nova", "Mais novas primeiro"], ["velha", "Mais velhas primeiro"], ["peso", "Mais pesadas"], ["ganho", "Maior ganho por dia"], ["brinco", "N\xFAmero do brinco"]];
-var corSituacao2 = (s) => s === "vendido" || s === "morto" ? "fora" : s === "mamando" || s === "confirmar" ? "falta" : "pronto";
+var corSituacao2 = (s2) => s2 === "vendido" || s2 === "morto" ? "fora" : s2 === "mamando" || s2 === "confirmar" ? "falta" : "pronto";
 function CriaFicha({
   c,
   dados,
@@ -7654,17 +7924,17 @@ function CriaFicha({
   onEditarMorte,
   onAnularMorte
 }) {
-  const [peso, setPeso] = useState17("");
-  const [data, setData] = useState17(hoje);
-  const [confirma, setConfirma] = useState17("");
-  const [msg, setMsg] = useState17("");
-  const [erro, setErro] = useState17("");
-  const [travado, setTravado] = useState17(false);
-  const [desmData, setDesmData] = useState17(hoje);
-  const [desmPeso, setDesmPeso] = useState17("");
-  const [registrandoMorte, setRegistrandoMorte] = useState17(false);
-  const [editNasc, setEditNasc] = useState17(false);
-  const [editMorte, setEditMorte] = useState17(false);
+  const [peso, setPeso] = useState18("");
+  const [data, setData] = useState18(hoje);
+  const [confirma, setConfirma] = useState18("");
+  const [msg, setMsg] = useState18("");
+  const [erro, setErro] = useState18("");
+  const [travado, setTravado] = useState18(false);
+  const [desmData, setDesmData] = useState18(hoje);
+  const [desmPeso, setDesmPeso] = useState18("");
+  const [registrandoMorte, setRegistrandoMorte] = useState18(false);
+  const [editNasc, setEditNasc] = useState18(false);
+  const [editMorte, setEditMorte] = useState18(false);
   const timer2 = useRef8(null);
   useEffect8(() => () => clearTimeout(timer2.current), []);
   function trava() {
@@ -7719,22 +7989,22 @@ function CriaFicha({
   const podeDesmamar = ownerMode && c.situacao === "mamando" && c.brinco;
   const hist = [...c.pontos].reverse();
   const morte = c.situacao === "morto" ? listarMortes(dados).find((x) => x.ativa && x.e.criaId === c.id) || null : null;
-  return /* @__PURE__ */ React18.createElement(Modal, { titulo: `Cria ${c.brinco || "sem n\xFAmero"}`, onClose: onFechar, rotulo: `Cria ${c.brinco || "sem n\xFAmero"}` }, /* @__PURE__ */ React18.createElement("div", { style: { marginBottom: 6 } }, /* @__PURE__ */ React18.createElement("span", { className: `pill ${corSituacao2(c.situacao)}` }, rotuloSituacao(c)), c.orfa && /* @__PURE__ */ React18.createElement("span", { className: "pill alerta", style: { marginLeft: 6 } }, "\xD3rf\xE3")), c.orfa && /* @__PURE__ */ React18.createElement(Aviso, { tipo: "info" }, "Cria \xF3rf\xE3: a m\xE3e ", c.maeBrinco || "?", " morreu", c.maeMortaData ? ` em ${formatarDataBR(c.maeMortaData)}` : "", ". A cria continua normal; os funcion\xE1rios cuidam dela at\xE9 se virar sozinha."), /* @__PURE__ */ React18.createElement(Lead, { rotulo: "Sexo", valor: c.sexo || "\u2014" }), /* @__PURE__ */ React18.createElement(Lead, { rotulo: "Nascimento", valor: `${formatarDataBR(c.nascData)} \xB7 ${fmtIdade(c.idadeDias)}` }), /* @__PURE__ */ React18.createElement(Lead, { rotulo: "M\xE3e", valor: c.maeBrinco ? `${c.maeBrinco}${c.maeMorta ? " (morreu)" : ""}${c.maeFora ? " (fora do cadastro)" : ""}` : "n\xE3o informada" }), /* @__PURE__ */ React18.createElement(Lead, { rotulo: "Origem / pai", valor: c.origem.rotulo }), c.origem.iatfData && /* @__PURE__ */ React18.createElement(Lead, { rotulo: "IATF da m\xE3e", valor: formatarDataBR(c.origem.iatfData) }), c.pelagem && /* @__PURE__ */ React18.createElement(Lead, { rotulo: "Pelagem", valor: c.pelagem }), /* @__PURE__ */ React18.createElement(Lead, { rotulo: "\xDAltimo peso", valor: c.pesoAtual === null ? "sem pesagem" : `${fmtKg(c.pesoAtual)} em ${formatarDataBR(c.pesoData)}` }), /* @__PURE__ */ React18.createElement(Lead, { rotulo: "Ganho recente", valor: fmtGmd(c.gmd) }), c.desmamaData && /* @__PURE__ */ React18.createElement(Lead, { rotulo: "Desmama", valor: formatarDataBR(c.desmamaData) }), c.situacao === "vendido" && /* @__PURE__ */ React18.createElement(Lead, { rotulo: "Baixa (venda)", valor: c.vendaData ? formatarDataBR(c.vendaData) : "vendida" }), c.historico && /* @__PURE__ */ React18.createElement(Lead, { rotulo: "Origem do registro", valor: "Hist\xF3rico (planilha REBANHO do Dropbox)" }), c.situacao === "confirmar" && /* @__PURE__ */ React18.createElement(Aviso, { tipo: "info" }, "Cria do hist\xF3rico sem a situa\xE7\xE3o atual (novilha, apartada, vendida ou em sociedade). Falta confirmar."), c.situacao === "morto" && /* @__PURE__ */ React18.createElement(Lead, { rotulo: "Morte", valor: `${c.mortoData ? formatarDataBR(c.mortoData) : "sem data"} \xB7 ${c.causaMorte || "causa n\xE3o informada"}`, cor: "var(--late)" }), morte && morte.e.observacoes && /* @__PURE__ */ React18.createElement(Lead, { rotulo: "Observa\xE7\xE3o", valor: morte.e.observacoes }), /* @__PURE__ */ React18.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Pesagens", /* @__PURE__ */ React18.createElement("small", null, c.pontos.length, " registro(s)")), hist.length === 0 ? /* @__PURE__ */ React18.createElement("p", { className: "sub" }, "Nenhuma pesagem ainda.") : /* @__PURE__ */ React18.createElement("ul", { className: "hist", "data-testid": "pesagens" }, hist.map((p) => /* @__PURE__ */ React18.createElement("li", { key: p.id }, /* @__PURE__ */ React18.createElement("span", null, fmtKg(p.peso), p.fonte !== "Pesagem" ? ` \xB7 ${p.fonte.toLowerCase()}` : ""), /* @__PURE__ */ React18.createElement("span", null, formatarDataBR(p.data))))), c.ativa && /* @__PURE__ */ React18.createElement("div", { className: "rapido", style: { marginTop: 14 } }, /* @__PURE__ */ React18.createElement("div", { className: "grid2" }, /* @__PURE__ */ React18.createElement("div", { className: "fld" }, /* @__PURE__ */ React18.createElement("label", { htmlFor: "ficha-peso" }, "Peso (kg)"), /* @__PURE__ */ React18.createElement("input", { id: "ficha-peso", type: "number", inputMode: "decimal", value: peso, onChange: (e) => {
+  return /* @__PURE__ */ React19.createElement(Modal, { titulo: `Cria ${c.brinco || "sem n\xFAmero"}`, onClose: onFechar, rotulo: `Cria ${c.brinco || "sem n\xFAmero"}` }, /* @__PURE__ */ React19.createElement("div", { style: { marginBottom: 6 } }, /* @__PURE__ */ React19.createElement("span", { className: `pill ${corSituacao2(c.situacao)}` }, rotuloSituacao(c)), c.orfa && /* @__PURE__ */ React19.createElement("span", { className: "pill alerta", style: { marginLeft: 6 } }, "\xD3rf\xE3")), c.orfa && /* @__PURE__ */ React19.createElement(Aviso, { tipo: "info" }, "Cria \xF3rf\xE3: a m\xE3e ", c.maeBrinco || "?", " morreu", c.maeMortaData ? ` em ${formatarDataBR(c.maeMortaData)}` : "", ". A cria continua normal; os funcion\xE1rios cuidam dela at\xE9 se virar sozinha."), /* @__PURE__ */ React19.createElement(Lead, { rotulo: "Sexo", valor: c.sexo || "\u2014" }), /* @__PURE__ */ React19.createElement(Lead, { rotulo: "Nascimento", valor: `${formatarDataBR(c.nascData)} \xB7 ${fmtIdade(c.idadeDias)}` }), /* @__PURE__ */ React19.createElement(Lead, { rotulo: "M\xE3e", valor: c.maeBrinco ? `${c.maeBrinco}${c.maeMorta ? " (morreu)" : ""}${c.maeFora ? " (fora do cadastro)" : ""}` : "n\xE3o informada" }), /* @__PURE__ */ React19.createElement(Lead, { rotulo: "Origem / pai", valor: c.origem.rotulo }), c.origem.iatfData && /* @__PURE__ */ React19.createElement(Lead, { rotulo: "IATF da m\xE3e", valor: formatarDataBR(c.origem.iatfData) }), c.pelagem && /* @__PURE__ */ React19.createElement(Lead, { rotulo: "Pelagem", valor: c.pelagem }), /* @__PURE__ */ React19.createElement(Lead, { rotulo: "\xDAltimo peso", valor: c.pesoAtual === null ? "sem pesagem" : `${fmtKg(c.pesoAtual)} em ${formatarDataBR(c.pesoData)}` }), /* @__PURE__ */ React19.createElement(Lead, { rotulo: "Ganho recente", valor: fmtGmd(c.gmd) }), c.desmamaData && /* @__PURE__ */ React19.createElement(Lead, { rotulo: "Desmama", valor: formatarDataBR(c.desmamaData) }), c.situacao === "vendido" && /* @__PURE__ */ React19.createElement(Lead, { rotulo: "Baixa (venda)", valor: c.vendaData ? formatarDataBR(c.vendaData) : "vendida" }), c.historico && /* @__PURE__ */ React19.createElement(Lead, { rotulo: "Origem do registro", valor: "Hist\xF3rico (planilha REBANHO do Dropbox)" }), c.situacao === "confirmar" && /* @__PURE__ */ React19.createElement(Aviso, { tipo: "info" }, "Cria do hist\xF3rico sem a situa\xE7\xE3o atual (novilha, apartada, vendida ou em sociedade). Falta confirmar."), c.situacao === "morto" && /* @__PURE__ */ React19.createElement(Lead, { rotulo: "Morte", valor: `${c.mortoData ? formatarDataBR(c.mortoData) : "sem data"} \xB7 ${c.causaMorte || "causa n\xE3o informada"}`, cor: "var(--late)" }), morte && morte.e.observacoes && /* @__PURE__ */ React19.createElement(Lead, { rotulo: "Observa\xE7\xE3o", valor: morte.e.observacoes }), /* @__PURE__ */ React19.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Pesagens", /* @__PURE__ */ React19.createElement("small", null, c.pontos.length, " registro(s)")), hist.length === 0 ? /* @__PURE__ */ React19.createElement("p", { className: "sub" }, "Nenhuma pesagem ainda.") : /* @__PURE__ */ React19.createElement("ul", { className: "hist", "data-testid": "pesagens" }, hist.map((p) => /* @__PURE__ */ React19.createElement("li", { key: p.id }, /* @__PURE__ */ React19.createElement("span", null, fmtKg(p.peso), p.fonte !== "Pesagem" ? ` \xB7 ${p.fonte.toLowerCase()}` : ""), /* @__PURE__ */ React19.createElement("span", null, formatarDataBR(p.data))))), c.ativa && /* @__PURE__ */ React19.createElement("div", { className: "rapido", style: { marginTop: 14 } }, /* @__PURE__ */ React19.createElement("div", { className: "grid2" }, /* @__PURE__ */ React19.createElement("div", { className: "fld" }, /* @__PURE__ */ React19.createElement("label", { htmlFor: "ficha-peso" }, "Peso (kg)"), /* @__PURE__ */ React19.createElement("input", { id: "ficha-peso", type: "number", inputMode: "decimal", value: peso, onChange: (e) => {
     setPeso(e.target.value);
     setConfirma("");
     setErro("");
   }, onKeyDown: (e) => {
     if (e.key === "Enter") registrar(false);
-  } })), /* @__PURE__ */ React18.createElement("div", { className: "fld" }, /* @__PURE__ */ React18.createElement("label", { htmlFor: "ficha-data" }, "Data"), /* @__PURE__ */ React18.createElement("input", { id: "ficha-data", type: "date", value: data, onChange: (e) => {
+  } })), /* @__PURE__ */ React19.createElement("div", { className: "fld" }, /* @__PURE__ */ React19.createElement("label", { htmlFor: "ficha-data" }, "Data"), /* @__PURE__ */ React19.createElement("input", { id: "ficha-data", type: "date", value: data, onChange: (e) => {
     setData(e.target.value);
     setConfirma("");
-  } }))), confirma && /* @__PURE__ */ React18.createElement(Aviso, { tipo: "info" }, confirma, /* @__PURE__ */ React18.createElement("div", { style: { marginTop: 8 } }, /* @__PURE__ */ React18.createElement("button", { className: "btn sm", onClick: () => registrar(true), disabled: travado }, "Lan\xE7ar mesmo assim"))), /* @__PURE__ */ React18.createElement("button", { className: "btn wide", onClick: () => registrar(false), disabled: travado }, /* @__PURE__ */ React18.createElement(Scale, { size: 18 }), " Registrar peso")), erro && /* @__PURE__ */ React18.createElement(Aviso, null, erro), msg && /* @__PURE__ */ React18.createElement(Aviso, { tipo: "ok" }, msg), podeDesmamar && /* @__PURE__ */ React18.createElement("div", { className: "rapido" }, /* @__PURE__ */ React18.createElement("div", { className: "lbl", style: { font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 8 } }, "Desmama (propriet\xE1rio)"), /* @__PURE__ */ React18.createElement("div", { className: "grid2" }, /* @__PURE__ */ React18.createElement("div", { className: "fld" }, /* @__PURE__ */ React18.createElement("label", { htmlFor: "desm-data" }, "Data da desmama"), /* @__PURE__ */ React18.createElement("input", { id: "desm-data", type: "date", value: desmData, onChange: (e) => setDesmData(e.target.value) })), /* @__PURE__ */ React18.createElement("div", { className: "fld" }, /* @__PURE__ */ React18.createElement("label", { htmlFor: "desm-peso" }, "Peso na desmama (kg)"), /* @__PURE__ */ React18.createElement("input", { id: "desm-peso", type: "number", inputMode: "decimal", value: desmPeso, onChange: (e) => setDesmPeso(e.target.value) }))), /* @__PURE__ */ React18.createElement("button", { className: "btn quiet wide", onClick: desmamar, disabled: travado }, "Desmamar", c.sexo === "F\xEAmea" ? " e levar para as novilhas" : "")), ownerMode && c.situacao === "mamando" && !c.brinco && /* @__PURE__ */ React18.createElement("p", { className: "sub" }, "Para desmamar esta cria, primeiro ela precisa de um n\xFAmero (brinco) no lan\xE7amento do nascimento."), ownerMode && c.novilha && c.ativa && /* @__PURE__ */ React18.createElement("div", { className: "rapido" }, /* @__PURE__ */ React18.createElement("div", { className: "lbl", style: { font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 8 } }, "Destino da novilha"), /* @__PURE__ */ React18.createElement("div", { className: "seg", role: "group", "aria-label": "Destino da novilha" }, DESTINOS_NOVILHA.map((d) => /* @__PURE__ */ React18.createElement("button", { key: d, "aria-pressed": c.novilha.destino === d, onClick: () => onSalvarMatriz(definirDestinoNovilha(c.novilha, d)) }, d)))), c.ativa && c.brinco && /* @__PURE__ */ React18.createElement("div", { style: { marginTop: 8 } }, !registrandoMorte ? /* @__PURE__ */ React18.createElement("button", { className: "btn quiet wide", onClick: () => setRegistrandoMorte(true) }, "Registrar morte desta cria") : /* @__PURE__ */ React18.createElement("div", { className: "rapido" }, /* @__PURE__ */ React18.createElement("div", { className: "lbl", style: { font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 8 } }, "Morte da cria ", c.brinco), /* @__PURE__ */ React18.createElement(FormMorte, { dados, hoje, brincoFixo: c.brinco, onRegistrar: onRegistrarMorte, modoTeste, aoTerminar: (r) => {
+  } }))), confirma && /* @__PURE__ */ React19.createElement(Aviso, { tipo: "info" }, confirma, /* @__PURE__ */ React19.createElement("div", { style: { marginTop: 8 } }, /* @__PURE__ */ React19.createElement("button", { className: "btn sm", onClick: () => registrar(true), disabled: travado }, "Lan\xE7ar mesmo assim"))), /* @__PURE__ */ React19.createElement("button", { className: "btn wide", onClick: () => registrar(false), disabled: travado }, /* @__PURE__ */ React19.createElement(Scale, { size: 18 }), " Registrar peso")), erro && /* @__PURE__ */ React19.createElement(Aviso, null, erro), msg && /* @__PURE__ */ React19.createElement(Aviso, { tipo: "ok" }, msg), podeDesmamar && /* @__PURE__ */ React19.createElement("div", { className: "rapido" }, /* @__PURE__ */ React19.createElement("div", { className: "lbl", style: { font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 8 } }, "Desmama (propriet\xE1rio)"), /* @__PURE__ */ React19.createElement("div", { className: "grid2" }, /* @__PURE__ */ React19.createElement("div", { className: "fld" }, /* @__PURE__ */ React19.createElement("label", { htmlFor: "desm-data" }, "Data da desmama"), /* @__PURE__ */ React19.createElement("input", { id: "desm-data", type: "date", value: desmData, onChange: (e) => setDesmData(e.target.value) })), /* @__PURE__ */ React19.createElement("div", { className: "fld" }, /* @__PURE__ */ React19.createElement("label", { htmlFor: "desm-peso" }, "Peso na desmama (kg)"), /* @__PURE__ */ React19.createElement("input", { id: "desm-peso", type: "number", inputMode: "decimal", value: desmPeso, onChange: (e) => setDesmPeso(e.target.value) }))), /* @__PURE__ */ React19.createElement("button", { className: "btn quiet wide", onClick: desmamar, disabled: travado }, "Desmamar", c.sexo === "F\xEAmea" ? " e levar para as novilhas" : "")), ownerMode && c.situacao === "mamando" && !c.brinco && /* @__PURE__ */ React19.createElement("p", { className: "sub" }, "Para desmamar esta cria, primeiro ela precisa de um n\xFAmero (brinco) no lan\xE7amento do nascimento."), ownerMode && c.novilha && c.ativa && /* @__PURE__ */ React19.createElement("div", { className: "rapido" }, /* @__PURE__ */ React19.createElement("div", { className: "lbl", style: { font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 8 } }, "Destino da novilha"), /* @__PURE__ */ React19.createElement("div", { className: "seg", role: "group", "aria-label": "Destino da novilha" }, DESTINOS_NOVILHA.map((d) => /* @__PURE__ */ React19.createElement("button", { key: d, "aria-pressed": c.novilha.destino === d, onClick: () => onSalvarMatriz(definirDestinoNovilha(c.novilha, d)) }, d)))), c.ativa && c.brinco && /* @__PURE__ */ React19.createElement("div", { style: { marginTop: 8 } }, !registrandoMorte ? /* @__PURE__ */ React19.createElement("button", { className: "btn quiet wide", onClick: () => setRegistrandoMorte(true) }, "Registrar morte desta cria") : /* @__PURE__ */ React19.createElement("div", { className: "rapido" }, /* @__PURE__ */ React19.createElement("div", { className: "lbl", style: { font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 8 } }, "Morte da cria ", c.brinco), /* @__PURE__ */ React19.createElement(FormMorte, { dados, hoje, brincoFixo: c.brinco, onRegistrar: onRegistrarMorte, modoTeste, aoTerminar: (r) => {
     setRegistrandoMorte(false);
     setMsg(r.msg);
-  } }), /* @__PURE__ */ React18.createElement("button", { className: "btn quiet sm", style: { marginTop: 8 }, onClick: () => setRegistrandoMorte(false) }, "Cancelar"))), ownerMode && c.ativa && c.situacao !== "matriz" && /* @__PURE__ */ React18.createElement("button", { className: "btn ghost wide", style: { marginTop: 8 }, onClick: () => {
+  } }), /* @__PURE__ */ React19.createElement("button", { className: "btn quiet sm", style: { marginTop: 8 }, onClick: () => setRegistrandoMorte(false) }, "Cancelar"))), ownerMode && c.ativa && c.situacao !== "matriz" && /* @__PURE__ */ React19.createElement("button", { className: "btn ghost wide", style: { marginTop: 8 }, onClick: () => {
     onFechar();
     onVender([c.brinco]);
-  }, disabled: !c.brinco }, /* @__PURE__ */ React18.createElement(ShoppingCart, { size: 18 }), " Vender ", c.sexo === "F\xEAmea" ? "esta cria" : "este animal"), ownerMode && /* @__PURE__ */ React18.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 } }, /* @__PURE__ */ React18.createElement("button", { className: "btn quiet", style: { flex: 1 }, onClick: () => setEditNasc(true) }, "Corrigir nascimento"), morte && /* @__PURE__ */ React18.createElement("button", { className: "btn quiet", style: { flex: 1 }, onClick: () => setEditMorte(true) }, "Corrigir ou anular a morte")), editNasc && /* @__PURE__ */ React18.createElement(ModalNascimento, { nasc: c.nasc, dados, onEditar: onEditarNascimento, onFechar: () => setEditNasc(false), onFeito: setMsg }), editMorte && morte && /* @__PURE__ */ React18.createElement(ModalMorte, { item: morte, onEditar: onEditarMorte, onAnular: onAnularMorte, onFechar: () => setEditMorte(false), onFeito: setMsg }));
+  }, disabled: !c.brinco }, /* @__PURE__ */ React19.createElement(ShoppingCart, { size: 18 }), " Vender ", c.sexo === "F\xEAmea" ? "esta cria" : "este animal"), ownerMode && /* @__PURE__ */ React19.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 } }, /* @__PURE__ */ React19.createElement("button", { className: "btn quiet", style: { flex: 1 }, onClick: () => setEditNasc(true) }, "Corrigir nascimento"), morte && /* @__PURE__ */ React19.createElement("button", { className: "btn quiet", style: { flex: 1 }, onClick: () => setEditMorte(true) }, "Corrigir ou anular a morte")), editNasc && /* @__PURE__ */ React19.createElement(ModalNascimento, { nasc: c.nasc, dados, onEditar: onEditarNascimento, onFechar: () => setEditNasc(false), onFeito: setMsg }), editMorte && morte && /* @__PURE__ */ React19.createElement(ModalMorte, { item: morte, onEditar: onEditarMorte, onAnular: onAnularMorte, onFechar: () => setEditMorte(false), onFeito: setMsg }));
 }
 function ListaCrias({
   crias,
@@ -7750,13 +8020,13 @@ function ListaCrias({
   onEditarMorte,
   onAnularMorte
 }) {
-  const [sexo, setSexo] = useState17("todos");
-  const [sit, setSit] = useState17("rebanho");
-  const [busca, setBusca] = useState17("");
-  const [ordem, setOrdem] = useState17("nova");
-  const [aberta, setAberta] = useState17(null);
-  const porSituacao = useMemo15(() => crias.filter((c) => sit === "todas" ? true : sit === "rebanho" ? NO_REBANHO.includes(c.situacao) : sit === "orfa" ? c.orfa : c.situacao === sit), [crias, sit]);
-  const lista5 = useMemo15(() => {
+  const [sexo, setSexo] = useState18("todos");
+  const [sit, setSit] = useState18("rebanho");
+  const [busca, setBusca] = useState18("");
+  const [ordem, setOrdem] = useState18("nova");
+  const [aberta, setAberta] = useState18(null);
+  const porSituacao = useMemo16(() => crias.filter((c) => sit === "todas" ? true : sit === "rebanho" ? NO_REBANHO.includes(c.situacao) : sit === "orfa" ? c.orfa : c.situacao === sit), [crias, sit]);
+  const lista5 = useMemo16(() => {
     const q = busca.trim().toLowerCase();
     const l = porSituacao.filter((c) => sexo === "todos" || c.sexo === sexo).filter((c) => !q || String(c.brinco).toLowerCase().includes(q) || String(c.maeBrinco).toLowerCase().includes(q));
     const brincoCmp = (a, b) => String(a.brinco).localeCompare(String(b.brinco), "pt-BR", { numeric: true });
@@ -7772,7 +8042,7 @@ function ListaCrias({
   const conta = (sx) => porSituacao.filter((c) => sx === "todos" || c.sexo === sx).length;
   const ficha = aberta ? crias.find((c) => c.id === aberta) : null;
   const semPeso = lista5.filter((c) => c.ativa && c.pesoAtual === null).length;
-  return /* @__PURE__ */ React18.createElement("section", { className: "sheet" }, /* @__PURE__ */ React18.createElement("label", { className: "search" }, /* @__PURE__ */ React18.createElement(Search8, null), /* @__PURE__ */ React18.createElement("input", { placeholder: "Buscar pelo brinco da cria ou da m\xE3e", "aria-label": "Buscar cria", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React18.createElement("div", { className: "filtros" }, /* @__PURE__ */ React18.createElement("div", { className: "seg", role: "group", "aria-label": "Filtrar por sexo" }, [["todos", "Todas"], ["Macho", "Machos"], ["F\xEAmea", "F\xEAmeas"]].map(([id, rot]) => /* @__PURE__ */ React18.createElement("button", { key: id, "aria-pressed": sexo === id, onClick: () => setSexo(id) }, rot, " ", conta(id))))), /* @__PURE__ */ React18.createElement("div", { className: "filtros" }, /* @__PURE__ */ React18.createElement("select", { "aria-label": "Situa\xE7\xE3o", value: sit, onChange: (e) => setSit(e.target.value) }, FILTROS_SIT.map(([id, rot]) => /* @__PURE__ */ React18.createElement("option", { key: id, value: id }, rot))), /* @__PURE__ */ React18.createElement("select", { "aria-label": "Ordem", value: ordem, onChange: (e) => setOrdem(e.target.value) }, ORDENS.map(([id, rot]) => /* @__PURE__ */ React18.createElement("option", { key: id, value: id }, rot)))), /* @__PURE__ */ React18.createElement("div", { className: "bar-sum" }, /* @__PURE__ */ React18.createElement("span", null, lista5.length, " cria(s)"), /* @__PURE__ */ React18.createElement("span", null, semPeso, " sem pesagem")), /* @__PURE__ */ React18.createElement("div", { className: "led-h cols-cria" }, /* @__PURE__ */ React18.createElement("span", null, "Brinco"), /* @__PURE__ */ React18.createElement("span", null, "Cria \xB7 m\xE3e \xB7 origem"), /* @__PURE__ */ React18.createElement("span", { className: "r" }, "Peso"), /* @__PURE__ */ React18.createElement("span", { className: "hide-s" }, "Situa\xE7\xE3o"), /* @__PURE__ */ React18.createElement("span", { className: "hide-s" }, "Pesada em")), lista5.length === 0 && /* @__PURE__ */ React18.createElement("div", { className: "empty" }, "Nenhuma cria neste filtro."), lista5.map((c) => /* @__PURE__ */ React18.createElement("button", { key: c.id, className: "led-r cols-cria", onClick: () => setAberta(c.id), "aria-label": `Abrir cria ${c.brinco || "sem n\xFAmero"}` }, /* @__PURE__ */ React18.createElement("span", { className: "b" }, c.brinco || "\u2014"), /* @__PURE__ */ React18.createElement("span", { className: "two" }, /* @__PURE__ */ React18.createElement("b", null, c.sexo || "Sexo ?", " \xB7 ", fmtIdade(c.idadeDias), c.orfa ? " \xB7 \xF3rf\xE3" : ""), /* @__PURE__ */ React18.createElement("span", null, "m\xE3e ", c.maeBrinco || "?", c.maeMorta ? " (morreu)" : "", " \xB7 ", c.origem.rotulo)), /* @__PURE__ */ React18.createElement("span", { className: "r" }, c.pesoAtual === null ? /* @__PURE__ */ React18.createElement("span", { className: "mut" }, "\u2014") : fmtKg(c.pesoAtual), c.gmd !== null && /* @__PURE__ */ React18.createElement("div", { style: { font: "500 11.5px var(--body)", color: "var(--mut)" } }, fmtGmd(c.gmd))), /* @__PURE__ */ React18.createElement("span", { className: "hide-s" }, /* @__PURE__ */ React18.createElement("span", { className: `pill ${corSituacao2(c.situacao)}` }, rotuloSituacao(c)), c.orfa && /* @__PURE__ */ React18.createElement("span", { className: "pill alerta", style: { marginLeft: 4 } }, "\xD3rf\xE3")), /* @__PURE__ */ React18.createElement("span", { className: "hide-s m mut" }, c.pesoData ? formatarDataBR(c.pesoData) : "\u2014"))), ficha && /* @__PURE__ */ React18.createElement(
+  return /* @__PURE__ */ React19.createElement("section", { className: "sheet" }, /* @__PURE__ */ React19.createElement("label", { className: "search" }, /* @__PURE__ */ React19.createElement(Search8, null), /* @__PURE__ */ React19.createElement("input", { placeholder: "Buscar pelo brinco da cria ou da m\xE3e", "aria-label": "Buscar cria", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React19.createElement("div", { className: "filtros" }, /* @__PURE__ */ React19.createElement("div", { className: "seg", role: "group", "aria-label": "Filtrar por sexo" }, [["todos", "Todas"], ["Macho", "Machos"], ["F\xEAmea", "F\xEAmeas"]].map(([id, rot]) => /* @__PURE__ */ React19.createElement("button", { key: id, "aria-pressed": sexo === id, onClick: () => setSexo(id) }, rot, " ", conta(id))))), /* @__PURE__ */ React19.createElement("div", { className: "filtros" }, /* @__PURE__ */ React19.createElement("select", { "aria-label": "Situa\xE7\xE3o", value: sit, onChange: (e) => setSit(e.target.value) }, FILTROS_SIT.map(([id, rot]) => /* @__PURE__ */ React19.createElement("option", { key: id, value: id }, rot))), /* @__PURE__ */ React19.createElement("select", { "aria-label": "Ordem", value: ordem, onChange: (e) => setOrdem(e.target.value) }, ORDENS.map(([id, rot]) => /* @__PURE__ */ React19.createElement("option", { key: id, value: id }, rot)))), /* @__PURE__ */ React19.createElement("div", { className: "bar-sum" }, /* @__PURE__ */ React19.createElement("span", null, lista5.length, " cria(s)"), /* @__PURE__ */ React19.createElement("span", null, semPeso, " sem pesagem")), /* @__PURE__ */ React19.createElement("div", { className: "led-h cols-cria" }, /* @__PURE__ */ React19.createElement("span", null, "Brinco"), /* @__PURE__ */ React19.createElement("span", null, "Cria \xB7 m\xE3e \xB7 origem"), /* @__PURE__ */ React19.createElement("span", { className: "r" }, "Peso"), /* @__PURE__ */ React19.createElement("span", { className: "hide-s" }, "Situa\xE7\xE3o"), /* @__PURE__ */ React19.createElement("span", { className: "hide-s" }, "Pesada em")), lista5.length === 0 && /* @__PURE__ */ React19.createElement("div", { className: "empty" }, "Nenhuma cria neste filtro."), lista5.map((c) => /* @__PURE__ */ React19.createElement("button", { key: c.id, className: "led-r cols-cria", onClick: () => setAberta(c.id), "aria-label": `Abrir cria ${c.brinco || "sem n\xFAmero"}` }, /* @__PURE__ */ React19.createElement("span", { className: "b" }, c.brinco || "\u2014"), /* @__PURE__ */ React19.createElement("span", { className: "two" }, /* @__PURE__ */ React19.createElement("b", null, c.sexo || "Sexo ?", " \xB7 ", fmtIdade(c.idadeDias), c.orfa ? " \xB7 \xF3rf\xE3" : ""), /* @__PURE__ */ React19.createElement("span", null, "m\xE3e ", c.maeBrinco || "?", c.maeMorta ? " (morreu)" : "", " \xB7 ", c.origem.rotulo)), /* @__PURE__ */ React19.createElement("span", { className: "r" }, c.pesoAtual === null ? /* @__PURE__ */ React19.createElement("span", { className: "mut" }, "\u2014") : fmtKg(c.pesoAtual), c.gmd !== null && /* @__PURE__ */ React19.createElement("div", { style: { font: "500 11.5px var(--body)", color: "var(--mut)" } }, fmtGmd(c.gmd))), /* @__PURE__ */ React19.createElement("span", { className: "hide-s" }, /* @__PURE__ */ React19.createElement("span", { className: `pill ${corSituacao2(c.situacao)}` }, rotuloSituacao(c)), c.orfa && /* @__PURE__ */ React19.createElement("span", { className: "pill alerta", style: { marginLeft: 4 } }, "\xD3rf\xE3")), /* @__PURE__ */ React19.createElement("span", { className: "hide-s m mut" }, c.pesoData ? formatarDataBR(c.pesoData) : "\u2014"))), ficha && /* @__PURE__ */ React19.createElement(
     CriaFicha,
     {
       key: ficha.id,
@@ -7794,17 +8064,17 @@ function ListaCrias({
 }
 
 // src/telas/CriasPesar.jsx
-import React20, { useMemo as useMemo17, useRef as useRef9, useState as useState19, useEffect as useEffect9 } from "react";
-import { Plus as Plus7, Trash2 as Trash25, Save as Save10, Loader2 as Loader211, ClipboardPaste as ClipboardPaste2, FileDown as FileDown5, Tag as TagIcon } from "lucide-react";
+import React21, { useMemo as useMemo18, useRef as useRef9, useState as useState20, useEffect as useEffect9 } from "react";
+import { Plus as Plus7, Trash2 as Trash25, Save as Save11, Loader2 as Loader211, ClipboardPaste as ClipboardPaste2, FileDown as FileDown5, Tag as TagIcon } from "lucide-react";
 
 // src/pesagemConferencia.js
 var ordemBrinco4 = (a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true });
-function pesagemSemBrinco(data, peso, sinal, opcoes) {
-  const op = opcoes || {};
+function pesagemSemBrinco(data, peso, sinal, opcoes2) {
+  const op = opcoes2 || {};
   const p = numPeso(peso);
   if (!data) return { erro: "Escolha a data da pesagem." };
   if (isNaN(p) || p <= 0) return { erro: "Digite o peso do animal sem brinco." };
-  const s = String(sinal || "").trim();
+  const s2 = String(sinal || "").trim();
   return {
     evento: {
       id: op.id || novoId(),
@@ -7814,7 +8084,7 @@ function pesagemSemBrinco(data, peso, sinal, opcoes) {
       matrizId: "",
       brinco: "",
       peso: p,
-      observacoes: `${MARCA_SEM_BRINCO}${s ? `: ${s}` : ""}`,
+      observacoes: `${MARCA_SEM_BRINCO}${s2 ? `: ${s2}` : ""}`,
       createdAt: op.now || (/* @__PURE__ */ new Date()).toISOString()
     }
   };
@@ -7822,8 +8092,8 @@ function pesagemSemBrinco(data, peso, sinal, opcoes) {
 function pesagensDoDia(estado, data) {
   return estado.eventos.filter((e) => e.tipo === "pesagem" && e.data === data);
 }
-function conferenciaPesagem(estado, data, hoje, opcoes) {
-  const op = opcoes || {};
+function conferenciaPesagem(estado, data, hoje, opcoes2) {
+  const op = opcoes2 || {};
   const pes = pesagensDoDia(estado, data);
   const crias = listarCrias(estado, hoje);
   const porId = new Map(crias.map((c) => [c.id, c]));
@@ -7851,8 +8121,8 @@ function conferenciaPesagem(estado, data, hoje, opcoes) {
   const repetidos = [...grupos.values()].filter((l) => l.length > 1).map((l) => ({ brinco: String(l[0].brinco || ""), pesagens: l.map((e) => ({ id: e.id, peso: numPeso(e.peso), createdAt: e.createdAt || "" })) })).sort((a, b) => ordemBrinco4(a.brinco, b.brinco));
   return { semBrinco, naoPesados, repetidos, pesados: pes.length, sexo, sexosDoDia };
 }
-function identificarSemBrinco(estado, pesagemId, criaId, opcoes) {
-  const op = opcoes || {};
+function identificarSemBrinco(estado, pesagemId, criaId, opcoes2) {
+  const op = opcoes2 || {};
   const e = estado.eventos.find((x) => x.id === pesagemId && x.tipo === "pesagem");
   if (!e || !ehSemBrinco(e)) return { erro: "Essa pesagem n\xE3o \xE9 de animal sem brinco (ou j\xE1 foi identificada)." };
   const nasc = estado.eventos.find((x) => x.id === criaId && x.tipo === "nascimento");
@@ -7878,14 +8148,14 @@ function virarSemBrinco(estado, pesagemId) {
 }
 
 // src/telas/ConferenciaPesagem.jsx
-import React19, { useMemo as useMemo16, useState as useState18 } from "react";
+import React20, { useMemo as useMemo17, useState as useState19 } from "react";
 import { Check as Check7, X as X4 } from "lucide-react";
 function ConferenciaPesagem({ dados, data, hoje, onCorrigirPesagem }) {
-  const [sexo, setSexo] = useState18(null);
-  const [aberto, setAberto] = useState18(null);
-  const [escolha, setEscolha] = useState18("");
-  const [msg, setMsg] = useState18(null);
-  const conf = useMemo16(() => conferenciaPesagem(dados, data, hoje, sexo === null ? {} : { sexo }), [dados, data, hoje, sexo]);
+  const [sexo, setSexo] = useState19(null);
+  const [aberto, setAberto] = useState19(null);
+  const [escolha, setEscolha] = useState19("");
+  const [msg, setMsg] = useState19(null);
+  const conf = useMemo17(() => conferenciaPesagem(dados, data, hoje, sexo === null ? {} : { sexo }), [dados, data, hoje, sexo]);
   function aplicar(r, rotulo, texto) {
     if (r.erro) {
       setMsg({ tipo: "erro", texto: r.erro });
@@ -7914,11 +8184,11 @@ function ConferenciaPesagem({ dados, data, hoje, onCorrigirPesagem }) {
   }
   const sexoAtual = sexo === null ? conf.sexo : sexo;
   if (!conf.semBrinco.length && !conf.repetidos.length && !conf.naoPesados.length) return null;
-  return /* @__PURE__ */ React19.createElement("section", { className: "sheet pad conf-pes", "data-testid": "conferencia-pesagem", style: { marginTop: 14 } }, /* @__PURE__ */ React19.createElement("h3", { className: "h2", style: { marginTop: 0, fontSize: 19 } }, "Confer\xEAncia de ", formatarDataBR(data)), /* @__PURE__ */ React19.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Os sem brinco ficam aqui at\xE9 algu\xE9m dizer de quem \xE9 o peso. Toque no sem brinco e escolha entre os que ficaram sem peso."), /* @__PURE__ */ React19.createElement("div", { className: "pills", role: "group", "aria-label": "Sexo na confer\xEAncia" }, [["Macho", "Machos"], ["F\xEAmea", "F\xEAmeas"], ["", "Todos"]].map(([v, r]) => /* @__PURE__ */ React19.createElement("button", { key: r, type: "button", "aria-pressed": sexoAtual === v, onClick: () => setSexo(v) }, r))), msg && /* @__PURE__ */ React19.createElement(Aviso, { tipo: msg.tipo === "ok" ? "ok" : void 0, onClose: () => setMsg(null) }, msg.texto), /* @__PURE__ */ React19.createElement("div", { className: "conf-pes-cols" }, /* @__PURE__ */ React19.createElement("div", { "data-testid": "lista-sem-brinco" }, /* @__PURE__ */ React19.createElement("div", { className: "conf-pes-tit late" }, "Sem brinco com peso \xB7 ", conf.semBrinco.length), conf.semBrinco.length === 0 && /* @__PURE__ */ React19.createElement("p", { className: "sub", style: { margin: "4px 0" } }, "Nenhum."), conf.semBrinco.map((sb) => /* @__PURE__ */ React19.createElement("div", { key: sb.id, className: `sb-item${aberto === sb.id ? " on" : ""}` }, /* @__PURE__ */ React19.createElement("button", { type: "button", className: "sb-bt", onClick: () => {
+  return /* @__PURE__ */ React20.createElement("section", { className: "sheet pad conf-pes", "data-testid": "conferencia-pesagem", style: { marginTop: 14 } }, /* @__PURE__ */ React20.createElement("h3", { className: "h2", style: { marginTop: 0, fontSize: 19 } }, "Confer\xEAncia de ", formatarDataBR(data)), /* @__PURE__ */ React20.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Os sem brinco ficam aqui at\xE9 algu\xE9m dizer de quem \xE9 o peso. Toque no sem brinco e escolha entre os que ficaram sem peso."), /* @__PURE__ */ React20.createElement("div", { className: "pills", role: "group", "aria-label": "Sexo na confer\xEAncia" }, [["Macho", "Machos"], ["F\xEAmea", "F\xEAmeas"], ["", "Todos"]].map(([v, r]) => /* @__PURE__ */ React20.createElement("button", { key: r, type: "button", "aria-pressed": sexoAtual === v, onClick: () => setSexo(v) }, r))), msg && /* @__PURE__ */ React20.createElement(Aviso, { tipo: msg.tipo === "ok" ? "ok" : void 0, onClose: () => setMsg(null) }, msg.texto), /* @__PURE__ */ React20.createElement("div", { className: "conf-pes-cols" }, /* @__PURE__ */ React20.createElement("div", { "data-testid": "lista-sem-brinco" }, /* @__PURE__ */ React20.createElement("div", { className: "conf-pes-tit late" }, "Sem brinco com peso \xB7 ", conf.semBrinco.length), conf.semBrinco.length === 0 && /* @__PURE__ */ React20.createElement("p", { className: "sub", style: { margin: "4px 0" } }, "Nenhum."), conf.semBrinco.map((sb) => /* @__PURE__ */ React20.createElement("div", { key: sb.id, className: `sb-item${aberto === sb.id ? " on" : ""}` }, /* @__PURE__ */ React20.createElement("button", { type: "button", className: "sb-bt", onClick: () => {
     setAberto(aberto === sb.id ? null : sb.id);
     setEscolha("");
     setMsg(null);
-  }, "aria-label": `Sem brinco de ${sb.peso} kg` }, /* @__PURE__ */ React19.createElement("b", null, fmtKg(sb.peso)), /* @__PURE__ */ React19.createElement("span", null, sb.sinal || "sem sinal")), aberto === sb.id && /* @__PURE__ */ React19.createElement("div", { className: "sb-escolha" }, /* @__PURE__ */ React19.createElement("select", { "aria-label": "Qual animal \xE9", value: escolha, onChange: (e) => setEscolha(e.target.value) }, /* @__PURE__ */ React19.createElement("option", { value: "" }, "Qual destes \xE9?"), conf.naoPesados.map((n) => /* @__PURE__ */ React19.createElement("option", { key: n.criaId, value: n.criaId }, n.brinco, " \xB7 ", n.idade, n.maeBrinco ? ` \xB7 m\xE3e ${n.maeBrinco}` : "", n.ultimoPeso ? ` \xB7 \xFAlt. ${n.ultimoPeso} kg` : ""))), /* @__PURE__ */ React19.createElement("button", { type: "button", className: "btn sm", onClick: () => identificar(sb) }, /* @__PURE__ */ React19.createElement(Check7, { size: 15 }), " Confirmar"))))), /* @__PURE__ */ React19.createElement("div", { "data-testid": "lista-nao-pesados" }, /* @__PURE__ */ React19.createElement("div", { className: "conf-pes-tit" }, "Ficaram sem peso \xB7 ", conf.naoPesados.length), conf.naoPesados.length === 0 && /* @__PURE__ */ React19.createElement("p", { className: "sub", style: { margin: "4px 0" } }, "Todos pesados."), /* @__PURE__ */ React19.createElement("div", { className: "np-chips" }, conf.naoPesados.map((n) => /* @__PURE__ */ React19.createElement("span", { key: n.criaId, className: "np-chip", title: `${n.idade}${n.maeBrinco ? ` \xB7 m\xE3e ${n.maeBrinco}` : ""}` }, /* @__PURE__ */ React19.createElement("b", null, n.brinco), " ", n.idade))))), conf.repetidos.length > 0 && /* @__PURE__ */ React19.createElement("div", { "data-testid": "lista-repetidos", style: { marginTop: 12 } }, /* @__PURE__ */ React19.createElement("div", { className: "conf-pes-tit", style: { color: "var(--amber)" } }, "Pesados 2x nesta data \xB7 ", conf.repetidos.length), conf.repetidos.map((g) => /* @__PURE__ */ React19.createElement("div", { key: g.brinco, className: "rep-lin" }, /* @__PURE__ */ React19.createElement("b", null, g.brinco), g.pesagens.map((p) => /* @__PURE__ */ React19.createElement("span", { key: p.id, className: "rep-peso" }, fmtKg(p.peso), /* @__PURE__ */ React19.createElement("button", { type: "button", className: "btn quiet sm", onClick: () => outroAnimal(p, g.brinco), "aria-label": `${fmtKg(p.peso)} do ${g.brinco} \xE9 de outro animal` }, /* @__PURE__ */ React19.createElement(X4, { size: 14 }), " outro animal")))))));
+  }, "aria-label": `Sem brinco de ${sb.peso} kg` }, /* @__PURE__ */ React20.createElement("b", null, fmtKg(sb.peso)), /* @__PURE__ */ React20.createElement("span", null, sb.sinal || "sem sinal")), aberto === sb.id && /* @__PURE__ */ React20.createElement("div", { className: "sb-escolha" }, /* @__PURE__ */ React20.createElement("select", { "aria-label": "Qual animal \xE9", value: escolha, onChange: (e) => setEscolha(e.target.value) }, /* @__PURE__ */ React20.createElement("option", { value: "" }, "Qual destes \xE9?"), conf.naoPesados.map((n) => /* @__PURE__ */ React20.createElement("option", { key: n.criaId, value: n.criaId }, n.brinco, " \xB7 ", n.idade, n.maeBrinco ? ` \xB7 m\xE3e ${n.maeBrinco}` : "", n.ultimoPeso ? ` \xB7 \xFAlt. ${n.ultimoPeso} kg` : ""))), /* @__PURE__ */ React20.createElement("button", { type: "button", className: "btn sm", onClick: () => identificar(sb) }, /* @__PURE__ */ React20.createElement(Check7, { size: 15 }), " Confirmar"))))), /* @__PURE__ */ React20.createElement("div", { "data-testid": "lista-nao-pesados" }, /* @__PURE__ */ React20.createElement("div", { className: "conf-pes-tit" }, "Ficaram sem peso \xB7 ", conf.naoPesados.length), conf.naoPesados.length === 0 && /* @__PURE__ */ React20.createElement("p", { className: "sub", style: { margin: "4px 0" } }, "Todos pesados."), /* @__PURE__ */ React20.createElement("div", { className: "np-chips" }, conf.naoPesados.map((n) => /* @__PURE__ */ React20.createElement("span", { key: n.criaId, className: "np-chip", title: `${n.idade}${n.maeBrinco ? ` \xB7 m\xE3e ${n.maeBrinco}` : ""}` }, /* @__PURE__ */ React20.createElement("b", null, n.brinco), " ", n.idade))))), conf.repetidos.length > 0 && /* @__PURE__ */ React20.createElement("div", { "data-testid": "lista-repetidos", style: { marginTop: 12 } }, /* @__PURE__ */ React20.createElement("div", { className: "conf-pes-tit", style: { color: "var(--amber)" } }, "Pesados 2x nesta data \xB7 ", conf.repetidos.length), conf.repetidos.map((g) => /* @__PURE__ */ React20.createElement("div", { key: g.brinco, className: "rep-lin" }, /* @__PURE__ */ React20.createElement("b", null, g.brinco), g.pesagens.map((p) => /* @__PURE__ */ React20.createElement("span", { key: p.id, className: "rep-peso" }, fmtKg(p.peso), /* @__PURE__ */ React20.createElement("button", { type: "button", className: "btn quiet sm", onClick: () => outroAnimal(p, g.brinco), "aria-label": `${fmtKg(p.peso)} do ${g.brinco} \xE9 de outro animal` }, /* @__PURE__ */ React20.createElement(X4, { size: 14 }), " outro animal")))))));
 }
 
 // src/telas/CriasPesar.jsx
@@ -7929,20 +8199,20 @@ var lerRascunho = () => {
 };
 function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorrigirPesagem }) {
   const rascunho0 = useRef9(lerRascunho());
-  const [data, setData] = useState19(() => rascunho0.current && rascunho0.current.linhas.length && rascunho0.current.data || hoje);
-  const [modo, setModo] = useState19(() => rascunho0.current && rascunho0.current.linhas.length && ownerMode && rascunho0.current.modo || "pesagem");
-  const [brinco, setBrinco] = useState19("");
-  const [pesoTxt, setPesoTxt] = useState19("");
-  const [linhas, setLinhas] = useState19(() => rascunho0.current ? rascunho0.current.linhas.map((l) => ({ ...l, info: null })) : []);
-  const [confDup, setConfDup] = useState19(null);
-  const [gerandoPdf, setGerandoPdf] = useState19(false);
-  const [erro, setErro] = useState19(null);
-  const [resultado, setResultado] = useState19(null);
-  const [gravando, setGravando] = useState19(false);
-  const [travado, setTravado] = useState19(false);
-  const [colar, setColar] = useState19("");
-  const [semBrinco, setSemBrinco] = useState19(false);
-  const [sinal, setSinal] = useState19("");
+  const [data, setData] = useState20(() => rascunho0.current && rascunho0.current.linhas.length && rascunho0.current.data || hoje);
+  const [modo, setModo] = useState20(() => rascunho0.current && rascunho0.current.linhas.length && ownerMode && rascunho0.current.modo || "pesagem");
+  const [brinco, setBrinco] = useState20("");
+  const [pesoTxt, setPesoTxt] = useState20("");
+  const [linhas, setLinhas] = useState20(() => rascunho0.current ? rascunho0.current.linhas.map((l) => ({ ...l, info: null })) : []);
+  const [confDup, setConfDup] = useState20(null);
+  const [gerandoPdf, setGerandoPdf] = useState20(false);
+  const [erro, setErro] = useState20(null);
+  const [resultado, setResultado] = useState20(null);
+  const [gravando, setGravando] = useState20(false);
+  const [travado, setTravado] = useState20(false);
+  const [colar, setColar] = useState20("");
+  const [semBrinco, setSemBrinco] = useState20(false);
+  const [sinal, setSinal] = useState20("");
   const brincoRef = useRef9(null);
   const pesoRef = useRef9(null);
   const timer2 = useRef9(null);
@@ -7951,13 +8221,13 @@ function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorri
     if (linhas.length) gravarNoCelular(CHAVE_RASCUNHO_PESAR, { data, modo, linhas: linhas.map(({ info, ...l }) => l), guardadoEm: (/* @__PURE__ */ new Date()).toISOString() });
     else apagarLocal(CHAVE_RASCUNHO_PESAR);
   }, [linhas, data, modo]);
-  const infos = useMemo17(() => {
+  const infos = useMemo18(() => {
     const mapa = /* @__PURE__ */ new Map();
     linhas.forEach((l) => mapa.set(l.k, l.semBrinco ? { semBrinco: true, mesmaData: [] } : fichaAnimal(dados, l.brinco, data || hoje, crias)));
     return mapa;
   }, [linhas, dados, data, hoje, crias]);
-  const infoDigitado = useMemo17(() => brinco.trim() ? fichaAnimal(dados, brinco, data || hoje, crias) : null, [brinco, dados, data, hoje, crias]);
-  const doDia = useMemo17(() => data ? relatorioPesagemDia(dados, data, hoje) : null, [dados, data, hoje]);
+  const infoDigitado = useMemo18(() => brinco.trim() ? fichaAnimal(dados, brinco, data || hoje, crias) : null, [brinco, dados, data, hoje, crias]);
+  const doDia = useMemo18(() => data ? relatorioPesagemDia(dados, data, hoje) : null, [dados, data, hoje]);
   function preparar(b, p, jaNaLista) {
     const brincoTxt = String(b).trim();
     if (!brincoTxt) return { erro: "Digite o brinco do animal." };
@@ -8094,14 +8364,14 @@ function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorri
     clearTimeout(timer2.current);
     timer2.current = setTimeout(() => setTravado(false), 1500);
   }
-  const total = linhas.reduce((s, l) => s + l.peso, 0);
-  return /* @__PURE__ */ React20.createElement("section", { className: "sheet pad" }, /* @__PURE__ */ React20.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Pesar"), /* @__PURE__ */ React20.createElement("p", { className: "sub" }, "Escolha a data, digite o brinco e o peso de cada animal e grave tudo de uma vez. Serve para crias e para novilhas."), /* @__PURE__ */ React20.createElement("div", { className: "grid2" }, /* @__PURE__ */ React20.createElement("div", { className: "fld" }, /* @__PURE__ */ React20.createElement("label", { htmlFor: "pesar-data" }, "Data da pesagem"), /* @__PURE__ */ React20.createElement("input", { id: "pesar-data", type: "date", value: data, onChange: (e) => setData(e.target.value) })), ownerMode && /* @__PURE__ */ React20.createElement("div", { className: "fld", role: "group", "aria-label": "Tipo de pesagem" }, /* @__PURE__ */ React20.createElement("span", { className: "lbl", style: { display: "block", font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 6 } }, "O que \xE9 esta pesagem"), /* @__PURE__ */ React20.createElement("div", { className: "seg" }, /* @__PURE__ */ React20.createElement("button", { type: "button", "aria-pressed": modo === "pesagem", onClick: () => {
+  const total = linhas.reduce((s2, l) => s2 + l.peso, 0);
+  return /* @__PURE__ */ React21.createElement("section", { className: "sheet pad" }, /* @__PURE__ */ React21.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Pesar"), /* @__PURE__ */ React21.createElement("p", { className: "sub" }, "Escolha a data, digite o brinco e o peso de cada animal e grave tudo de uma vez. Serve para crias e para novilhas."), /* @__PURE__ */ React21.createElement("div", { className: "grid2" }, /* @__PURE__ */ React21.createElement("div", { className: "fld" }, /* @__PURE__ */ React21.createElement("label", { htmlFor: "pesar-data" }, "Data da pesagem"), /* @__PURE__ */ React21.createElement("input", { id: "pesar-data", type: "date", value: data, onChange: (e) => setData(e.target.value) })), ownerMode && /* @__PURE__ */ React21.createElement("div", { className: "fld", role: "group", "aria-label": "Tipo de pesagem" }, /* @__PURE__ */ React21.createElement("span", { className: "lbl", style: { display: "block", font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 6 } }, "O que \xE9 esta pesagem"), /* @__PURE__ */ React21.createElement("div", { className: "seg" }, /* @__PURE__ */ React21.createElement("button", { type: "button", "aria-pressed": modo === "pesagem", onClick: () => {
     setModo("pesagem");
     setResultado(null);
-  } }, "S\xF3 pesar"), /* @__PURE__ */ React20.createElement("button", { type: "button", "aria-pressed": modo === "desmama", onClick: () => {
+  } }, "S\xF3 pesar"), /* @__PURE__ */ React21.createElement("button", { type: "button", "aria-pressed": modo === "desmama", onClick: () => {
     setModo("desmama");
     setResultado(null);
-  } }, "Desmama")))), modo === "desmama" && /* @__PURE__ */ React20.createElement(Aviso, { tipo: "info" }, 'Modo desmama: cada peso vira o peso da desmama. As f\xEAmeas passam para o lote de novilhas (destino "a definir").'), /* @__PURE__ */ React20.createElement("div", { className: "linha-add" }, semBrinco ? /* @__PURE__ */ React20.createElement("div", { className: "fld" }, /* @__PURE__ */ React20.createElement("label", { htmlFor: "pesar-sinal" }, "Sem brinco: sinal (cor, marca)"), /* @__PURE__ */ React20.createElement(
+  } }, "Desmama")))), modo === "desmama" && /* @__PURE__ */ React21.createElement(Aviso, { tipo: "info" }, 'Modo desmama: cada peso vira o peso da desmama. As f\xEAmeas passam para o lote de novilhas (destino "a definir").'), /* @__PURE__ */ React21.createElement("div", { className: "linha-add" }, semBrinco ? /* @__PURE__ */ React21.createElement("div", { className: "fld" }, /* @__PURE__ */ React21.createElement("label", { htmlFor: "pesar-sinal" }, "Sem brinco: sinal (cor, marca)"), /* @__PURE__ */ React21.createElement(
     "input",
     {
       id: "pesar-sinal",
@@ -8120,7 +8390,7 @@ function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorri
         }
       }
     }
-  )) : /* @__PURE__ */ React20.createElement("div", { className: "fld" }, /* @__PURE__ */ React20.createElement("label", { htmlFor: "pesar-brinco" }, "Brinco"), /* @__PURE__ */ React20.createElement(
+  )) : /* @__PURE__ */ React21.createElement("div", { className: "fld" }, /* @__PURE__ */ React21.createElement("label", { htmlFor: "pesar-brinco" }, "Brinco"), /* @__PURE__ */ React21.createElement(
     "input",
     {
       id: "pesar-brinco",
@@ -8140,7 +8410,7 @@ function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorri
         }
       }
     }
-  )), /* @__PURE__ */ React20.createElement("div", { className: "fld" }, /* @__PURE__ */ React20.createElement("label", { htmlFor: "pesar-peso" }, "Peso (kg)"), /* @__PURE__ */ React20.createElement(
+  )), /* @__PURE__ */ React21.createElement("div", { className: "fld" }, /* @__PURE__ */ React21.createElement("label", { htmlFor: "pesar-peso" }, "Peso (kg)"), /* @__PURE__ */ React21.createElement(
     "input",
     {
       id: "pesar-peso",
@@ -8160,12 +8430,12 @@ function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorri
         }
       }
     }
-  )), /* @__PURE__ */ React20.createElement("button", { className: "btn", onClick: adicionar, "aria-label": "Adicionar \xE0 lista" }, /* @__PURE__ */ React20.createElement(Plus7, { size: 20 }))), modo === "pesagem" && /* @__PURE__ */ React20.createElement("button", { type: "button", className: `btn ${semBrinco ? "" : "quiet"} sm`, style: { marginTop: 6 }, "aria-pressed": semBrinco, onClick: () => {
+  )), /* @__PURE__ */ React21.createElement("button", { className: "btn", onClick: adicionar, "aria-label": "Adicionar \xE0 lista" }, /* @__PURE__ */ React21.createElement(Plus7, { size: 20 }))), modo === "pesagem" && /* @__PURE__ */ React21.createElement("button", { type: "button", className: `btn ${semBrinco ? "" : "quiet"} sm`, style: { marginTop: 6 }, "aria-pressed": semBrinco, onClick: () => {
     setSemBrinco((v) => !v);
     setErro(null);
-  } }, /* @__PURE__ */ React20.createElement(TagIcon, { size: 15 }), " ", semBrinco ? "Animal sem brinco (tocar para voltar ao brinco)" : "Animal sem brinco"), /* @__PURE__ */ React20.createElement("div", { style: { minHeight: 8 } }, !semBrinco && /* @__PURE__ */ React20.createElement(FichaRapida, { ficha: infoDigitado, digitado: brinco })), confDup && /* @__PURE__ */ React20.createElement(Aviso, { tipo: "info" }, /* @__PURE__ */ React20.createElement("div", { "data-testid": "aviso-duplicado" }, /* @__PURE__ */ React20.createElement("b", null, confDup.linha.brinco), " j\xE1 foi pesado em ", formatarDataBR(data), " com ", confDup.mesmaData.map((x) => fmtKg(x.peso)).join(" e "), ". Verifique a duplicidade.", " ", "Se lan\xE7ar mesmo assim, ele fica com os dois pesos nesta data (", confDup.mesmaData.map((x) => fmtKg(x.peso)).join(", "), " e ", fmtKg(confDup.linha.peso), "), marcado como pesado 2x."), /* @__PURE__ */ React20.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React20.createElement("button", { className: "btn quiet sm", onClick: () => confirmarDup(false) }, "Cancelar"), /* @__PURE__ */ React20.createElement("button", { className: "btn sm", onClick: () => confirmarDup(true) }, "Lan\xE7ar mesmo assim"), /* @__PURE__ */ React20.createElement("button", { className: "btn ghost sm", onClick: () => confirmarDup("outro") }, "\xC9 outro animal (sem brinco)"))), erro && /* @__PURE__ */ React20.createElement(Aviso, null, erro.texto, erro.itens && /* @__PURE__ */ React20.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, erro.itens.map((t, i) => /* @__PURE__ */ React20.createElement("li", { key: i }, t)))), /* @__PURE__ */ React20.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Na lista", /* @__PURE__ */ React20.createElement("small", null, linhas.length, " animal(is)", linhas.length ? ` \xB7 ${fmtKg(total)} no total` : "")), linhas.length === 0 ? /* @__PURE__ */ React20.createElement("p", { className: "sub" }, "Nenhum animal na lista ainda.") : /* @__PURE__ */ React20.createElement("div", { "data-testid": "lista-pesar" }, linhas.map((l) => {
+  } }, /* @__PURE__ */ React21.createElement(TagIcon, { size: 15 }), " ", semBrinco ? "Animal sem brinco (tocar para voltar ao brinco)" : "Animal sem brinco"), /* @__PURE__ */ React21.createElement("div", { style: { minHeight: 8 } }, !semBrinco && /* @__PURE__ */ React21.createElement(FichaRapida, { ficha: infoDigitado, digitado: brinco })), confDup && /* @__PURE__ */ React21.createElement(Aviso, { tipo: "info" }, /* @__PURE__ */ React21.createElement("div", { "data-testid": "aviso-duplicado" }, /* @__PURE__ */ React21.createElement("b", null, confDup.linha.brinco), " j\xE1 foi pesado em ", formatarDataBR(data), " com ", confDup.mesmaData.map((x) => fmtKg(x.peso)).join(" e "), ". Verifique a duplicidade.", " ", "Se lan\xE7ar mesmo assim, ele fica com os dois pesos nesta data (", confDup.mesmaData.map((x) => fmtKg(x.peso)).join(", "), " e ", fmtKg(confDup.linha.peso), "), marcado como pesado 2x."), /* @__PURE__ */ React21.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React21.createElement("button", { className: "btn quiet sm", onClick: () => confirmarDup(false) }, "Cancelar"), /* @__PURE__ */ React21.createElement("button", { className: "btn sm", onClick: () => confirmarDup(true) }, "Lan\xE7ar mesmo assim"), /* @__PURE__ */ React21.createElement("button", { className: "btn ghost sm", onClick: () => confirmarDup("outro") }, "\xC9 outro animal (sem brinco)"))), erro && /* @__PURE__ */ React21.createElement(Aviso, null, erro.texto, erro.itens && /* @__PURE__ */ React21.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, erro.itens.map((t, i) => /* @__PURE__ */ React21.createElement("li", { key: i }, t)))), /* @__PURE__ */ React21.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Na lista", /* @__PURE__ */ React21.createElement("small", null, linhas.length, " animal(is)", linhas.length ? ` \xB7 ${fmtKg(total)} no total` : "")), linhas.length === 0 ? /* @__PURE__ */ React21.createElement("p", { className: "sub" }, "Nenhum animal na lista ainda.") : /* @__PURE__ */ React21.createElement("div", { "data-testid": "lista-pesar" }, linhas.map((l) => {
     if (l.semBrinco) {
-      return /* @__PURE__ */ React20.createElement("div", { className: "item-lin", key: l.k, "data-testid": "linha-SB" }, /* @__PURE__ */ React20.createElement("div", { className: "t" }, /* @__PURE__ */ React20.createElement("b", null, "SB ", /* @__PURE__ */ React20.createElement("span", { className: "tag2x", style: { background: "var(--late-bg)", color: "var(--late)" } }, "sem brinco")), /* @__PURE__ */ React20.createElement("span", null, l.sinal || "sem sinal anotado", " \xB7 fica na confer\xEAncia para ligar a um animal sem peso")), /* @__PURE__ */ React20.createElement("div", { className: "p" }, fmtKg(l.peso)), /* @__PURE__ */ React20.createElement("button", { className: "x-peq", onClick: () => setLinhas((ls) => ls.filter((x) => x.k !== l.k)), "aria-label": "Tirar o sem brinco da lista" }, /* @__PURE__ */ React20.createElement(Trash25, { size: 17 })));
+      return /* @__PURE__ */ React21.createElement("div", { className: "item-lin", key: l.k, "data-testid": "linha-SB" }, /* @__PURE__ */ React21.createElement("div", { className: "t" }, /* @__PURE__ */ React21.createElement("b", null, "SB ", /* @__PURE__ */ React21.createElement("span", { className: "tag2x", style: { background: "var(--late-bg)", color: "var(--late)" } }, "sem brinco")), /* @__PURE__ */ React21.createElement("span", null, l.sinal || "sem sinal anotado", " \xB7 fica na confer\xEAncia para ligar a um animal sem peso")), /* @__PURE__ */ React21.createElement("div", { className: "p" }, fmtKg(l.peso)), /* @__PURE__ */ React21.createElement("button", { className: "x-peq", onClick: () => setLinhas((ls) => ls.filter((x) => x.k !== l.k)), "aria-label": "Tirar o sem brinco da lista" }, /* @__PURE__ */ React21.createElement(Trash25, { size: 17 })));
     }
     const info = infos.get(l.k) || { pontos: [], mesmaData: [] };
     const aviso = info.achado ? avisoDePeso((info.pontos || []).filter((p) => p.data !== data), l.peso, data) : "Brinco n\xE3o encontrado.";
@@ -8173,25 +8443,25 @@ function Pesar({ dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorri
     const dif = ant ? l.peso - ant.peso : null;
     const outros = modo === "pesagem" ? info.mesmaData || [] : [];
     const desc = [info.sexo, info.idade ? info.idade.texto : "", info.maeBrinco ? `m\xE3e ${info.maeBrinco}` : ""].filter(Boolean).join(" \xB7 ");
-    return /* @__PURE__ */ React20.createElement("div", { className: "item-lin", key: l.k, "data-testid": `linha-${l.brinco}` }, /* @__PURE__ */ React20.createElement("div", { className: "t" }, /* @__PURE__ */ React20.createElement("b", null, l.brinco, outros.length ? /* @__PURE__ */ React20.createElement("span", { className: "tag2x" }, outros.length + 1, "x") : null), /* @__PURE__ */ React20.createElement("span", null, desc, dif !== null ? ` \xB7 ${dif >= 0 ? "+" : ""}${fmtKg(dif)} desde ${formatarDataBR(ant.data)}` : " \xB7 primeira pesagem"), outros.length > 0 && /* @__PURE__ */ React20.createElement("span", { style: { color: "var(--amber)" } }, "J\xE1 pesado nesta data com ", outros.map((x) => fmtKg(x.peso)).join(" e "), ".", l.forcar ? " Vai gravar os dois pesos (2x)." : " Verifique a duplicidade.", !l.forcar && /* @__PURE__ */ React20.createElement("button", { className: "btn quiet sm", style: { marginLeft: 8, minHeight: 32 }, onClick: () => setLinhas((ls) => ls.map((x) => x.k === l.k ? { ...x, forcar: true } : x)) }, "Lan\xE7ar mesmo assim")), aviso && /* @__PURE__ */ React20.createElement("span", { style: { color: "var(--amber)" } }, aviso)), /* @__PURE__ */ React20.createElement("div", { className: "p" }, fmtKg(l.peso)), /* @__PURE__ */ React20.createElement("button", { className: "x-peq", onClick: () => setLinhas((ls) => ls.filter((x) => x.k !== l.k)), "aria-label": `Tirar ${l.brinco} da lista` }, /* @__PURE__ */ React20.createElement(Trash25, { size: 17 })));
-  })), /* @__PURE__ */ React20.createElement("button", { className: "btn wide", style: { marginTop: 12 }, onClick: gravar, disabled: gravando || travado || linhas.length === 0 }, gravando ? /* @__PURE__ */ React20.createElement(Loader211, { size: 18, className: "spin" }) : /* @__PURE__ */ React20.createElement(Save10, { size: 18 }), gravando ? "Gravando..." : modo === "desmama" ? `Gravar ${linhas.length} desmama(s)` : `Gravar ${linhas.length} pesagem(ns)`), resultado && /* @__PURE__ */ React20.createElement(Aviso, { tipo: "ok" }, resultado.modo === "desmama" ? `${resultado.qtd} desmama(s) gravada(s)` : `${resultado.qtd} pesagem(ns) gravada(s)`, resultado.semBrinco ? ` (${resultado.semBrinco} sem brinco: ligue cada um a um animal na confer\xEAncia abaixo)` : "", resultado.novilhas > 0 ? `; ${resultado.novilhas} novilha(s) entraram no lote de novilhas` : "", ".", resultado.offline ? " Sem internet: ficou guardado neste celular e vai para a planilha quando a internet voltar." : "", modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : "", resultado.rejeitados.length > 0 && /* @__PURE__ */ React20.createElement(React20.Fragment, null, /* @__PURE__ */ React20.createElement("div", { style: { marginTop: 6 } }, "N\xE3o gravadas (continuam na lista):"), /* @__PURE__ */ React20.createElement("ul", { style: { margin: "4px 0 0", paddingLeft: 18 } }, resultado.rejeitados.map((t, i) => /* @__PURE__ */ React20.createElement("li", { key: i }, t))))), /* @__PURE__ */ React20.createElement("div", { className: "sheet", style: { marginTop: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "space-between" } }, /* @__PURE__ */ React20.createElement("span", { style: { fontSize: 14 }, "data-testid": "resumo-dia" }, doDia && doDia.secoes[0].linhas.length ? /* @__PURE__ */ React20.createElement(React20.Fragment, null, "J\xE1 gravados em ", /* @__PURE__ */ React20.createElement("b", null, formatarDataBR(data)), ": ", doDia.resumo[0].valor, " pesagem(ns), m\xE9dia ", doDia.resumo[3].valor, doDia.resumo[6].valor !== "nenhum" ? /* @__PURE__ */ React20.createElement(React20.Fragment, null, ", ", /* @__PURE__ */ React20.createElement("b", { style: { color: "var(--amber)" } }, "2x: ", doDia.resumo[6].valor)) : null) : /* @__PURE__ */ React20.createElement(React20.Fragment, null, "Nada gravado em ", data ? formatarDataBR(data) : "esta data", " ainda.")), /* @__PURE__ */ React20.createElement("button", { className: "btn ghost sm", onClick: pdfDoDia, disabled: !doDia || !doDia.secoes[0].linhas.length || gerandoPdf }, gerandoPdf ? /* @__PURE__ */ React20.createElement(Loader211, { size: 16, className: "spin" }) : /* @__PURE__ */ React20.createElement(FileDown5, { size: 16 }), " PDF da pesagem")), modo === "pesagem" && data && doDia && doDia.secoes[0].linhas.length > 0 && /* @__PURE__ */ React20.createElement(ConferenciaPesagem, { dados, data, hoje, onCorrigirPesagem }), /* @__PURE__ */ React20.createElement("details", { className: "ferr noprint" }, /* @__PURE__ */ React20.createElement("summary", null, /* @__PURE__ */ React20.createElement(ClipboardPaste2, { size: 15, style: { marginRight: 8 } }), " Colar uma lista pronta"), /* @__PURE__ */ React20.createElement("div", { className: "in2", style: { display: "block" } }, /* @__PURE__ */ React20.createElement("p", { className: "sub" }, "Um animal por linha: o brinco e o peso (ex.: 6532 245). Depois toque em adicionar e confira a lista antes de gravar."), /* @__PURE__ */ React20.createElement("div", { className: "fld" }, /* @__PURE__ */ React20.createElement("label", { htmlFor: "pesar-colar" }, "Lista"), /* @__PURE__ */ React20.createElement("textarea", { id: "pesar-colar", style: { minHeight: 120 }, value: colar, onChange: (e) => setColar(e.target.value), placeholder: "6532 245\n6533 250,5", spellCheck: false })), /* @__PURE__ */ React20.createElement("button", { className: "btn quiet", onClick: adicionarColado, disabled: !colar.trim() }, "Adicionar \xE0 lista"))));
+    return /* @__PURE__ */ React21.createElement("div", { className: "item-lin", key: l.k, "data-testid": `linha-${l.brinco}` }, /* @__PURE__ */ React21.createElement("div", { className: "t" }, /* @__PURE__ */ React21.createElement("b", null, l.brinco, outros.length ? /* @__PURE__ */ React21.createElement("span", { className: "tag2x" }, outros.length + 1, "x") : null), /* @__PURE__ */ React21.createElement("span", null, desc, dif !== null ? ` \xB7 ${dif >= 0 ? "+" : ""}${fmtKg(dif)} desde ${formatarDataBR(ant.data)}` : " \xB7 primeira pesagem"), outros.length > 0 && /* @__PURE__ */ React21.createElement("span", { style: { color: "var(--amber)" } }, "J\xE1 pesado nesta data com ", outros.map((x) => fmtKg(x.peso)).join(" e "), ".", l.forcar ? " Vai gravar os dois pesos (2x)." : " Verifique a duplicidade.", !l.forcar && /* @__PURE__ */ React21.createElement("button", { className: "btn quiet sm", style: { marginLeft: 8, minHeight: 32 }, onClick: () => setLinhas((ls) => ls.map((x) => x.k === l.k ? { ...x, forcar: true } : x)) }, "Lan\xE7ar mesmo assim")), aviso && /* @__PURE__ */ React21.createElement("span", { style: { color: "var(--amber)" } }, aviso)), /* @__PURE__ */ React21.createElement("div", { className: "p" }, fmtKg(l.peso)), /* @__PURE__ */ React21.createElement("button", { className: "x-peq", onClick: () => setLinhas((ls) => ls.filter((x) => x.k !== l.k)), "aria-label": `Tirar ${l.brinco} da lista` }, /* @__PURE__ */ React21.createElement(Trash25, { size: 17 })));
+  })), /* @__PURE__ */ React21.createElement("button", { className: "btn wide", style: { marginTop: 12 }, onClick: gravar, disabled: gravando || travado || linhas.length === 0 }, gravando ? /* @__PURE__ */ React21.createElement(Loader211, { size: 18, className: "spin" }) : /* @__PURE__ */ React21.createElement(Save11, { size: 18 }), gravando ? "Gravando..." : modo === "desmama" ? `Gravar ${linhas.length} desmama(s)` : `Gravar ${linhas.length} pesagem(ns)`), resultado && /* @__PURE__ */ React21.createElement(Aviso, { tipo: "ok" }, resultado.modo === "desmama" ? `${resultado.qtd} desmama(s) gravada(s)` : `${resultado.qtd} pesagem(ns) gravada(s)`, resultado.semBrinco ? ` (${resultado.semBrinco} sem brinco: ligue cada um a um animal na confer\xEAncia abaixo)` : "", resultado.novilhas > 0 ? `; ${resultado.novilhas} novilha(s) entraram no lote de novilhas` : "", ".", resultado.offline ? " Sem internet: ficou guardado neste celular e vai para a planilha quando a internet voltar." : "", modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : "", resultado.rejeitados.length > 0 && /* @__PURE__ */ React21.createElement(React21.Fragment, null, /* @__PURE__ */ React21.createElement("div", { style: { marginTop: 6 } }, "N\xE3o gravadas (continuam na lista):"), /* @__PURE__ */ React21.createElement("ul", { style: { margin: "4px 0 0", paddingLeft: 18 } }, resultado.rejeitados.map((t, i) => /* @__PURE__ */ React21.createElement("li", { key: i }, t))))), /* @__PURE__ */ React21.createElement("div", { className: "sheet", style: { marginTop: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "space-between" } }, /* @__PURE__ */ React21.createElement("span", { style: { fontSize: 14 }, "data-testid": "resumo-dia" }, doDia && doDia.secoes[0].linhas.length ? /* @__PURE__ */ React21.createElement(React21.Fragment, null, "J\xE1 gravados em ", /* @__PURE__ */ React21.createElement("b", null, formatarDataBR(data)), ": ", doDia.resumo[0].valor, " pesagem(ns), m\xE9dia ", doDia.resumo[3].valor, doDia.resumo[6].valor !== "nenhum" ? /* @__PURE__ */ React21.createElement(React21.Fragment, null, ", ", /* @__PURE__ */ React21.createElement("b", { style: { color: "var(--amber)" } }, "2x: ", doDia.resumo[6].valor)) : null) : /* @__PURE__ */ React21.createElement(React21.Fragment, null, "Nada gravado em ", data ? formatarDataBR(data) : "esta data", " ainda.")), /* @__PURE__ */ React21.createElement("button", { className: "btn ghost sm", onClick: pdfDoDia, disabled: !doDia || !doDia.secoes[0].linhas.length || gerandoPdf }, gerandoPdf ? /* @__PURE__ */ React21.createElement(Loader211, { size: 16, className: "spin" }) : /* @__PURE__ */ React21.createElement(FileDown5, { size: 16 }), " PDF da pesagem")), modo === "pesagem" && data && doDia && doDia.secoes[0].linhas.length > 0 && /* @__PURE__ */ React21.createElement(ConferenciaPesagem, { dados, data, hoje, onCorrigirPesagem }), /* @__PURE__ */ React21.createElement("details", { className: "ferr noprint" }, /* @__PURE__ */ React21.createElement("summary", null, /* @__PURE__ */ React21.createElement(ClipboardPaste2, { size: 15, style: { marginRight: 8 } }), " Colar uma lista pronta"), /* @__PURE__ */ React21.createElement("div", { className: "in2", style: { display: "block" } }, /* @__PURE__ */ React21.createElement("p", { className: "sub" }, "Um animal por linha: o brinco e o peso (ex.: 6532 245). Depois toque em adicionar e confira a lista antes de gravar."), /* @__PURE__ */ React21.createElement("div", { className: "fld" }, /* @__PURE__ */ React21.createElement("label", { htmlFor: "pesar-colar" }, "Lista"), /* @__PURE__ */ React21.createElement("textarea", { id: "pesar-colar", style: { minHeight: 120 }, value: colar, onChange: (e) => setColar(e.target.value), placeholder: "6532 245\n6533 250,5", spellCheck: false })), /* @__PURE__ */ React21.createElement("button", { className: "btn quiet", onClick: adicionarColado, disabled: !colar.trim() }, "Adicionar \xE0 lista"))));
 }
 
 // src/telas/CriasParaVender.jsx
-import React21, { useMemo as useMemo18, useState as useState20 } from "react";
-import { ShoppingCart as ShoppingCart2, Save as Save11 } from "lucide-react";
+import React22, { useMemo as useMemo19, useState as useState21 } from "react";
+import { ShoppingCart as ShoppingCart2, Save as Save12 } from "lucide-react";
 var txt = (v) => v === null || v === void 0 ? "" : String(v);
 function ParaVender({ crias, dados, onSalvarConfig, onVender, modoTeste, hoje }) {
-  const cfg = useMemo18(() => configCompleta(dados.config), [dados.config]);
-  const [metaPeso, setMetaPeso] = useState20(txt(cfg.metaPesoMacho));
-  const [metaQtd, setMetaQtd] = useState20(txt(cfg.metaQtdMacho));
-  const [pesoMatriz, setPesoMatriz] = useState20(txt(cfg.pesoMatriz));
-  const [salvo, setSalvo] = useState20("");
-  const [erro, setErro] = useState20("");
-  const [valorKg, setValorKg] = useState20("");
-  const [filtro, setFiltro] = useState20(cfg.metaPesoMacho ? "prontos" : "todos");
-  const [marcados, setMarcados] = useState20(() => /* @__PURE__ */ new Set());
-  const an = useMemo18(() => analiseMachos(crias, dados.config), [crias, dados.config]);
+  const cfg = useMemo19(() => configCompleta(dados.config), [dados.config]);
+  const [metaPeso, setMetaPeso] = useState21(txt(cfg.metaPesoMacho));
+  const [metaQtd, setMetaQtd] = useState21(txt(cfg.metaQtdMacho));
+  const [pesoMatriz, setPesoMatriz] = useState21(txt(cfg.pesoMatriz));
+  const [salvo, setSalvo] = useState21("");
+  const [erro, setErro] = useState21("");
+  const [valorKg, setValorKg] = useState21("");
+  const [filtro, setFiltro] = useState21(cfg.metaPesoMacho ? "prontos" : "todos");
+  const [marcados, setMarcados] = useState21(() => /* @__PURE__ */ new Set());
+  const an = useMemo19(() => analiseMachos(crias, dados.config), [crias, dados.config]);
   function salvarMetas() {
     const mp = metaPeso.trim() === "" ? "" : numPeso(metaPeso);
     const mq = metaQtd.trim() === "" ? "" : numPeso(metaQtd);
@@ -8210,8 +8480,8 @@ function ParaVender({ crias, dados, onSalvarConfig, onVender, modoTeste, hoje })
   const prontos = an.linhas.filter((l) => l.pronto);
   const vkg = numPeso(valorKg);
   function alternar(id) {
-    setMarcados((s) => {
-      const n = new Set(s);
+    setMarcados((s2) => {
+      const n = new Set(s2);
       if (n.has(id)) n.delete(id);
       else n.add(id);
       return n;
@@ -8228,35 +8498,35 @@ function ParaVender({ crias, dados, onSalvarConfig, onVender, modoTeste, hoje })
     else if (an.diasParaMetaQtd !== null) projecao = `No ritmo de ganho atual, a meta de ${an.cfg.metaQtdMacho} machos no peso de ${fmtKg(an.cfg.metaPesoMacho)} deve ser atingida em cerca de ${an.diasParaMetaQtd} dias (por volta de ${formatarDataBR(addDias(hoje, an.diasParaMetaQtd))}).`;
     else projecao = "Ainda n\xE3o d\xE1 para projetar quando a meta ser\xE1 atingida: faltam pesagens para calcular o ganho de peso.";
   }
-  return /* @__PURE__ */ React21.createElement("section", { className: "sheet pad" }, /* @__PURE__ */ React21.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Para vender"), /* @__PURE__ */ React21.createElement("p", { className: "sub" }, "Defina o peso alvo e a quantidade para negociar. A tela mostra quais machos j\xE1 est\xE3o no peso e quando os outros devem chegar."), /* @__PURE__ */ React21.createElement("div", { className: "rapido" }, /* @__PURE__ */ React21.createElement("div", { className: "grid2" }, /* @__PURE__ */ React21.createElement("div", { className: "fld" }, /* @__PURE__ */ React21.createElement("label", { htmlFor: "meta-peso" }, "Peso alvo dos machos (kg)"), /* @__PURE__ */ React21.createElement("input", { id: "meta-peso", type: "text", inputMode: "decimal", value: metaPeso, onChange: (e) => {
+  return /* @__PURE__ */ React22.createElement("section", { className: "sheet pad" }, /* @__PURE__ */ React22.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Para vender"), /* @__PURE__ */ React22.createElement("p", { className: "sub" }, "Defina o peso alvo e a quantidade para negociar. A tela mostra quais machos j\xE1 est\xE3o no peso e quando os outros devem chegar."), /* @__PURE__ */ React22.createElement("div", { className: "rapido" }, /* @__PURE__ */ React22.createElement("div", { className: "grid2" }, /* @__PURE__ */ React22.createElement("div", { className: "fld" }, /* @__PURE__ */ React22.createElement("label", { htmlFor: "meta-peso" }, "Peso alvo dos machos (kg)"), /* @__PURE__ */ React22.createElement("input", { id: "meta-peso", type: "text", inputMode: "decimal", value: metaPeso, onChange: (e) => {
     setMetaPeso(e.target.value);
     setSalvo("");
-  }, placeholder: "ex.: 250" })), /* @__PURE__ */ React21.createElement("div", { className: "fld" }, /* @__PURE__ */ React21.createElement("label", { htmlFor: "meta-qtd" }, "Quantidade para negociar"), /* @__PURE__ */ React21.createElement("input", { id: "meta-qtd", type: "text", inputMode: "numeric", value: metaQtd, onChange: (e) => {
+  }, placeholder: "ex.: 250" })), /* @__PURE__ */ React22.createElement("div", { className: "fld" }, /* @__PURE__ */ React22.createElement("label", { htmlFor: "meta-qtd" }, "Quantidade para negociar"), /* @__PURE__ */ React22.createElement("input", { id: "meta-qtd", type: "text", inputMode: "numeric", value: metaQtd, onChange: (e) => {
     setMetaQtd(e.target.value);
     setSalvo("");
-  }, placeholder: "ex.: 30" }))), /* @__PURE__ */ React21.createElement("div", { className: "fld" }, /* @__PURE__ */ React21.createElement("label", { htmlFor: "meta-matriz" }, "Peso para a novilha virar matriz (kg)"), /* @__PURE__ */ React21.createElement("input", { id: "meta-matriz", type: "text", inputMode: "decimal", value: pesoMatriz, onChange: (e) => {
+  }, placeholder: "ex.: 30" }))), /* @__PURE__ */ React22.createElement("div", { className: "fld" }, /* @__PURE__ */ React22.createElement("label", { htmlFor: "meta-matriz" }, "Peso para a novilha virar matriz (kg)"), /* @__PURE__ */ React22.createElement("input", { id: "meta-matriz", type: "text", inputMode: "decimal", value: pesoMatriz, onChange: (e) => {
     setPesoMatriz(e.target.value);
     setSalvo("");
-  } })), /* @__PURE__ */ React21.createElement("button", { className: "btn quiet", onClick: salvarMetas }, /* @__PURE__ */ React21.createElement(Save11, { size: 17 }), " Salvar metas"), salvo && /* @__PURE__ */ React21.createElement(Aviso, { tipo: "ok" }, salvo, modoTeste ? " (modo teste: s\xF3 na tela)" : ""), erro && /* @__PURE__ */ React21.createElement(Aviso, null, erro)), /* @__PURE__ */ React21.createElement(Kpis, { itens: [
+  } })), /* @__PURE__ */ React22.createElement("button", { className: "btn quiet", onClick: salvarMetas }, /* @__PURE__ */ React22.createElement(Save12, { size: 17 }), " Salvar metas"), salvo && /* @__PURE__ */ React22.createElement(Aviso, { tipo: "ok" }, salvo, modoTeste ? " (modo teste: s\xF3 na tela)" : ""), erro && /* @__PURE__ */ React22.createElement(Aviso, null, erro)), /* @__PURE__ */ React22.createElement(Kpis, { itens: [
     { rotulo: "Machos no rebanho", valor: an.total, sub: `${an.semPeso} sem pesagem` },
     { rotulo: "Peso m\xE9dio", valor: an.pesoMedio === null ? "\u2014" : fmtKg(an.pesoMedio), pequeno: true },
     { rotulo: an.cfg.metaPesoMacho ? `No peso (${fmtNum(an.cfg.metaPesoMacho, 0)} kg ou mais)` : "No peso alvo", valor: an.cfg.metaPesoMacho ? an.prontos : "\u2014", cor: an.prontos ? "var(--green)" : void 0, sub: an.cfg.metaQtdMacho ? `meta ${an.cfg.metaQtdMacho} \xB7 faltam ${an.faltamQtd}` : void 0 },
     { rotulo: "Chegam ao peso", valor: an.cfg.metaPesoMacho ? `${an.prox30} em 30d` : "\u2014", pequeno: true, sub: an.cfg.metaPesoMacho ? `${an.prox60} em 60 dias` : "defina o peso alvo" }
-  ] }), !an.cfg.metaPesoMacho && /* @__PURE__ */ React21.createElement(Aviso, { tipo: "info" }, "Digite o peso alvo acima e salve para ver quais machos j\xE1 est\xE3o prontos."), projecao && /* @__PURE__ */ React21.createElement("p", { className: "sub", style: { marginTop: 10 } }, projecao), an.prontos > 0 && /* @__PURE__ */ React21.createElement("div", { className: "rapido", style: { marginTop: 12 } }, /* @__PURE__ */ React21.createElement("div", { className: "grid2" }, /* @__PURE__ */ React21.createElement("div", { className: "fld" }, /* @__PURE__ */ React21.createElement("label", { htmlFor: "vkg-est" }, "Valor do kg para uma estimativa (R$)"), /* @__PURE__ */ React21.createElement("input", { id: "vkg-est", type: "text", inputMode: "decimal", value: valorKg, onChange: (e) => setValorKg(e.target.value), placeholder: "ex.: 12,50" })), /* @__PURE__ */ React21.createElement("div", { className: "fld" }, /* @__PURE__ */ React21.createElement("span", { className: "lbl", style: { display: "block", font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 6 } }, "Prontos hoje"), /* @__PURE__ */ React21.createElement("div", { style: { fontSize: 15, lineHeight: 1.4 } }, /* @__PURE__ */ React21.createElement("b", null, an.prontos), " animais \xB7 ", /* @__PURE__ */ React21.createElement("b", null, fmtKg(an.kgProntos)), " (m\xE9dia ", fmtKg(an.pesoMedioProntos), ")", vkg > 0 && /* @__PURE__ */ React21.createElement("div", null, "\u2248 ", /* @__PURE__ */ React21.createElement("b", null, fmtBRL(an.kgProntos * vkg)), " (estimativa)"))))), /* @__PURE__ */ React21.createElement("div", { className: "seg", style: { margin: "16px 0 10px" }, role: "group", "aria-label": "Quais machos mostrar" }, /* @__PURE__ */ React21.createElement("button", { "aria-pressed": filtro === "prontos", onClick: () => setFiltro("prontos") }, "Prontos ", an.prontos), /* @__PURE__ */ React21.createElement("button", { "aria-pressed": filtro === "todos", onClick: () => setFiltro("todos") }, "Todos ", an.total), /* @__PURE__ */ React21.createElement("button", { "aria-pressed": filtro === "semPeso", onClick: () => setFiltro("semPeso") }, "Sem peso ", an.semPeso)), /* @__PURE__ */ React21.createElement("div", { className: "sheet", style: { boxShadow: "none", borderRadius: 8 } }, /* @__PURE__ */ React21.createElement("div", { className: "bar-sum" }, /* @__PURE__ */ React21.createElement("span", null, linhas.length, " macho(s)"), /* @__PURE__ */ React21.createElement("span", null, escolhidos.length, " marcado(s)")), linhas.length === 0 && /* @__PURE__ */ React21.createElement("div", { className: "empty" }, filtro === "prontos" ? "Nenhum macho no peso alvo ainda." : "Nenhum macho neste filtro."), linhas.map((l) => {
+  ] }), !an.cfg.metaPesoMacho && /* @__PURE__ */ React22.createElement(Aviso, { tipo: "info" }, "Digite o peso alvo acima e salve para ver quais machos j\xE1 est\xE3o prontos."), projecao && /* @__PURE__ */ React22.createElement("p", { className: "sub", style: { marginTop: 10 } }, projecao), an.prontos > 0 && /* @__PURE__ */ React22.createElement("div", { className: "rapido", style: { marginTop: 12 } }, /* @__PURE__ */ React22.createElement("div", { className: "grid2" }, /* @__PURE__ */ React22.createElement("div", { className: "fld" }, /* @__PURE__ */ React22.createElement("label", { htmlFor: "vkg-est" }, "Valor do kg para uma estimativa (R$)"), /* @__PURE__ */ React22.createElement("input", { id: "vkg-est", type: "text", inputMode: "decimal", value: valorKg, onChange: (e) => setValorKg(e.target.value), placeholder: "ex.: 12,50" })), /* @__PURE__ */ React22.createElement("div", { className: "fld" }, /* @__PURE__ */ React22.createElement("span", { className: "lbl", style: { display: "block", font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 6 } }, "Prontos hoje"), /* @__PURE__ */ React22.createElement("div", { style: { fontSize: 15, lineHeight: 1.4 } }, /* @__PURE__ */ React22.createElement("b", null, an.prontos), " animais \xB7 ", /* @__PURE__ */ React22.createElement("b", null, fmtKg(an.kgProntos)), " (m\xE9dia ", fmtKg(an.pesoMedioProntos), ")", vkg > 0 && /* @__PURE__ */ React22.createElement("div", null, "\u2248 ", /* @__PURE__ */ React22.createElement("b", null, fmtBRL(an.kgProntos * vkg)), " (estimativa)"))))), /* @__PURE__ */ React22.createElement("div", { className: "seg", style: { margin: "16px 0 10px" }, role: "group", "aria-label": "Quais machos mostrar" }, /* @__PURE__ */ React22.createElement("button", { "aria-pressed": filtro === "prontos", onClick: () => setFiltro("prontos") }, "Prontos ", an.prontos), /* @__PURE__ */ React22.createElement("button", { "aria-pressed": filtro === "todos", onClick: () => setFiltro("todos") }, "Todos ", an.total), /* @__PURE__ */ React22.createElement("button", { "aria-pressed": filtro === "semPeso", onClick: () => setFiltro("semPeso") }, "Sem peso ", an.semPeso)), /* @__PURE__ */ React22.createElement("div", { className: "sheet", style: { boxShadow: "none", borderRadius: 8 } }, /* @__PURE__ */ React22.createElement("div", { className: "bar-sum" }, /* @__PURE__ */ React22.createElement("span", null, linhas.length, " macho(s)"), /* @__PURE__ */ React22.createElement("span", null, escolhidos.length, " marcado(s)")), linhas.length === 0 && /* @__PURE__ */ React22.createElement("div", { className: "empty" }, filtro === "prontos" ? "Nenhum macho no peso alvo ainda." : "Nenhum macho neste filtro."), linhas.map((l) => {
     const c = l.cria;
     const faltam = an.cfg.metaPesoMacho && c.pesoAtual !== null && !l.pronto ? an.cfg.metaPesoMacho - c.pesoAtual : null;
     const status = c.pesoAtual === null ? "sem pesagem" : l.pronto ? "no peso" : `faltam ${fmtNum(faltam, 1)} kg${l.dias ? ` \xB7 ~${l.dias} dias` : ""}`;
-    return /* @__PURE__ */ React21.createElement("div", { className: "sel-row cols-vender", key: c.id }, /* @__PURE__ */ React21.createElement("input", { type: "checkbox", className: "chk", checked: marcados.has(c.id), onChange: () => alternar(c.id), "aria-label": `Marcar ${c.brinco || "cria sem n\xFAmero"}`, disabled: !c.brinco }), /* @__PURE__ */ React21.createElement("span", { className: "b", style: { font: "600 17px var(--mono)" } }, c.brinco || "\u2014"), /* @__PURE__ */ React21.createElement("span", { className: "two", style: { display: "flex", flexDirection: "column", lineHeight: 1.25, minWidth: 0 } }, /* @__PURE__ */ React21.createElement("b", { style: { fontWeight: 600, fontSize: 15 } }, fmtIdade(c.idadeDias)), /* @__PURE__ */ React21.createElement("span", { style: { color: l.pronto ? "var(--green)" : "var(--mut)" } }, "m\xE3e ", c.maeBrinco || "?", " \xB7 ", status)), /* @__PURE__ */ React21.createElement("span", { className: "r", style: { textAlign: "right", font: "600 15px var(--mono)" } }, c.pesoAtual === null ? "\u2014" : fmtKg(c.pesoAtual)), /* @__PURE__ */ React21.createElement("span", { className: "hide-s" }, /* @__PURE__ */ React21.createElement("span", { className: `pill ${l.pronto ? "pronto" : c.pesoAtual === null ? "fora" : "falta"}` }, l.pronto ? "pronto" : c.pesoAtual === null ? "sem peso" : "em ganho")), /* @__PURE__ */ React21.createElement("span", { className: "hide-s m mut" }, fmtGmd(c.gmd)));
-  })), /* @__PURE__ */ React21.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 } }, /* @__PURE__ */ React21.createElement("button", { className: "btn quiet sm", onClick: marcarProntos, disabled: !prontos.length }, "Marcar todos os prontos"), /* @__PURE__ */ React21.createElement("button", { className: "btn quiet sm", onClick: () => setMarcados(/* @__PURE__ */ new Set()), disabled: !marcados.size }, "Limpar"), /* @__PURE__ */ React21.createElement("button", { className: "btn", style: { marginLeft: "auto" }, disabled: !escolhidos.length, onClick: () => onVender(escolhidos.filter((l) => l.cria.brinco).map((l) => l.cria.brinco)) }, /* @__PURE__ */ React21.createElement(ShoppingCart2, { size: 18 }), " Vender ", escolhidos.length ? `os ${escolhidos.length} marcados` : "marcados")), semNumero > 0 && /* @__PURE__ */ React21.createElement("p", { className: "sub" }, semNumero, " marcado(s) sem n\xFAmero de brinco ficam de fora da venda."));
+    return /* @__PURE__ */ React22.createElement("div", { className: "sel-row cols-vender", key: c.id }, /* @__PURE__ */ React22.createElement("input", { type: "checkbox", className: "chk", checked: marcados.has(c.id), onChange: () => alternar(c.id), "aria-label": `Marcar ${c.brinco || "cria sem n\xFAmero"}`, disabled: !c.brinco }), /* @__PURE__ */ React22.createElement("span", { className: "b", style: { font: "600 17px var(--mono)" } }, c.brinco || "\u2014"), /* @__PURE__ */ React22.createElement("span", { className: "two", style: { display: "flex", flexDirection: "column", lineHeight: 1.25, minWidth: 0 } }, /* @__PURE__ */ React22.createElement("b", { style: { fontWeight: 600, fontSize: 15 } }, fmtIdade(c.idadeDias)), /* @__PURE__ */ React22.createElement("span", { style: { color: l.pronto ? "var(--green)" : "var(--mut)" } }, "m\xE3e ", c.maeBrinco || "?", " \xB7 ", status)), /* @__PURE__ */ React22.createElement("span", { className: "r", style: { textAlign: "right", font: "600 15px var(--mono)" } }, c.pesoAtual === null ? "\u2014" : fmtKg(c.pesoAtual)), /* @__PURE__ */ React22.createElement("span", { className: "hide-s" }, /* @__PURE__ */ React22.createElement("span", { className: `pill ${l.pronto ? "pronto" : c.pesoAtual === null ? "fora" : "falta"}` }, l.pronto ? "pronto" : c.pesoAtual === null ? "sem peso" : "em ganho")), /* @__PURE__ */ React22.createElement("span", { className: "hide-s m mut" }, fmtGmd(c.gmd)));
+  })), /* @__PURE__ */ React22.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 } }, /* @__PURE__ */ React22.createElement("button", { className: "btn quiet sm", onClick: marcarProntos, disabled: !prontos.length }, "Marcar todos os prontos"), /* @__PURE__ */ React22.createElement("button", { className: "btn quiet sm", onClick: () => setMarcados(/* @__PURE__ */ new Set()), disabled: !marcados.size }, "Limpar"), /* @__PURE__ */ React22.createElement("button", { className: "btn", style: { marginLeft: "auto" }, disabled: !escolhidos.length, onClick: () => onVender(escolhidos.filter((l) => l.cria.brinco).map((l) => l.cria.brinco)) }, /* @__PURE__ */ React22.createElement(ShoppingCart2, { size: 18 }), " Vender ", escolhidos.length ? `os ${escolhidos.length} marcados` : "marcados")), semNumero > 0 && /* @__PURE__ */ React22.createElement("p", { className: "sub" }, semNumero, " marcado(s) sem n\xFAmero de brinco ficam de fora da venda."));
 }
 
 // src/telas/CriasVendas.jsx
-import React22, { useEffect as useEffect10, useMemo as useMemo19, useRef as useRef10, useState as useState21 } from "react";
+import React23, { useEffect as useEffect10, useMemo as useMemo20, useRef as useRef10, useState as useState22 } from "react";
 import { Plus as Plus8, Trash2 as Trash26, ShoppingCart as ShoppingCart3, Loader2 as Loader212, ChevronDown, ChevronUp, Scale as Scale2 } from "lucide-react";
 var contador = 0;
 var novaLinha = (extra) => ({ k: `l${Date.now()}-${++contador}`, brinco: "", tipoAnimal: "", peso: "", tipoManual: false, ...extra });
 function LinhaVenda({ n, linha, dados, hoje, crias, onMudar, onTirar, onEnterPeso }) {
-  const info = useMemo19(
+  const info = useMemo20(
     () => linha.brinco.trim() ? infoAnimalVenda(dados, linha.brinco, hoje, crias) : null,
     [linha.brinco, dados, hoje, crias]
   );
@@ -8269,7 +8539,7 @@ function LinhaVenda({ n, linha, dados, hoje, crias, onMudar, onTirar, onEnterPes
   } else if (info && linha.brinco.trim().length >= 3) {
     texto = "N\xFAmero n\xE3o encontrado no sistema: a venda \xE9 registrada, mas sem dar baixa em ningu\xE9m.";
   }
-  return /* @__PURE__ */ React22.createElement("div", { className: "vlin", "data-testid": "linha-venda" }, /* @__PURE__ */ React22.createElement("div", { className: "l1" }, /* @__PURE__ */ React22.createElement("div", { className: "fld f-b" }, /* @__PURE__ */ React22.createElement("label", { htmlFor: `v-b-${linha.k}` }, "N\xFAmero ", n), /* @__PURE__ */ React22.createElement(
+  return /* @__PURE__ */ React23.createElement("div", { className: "vlin", "data-testid": "linha-venda" }, /* @__PURE__ */ React23.createElement("div", { className: "l1" }, /* @__PURE__ */ React23.createElement("div", { className: "fld f-b" }, /* @__PURE__ */ React23.createElement("label", { htmlFor: `v-b-${linha.k}` }, "N\xFAmero ", n), /* @__PURE__ */ React23.createElement(
     "input",
     {
       id: `v-b-${linha.k}`,
@@ -8280,7 +8550,7 @@ function LinhaVenda({ n, linha, dados, hoje, crias, onMudar, onTirar, onEnterPes
       value: linha.brinco,
       onChange: (e) => onMudar(linha.k, "brinco", e.target.value)
     }
-  )), /* @__PURE__ */ React22.createElement("div", { className: "fld f-p" }, /* @__PURE__ */ React22.createElement("label", { htmlFor: `v-p-${linha.k}` }, "Peso (kg) ", n), /* @__PURE__ */ React22.createElement(
+  )), /* @__PURE__ */ React23.createElement("div", { className: "fld f-p" }, /* @__PURE__ */ React23.createElement("label", { htmlFor: `v-p-${linha.k}` }, "Peso (kg) ", n), /* @__PURE__ */ React23.createElement(
     "input",
     {
       id: `v-p-${linha.k}`,
@@ -8297,36 +8567,36 @@ function LinhaVenda({ n, linha, dados, hoje, crias, onMudar, onTirar, onEnterPes
         }
       }
     }
-  )), /* @__PURE__ */ React22.createElement("button", { type: "button", className: "x-peq f-x", onClick: () => onTirar(linha.k), "aria-label": `Tirar a linha ${n}` }, /* @__PURE__ */ React22.createElement(Trash26, { size: 17 }))), /* @__PURE__ */ React22.createElement("div", { className: "l2" }, /* @__PURE__ */ React22.createElement("div", { className: "fld f-t" }, /* @__PURE__ */ React22.createElement("label", { htmlFor: `v-t-${linha.k}` }, "Tipo de animal ", n), /* @__PURE__ */ React22.createElement("select", { id: `v-t-${linha.k}`, value: linha.tipoAnimal, onChange: (e) => onMudar(linha.k, "tipoAnimal", e.target.value) }, /* @__PURE__ */ React22.createElement("option", { value: "" }, "Escolha o tipo"), TIPOS_ANIMAL_VENDA.map((t) => /* @__PURE__ */ React22.createElement("option", { key: t, value: t }, t))))), texto && /* @__PURE__ */ React22.createElement("div", { className: `info${ruim ? " ruim" : ""}` }, texto));
+  )), /* @__PURE__ */ React23.createElement("button", { type: "button", className: "x-peq f-x", onClick: () => onTirar(linha.k), "aria-label": `Tirar a linha ${n}` }, /* @__PURE__ */ React23.createElement(Trash26, { size: 17 }))), /* @__PURE__ */ React23.createElement("div", { className: "l2" }, /* @__PURE__ */ React23.createElement("div", { className: "fld f-t" }, /* @__PURE__ */ React23.createElement("label", { htmlFor: `v-t-${linha.k}` }, "Tipo de animal ", n), /* @__PURE__ */ React23.createElement("select", { id: `v-t-${linha.k}`, value: linha.tipoAnimal, onChange: (e) => onMudar(linha.k, "tipoAnimal", e.target.value) }, /* @__PURE__ */ React23.createElement("option", { value: "" }, "Escolha o tipo"), TIPOS_ANIMAL_VENDA.map((t) => /* @__PURE__ */ React23.createElement("option", { key: t, value: t }, t))))), texto && /* @__PURE__ */ React23.createElement("div", { className: `info${ruim ? " ruim" : ""}` }, texto));
 }
 function Historico({ dados }) {
-  const vendas = useMemo19(() => listarVendas(dados), [dados]);
-  const [abertas, setAbertas] = useState21(() => /* @__PURE__ */ new Set());
-  const alternar = (id) => setAbertas((s) => {
-    const n = new Set(s);
+  const vendas = useMemo20(() => listarVendas(dados), [dados]);
+  const [abertas, setAbertas] = useState22(() => /* @__PURE__ */ new Set());
+  const alternar = (id) => setAbertas((s2) => {
+    const n = new Set(s2);
     if (n.has(id)) n.delete(id);
     else n.add(id);
     return n;
   });
-  if (!vendas.length) return /* @__PURE__ */ React22.createElement("div", { className: "empty" }, "Nenhuma venda registrada ainda.");
-  return /* @__PURE__ */ React22.createElement("div", { className: "sheet", "data-testid": "historico-vendas" }, vendas.map(({ venda, itens: itens2 }) => {
+  if (!vendas.length) return /* @__PURE__ */ React23.createElement("div", { className: "empty" }, "Nenhuma venda registrada ainda.");
+  return /* @__PURE__ */ React23.createElement("div", { className: "sheet", "data-testid": "historico-vendas" }, vendas.map(({ venda, itens: itens2 }) => {
     const aberta = abertas.has(venda.id);
     const Seta = aberta ? ChevronUp : ChevronDown;
-    return /* @__PURE__ */ React22.createElement("div", { className: "venda-hist", key: venda.id }, /* @__PURE__ */ React22.createElement("button", { type: "button", onClick: () => alternar(venda.id), "aria-expanded": aberta }, /* @__PURE__ */ React22.createElement("span", { className: "m mut", style: { fontSize: 13 } }, formatarDataBR(venda.data)), /* @__PURE__ */ React22.createElement("span", { style: { display: "flex", flexDirection: "column", lineHeight: 1.25, minWidth: 0 } }, /* @__PURE__ */ React22.createElement("b", { style: { fontWeight: 600, fontSize: 15 } }, venda.comprador || "Sem comprador"), /* @__PURE__ */ React22.createElement("span", { style: { fontSize: 13, color: "var(--mut)" } }, venda.animais || `${venda.qtd || "?"} animais`, venda.pesoTotal ? ` \xB7 ${fmtKg(Number(venda.pesoTotal))}` : "")), /* @__PURE__ */ React22.createElement("span", { style: { display: "flex", alignItems: "center", gap: 6, font: "600 15px var(--mono)" } }, venda.valorTotal ? fmtBRL(Number(venda.valorTotal)) : "\u2014", " ", /* @__PURE__ */ React22.createElement(Seta, { size: 16 }))), aberta && /* @__PURE__ */ React22.createElement("div", { className: "itens" }, itens2.length === 0 ? /* @__PURE__ */ React22.createElement("p", { className: "sub", style: { margin: 0 } }, "Venda antiga, sem a lista de animais.") : itens2.map((i) => /* @__PURE__ */ React22.createElement("div", { className: "item-lin", key: i.id }, /* @__PURE__ */ React22.createElement("div", { className: "t" }, /* @__PURE__ */ React22.createElement("b", null, i.brinco || "sem n\xFAmero"), /* @__PURE__ */ React22.createElement("span", null, i.tipoAnimal)), /* @__PURE__ */ React22.createElement("div", { className: "p" }, fmtKg(Number(i.peso))))), venda.valorKg ? /* @__PURE__ */ React22.createElement("p", { className: "sub", style: { margin: "8px 0 0" } }, "Valor do kg: ", fmtBRL(Number(venda.valorKg)), venda.frete ? ` \xB7 frete ${fmtBRL(Number(venda.frete))}` : "") : null));
+    return /* @__PURE__ */ React23.createElement("div", { className: "venda-hist", key: venda.id }, /* @__PURE__ */ React23.createElement("button", { type: "button", onClick: () => alternar(venda.id), "aria-expanded": aberta }, /* @__PURE__ */ React23.createElement("span", { className: "m mut", style: { fontSize: 13 } }, formatarDataBR(venda.data)), /* @__PURE__ */ React23.createElement("span", { style: { display: "flex", flexDirection: "column", lineHeight: 1.25, minWidth: 0 } }, /* @__PURE__ */ React23.createElement("b", { style: { fontWeight: 600, fontSize: 15 } }, venda.comprador || "Sem comprador"), /* @__PURE__ */ React23.createElement("span", { style: { fontSize: 13, color: "var(--mut)" } }, venda.animais || `${venda.qtd || "?"} animais`, venda.pesoTotal ? ` \xB7 ${fmtKg(Number(venda.pesoTotal))}` : "")), /* @__PURE__ */ React23.createElement("span", { style: { display: "flex", alignItems: "center", gap: 6, font: "600 15px var(--mono)" } }, venda.valorTotal ? fmtBRL(Number(venda.valorTotal)) : "\u2014", " ", /* @__PURE__ */ React23.createElement(Seta, { size: 16 }))), aberta && /* @__PURE__ */ React23.createElement("div", { className: "itens" }, itens2.length === 0 ? /* @__PURE__ */ React23.createElement("p", { className: "sub", style: { margin: 0 } }, "Venda antiga, sem a lista de animais.") : itens2.map((i) => /* @__PURE__ */ React23.createElement("div", { className: "item-lin", key: i.id }, /* @__PURE__ */ React23.createElement("div", { className: "t" }, /* @__PURE__ */ React23.createElement("b", null, i.brinco || "sem n\xFAmero"), /* @__PURE__ */ React23.createElement("span", null, i.tipoAnimal)), /* @__PURE__ */ React23.createElement("div", { className: "p" }, fmtKg(Number(i.peso))))), venda.valorKg ? /* @__PURE__ */ React23.createElement("p", { className: "sub", style: { margin: "8px 0 0" } }, "Valor do kg: ", fmtBRL(Number(venda.valorKg)), venda.frete ? ` \xB7 frete ${fmtBRL(Number(venda.frete))}` : "") : null));
   }));
 }
 function Vendas({ dados, hoje, crias, preset, onVender, modoTeste }) {
-  const [data, setData] = useState21(hoje);
-  const [comprador, setComprador] = useState21("");
-  const [valorKg, setValorKg] = useState21("");
-  const [frete, setFrete] = useState21("");
-  const [linhas, setLinhas] = useState21(() => [novaLinha()]);
-  const [erros, setErros] = useState21([]);
-  const [confirmando, setConfirmando] = useState21(null);
-  const [gravando, setGravando] = useState21(false);
-  const [erroGravar, setErroGravar] = useState21("");
-  const [resultado, setResultado] = useState21("");
-  const [travado, setTravado] = useState21(false);
+  const [data, setData] = useState22(hoje);
+  const [comprador, setComprador] = useState22("");
+  const [valorKg, setValorKg] = useState22("");
+  const [frete, setFrete] = useState22("");
+  const [linhas, setLinhas] = useState22(() => [novaLinha()]);
+  const [erros, setErros] = useState22([]);
+  const [confirmando, setConfirmando] = useState22(null);
+  const [gravando, setGravando] = useState22(false);
+  const [erroGravar, setErroGravar] = useState22("");
+  const [resultado, setResultado] = useState22("");
+  const [travado, setTravado] = useState22(false);
   const timer2 = useRef10(null);
   useEffect10(() => () => clearTimeout(timer2.current), []);
   useEffect10(() => {
@@ -8383,7 +8653,7 @@ function Vendas({ dados, hoje, crias, preset, onVender, modoTeste }) {
     setErros([]);
   }
   const itensForm = linhas.map((l) => ({ brinco: l.brinco, tipoAnimal: l.tipoAnimal, peso: l.peso }));
-  const tot = useMemo19(() => totaisVenda(itensForm, valorKg, frete), [linhas, valorKg, frete]);
+  const tot = useMemo20(() => totaisVenda(itensForm, valorKg, frete), [linhas, valorKg, frete]);
   const semPeso = linhas.filter((l) => l.brinco.trim() && !l.peso.trim()).length;
   function conferir() {
     if (travado || gravando) return;
@@ -8418,53 +8688,53 @@ function Vendas({ dados, hoje, crias, preset, onVender, modoTeste }) {
     clearTimeout(timer2.current);
     timer2.current = setTimeout(() => setTravado(false), 1500);
   }
-  return /* @__PURE__ */ React22.createElement("section", { className: "sheet pad" }, /* @__PURE__ */ React22.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Vender por peso"), /* @__PURE__ */ React22.createElement("p", { className: "sub" }, "Informe o comprador e o valor do kg. Embaixo, uma linha para cada animal: o n\xFAmero, o tipo e o peso. Pode vender tamb\xE9m vacas de descarte e vacas velhas. Cada animal vendido sai do rebanho."), /* @__PURE__ */ React22.createElement("div", { className: "grid2" }, /* @__PURE__ */ React22.createElement("div", { className: "fld" }, /* @__PURE__ */ React22.createElement("label", { htmlFor: "venda-data" }, "Data da venda"), /* @__PURE__ */ React22.createElement("input", { id: "venda-data", type: "date", value: data, onChange: (e) => {
+  return /* @__PURE__ */ React23.createElement("section", { className: "sheet pad" }, /* @__PURE__ */ React23.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Vender por peso"), /* @__PURE__ */ React23.createElement("p", { className: "sub" }, "Informe o comprador e o valor do kg. Embaixo, uma linha para cada animal: o n\xFAmero, o tipo e o peso. Pode vender tamb\xE9m vacas de descarte e vacas velhas. Cada animal vendido sai do rebanho."), /* @__PURE__ */ React23.createElement("div", { className: "grid2" }, /* @__PURE__ */ React23.createElement("div", { className: "fld" }, /* @__PURE__ */ React23.createElement("label", { htmlFor: "venda-data" }, "Data da venda"), /* @__PURE__ */ React23.createElement("input", { id: "venda-data", type: "date", value: data, onChange: (e) => {
     setData(e.target.value);
     setErros([]);
-  } })), /* @__PURE__ */ React22.createElement("div", { className: "fld" }, /* @__PURE__ */ React22.createElement("label", { htmlFor: "venda-comprador" }, "Comprador"), /* @__PURE__ */ React22.createElement("input", { id: "venda-comprador", type: "text", autoComplete: "off", value: comprador, onChange: (e) => {
+  } })), /* @__PURE__ */ React23.createElement("div", { className: "fld" }, /* @__PURE__ */ React23.createElement("label", { htmlFor: "venda-comprador" }, "Comprador"), /* @__PURE__ */ React23.createElement("input", { id: "venda-comprador", type: "text", autoComplete: "off", value: comprador, onChange: (e) => {
     setComprador(e.target.value);
     setErros([]);
-  } })), /* @__PURE__ */ React22.createElement("div", { className: "fld" }, /* @__PURE__ */ React22.createElement("label", { htmlFor: "venda-valor" }, "Valor do kg (R$)"), /* @__PURE__ */ React22.createElement("input", { id: "venda-valor", type: "text", inputMode: "decimal", autoComplete: "off", value: valorKg, onChange: (e) => {
+  } })), /* @__PURE__ */ React23.createElement("div", { className: "fld" }, /* @__PURE__ */ React23.createElement("label", { htmlFor: "venda-valor" }, "Valor do kg (R$)"), /* @__PURE__ */ React23.createElement("input", { id: "venda-valor", type: "text", inputMode: "decimal", autoComplete: "off", value: valorKg, onChange: (e) => {
     setValorKg(e.target.value);
     setErros([]);
-  }, placeholder: "ex.: 12,50" })), /* @__PURE__ */ React22.createElement("div", { className: "fld" }, /* @__PURE__ */ React22.createElement("label", { htmlFor: "venda-frete" }, "Frete (R$, se houver)"), /* @__PURE__ */ React22.createElement("input", { id: "venda-frete", type: "text", inputMode: "decimal", autoComplete: "off", value: frete, onChange: (e) => setFrete(e.target.value) }))), /* @__PURE__ */ React22.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Animais da venda", /* @__PURE__ */ React22.createElement("small", null, tot.qtd, " com peso")), linhas.map((l, i) => /* @__PURE__ */ React22.createElement(LinhaVenda, { key: l.k, n: i + 1, linha: l, dados, hoje, crias, onMudar: mudarLinha, onTirar: tirarLinha, onEnterPeso: enterNoPeso })), /* @__PURE__ */ React22.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React22.createElement("button", { type: "button", className: "btn quiet", onClick: adicionarLinha }, /* @__PURE__ */ React22.createElement(Plus8, { size: 18 }), " Adicionar animal"), semPeso > 0 && /* @__PURE__ */ React22.createElement("button", { type: "button", className: "btn quiet", onClick: preencherPesos }, /* @__PURE__ */ React22.createElement(Scale2, { size: 18 }), " Usar o \xFAltimo peso dos ", semPeso, " sem peso")), /* @__PURE__ */ React22.createElement("div", { className: "totais", "data-testid": "totais-venda" }, /* @__PURE__ */ React22.createElement("div", { className: "grande" }, tot.valor > 0 ? fmtBRL(tot.valor) : "R$ \u2014"), /* @__PURE__ */ React22.createElement("div", { style: { fontSize: 14.5, lineHeight: 1.5 } }, /* @__PURE__ */ React22.createElement("b", null, tot.qtd), " animal(is) \xB7 ", /* @__PURE__ */ React22.createElement("b", null, fmtKg(tot.kg)), tot.qtd ? ` (m\xE9dia ${fmtKg(tot.kgMedio)})` : "", tot.frete > 0 && /* @__PURE__ */ React22.createElement(React22.Fragment, null, " \xB7 frete ", fmtBRL(tot.frete), " \xB7 l\xEDquido ", /* @__PURE__ */ React22.createElement("b", null, fmtBRL(tot.liquido)))), tot.porTipo.length > 0 && /* @__PURE__ */ React22.createElement("div", { style: { fontSize: 13.5, color: "var(--mut)", marginTop: 4 } }, tot.porTipo.map((t) => `${t.qtd} ${t.tipo} (${fmtKg(t.kg)})`).join(" \xB7 "))), erros.length > 0 && /* @__PURE__ */ React22.createElement(Aviso, null, "Falta ajustar:", /* @__PURE__ */ React22.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, erros.map((t, i) => /* @__PURE__ */ React22.createElement("li", { key: i }, t)))), resultado && /* @__PURE__ */ React22.createElement(Aviso, { tipo: "ok" }, resultado, modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : ""), /* @__PURE__ */ React22.createElement("button", { className: "btn wide", onClick: conferir, disabled: travado || gravando }, /* @__PURE__ */ React22.createElement(ShoppingCart3, { size: 18 }), " Conferir e vender"), /* @__PURE__ */ React22.createElement("h3", { className: "h2", style: { fontSize: 18, marginTop: 28 } }, "Vendas anteriores"), /* @__PURE__ */ React22.createElement(Historico, { dados }), confirmando && /* @__PURE__ */ React22.createElement(Modal, { titulo: "Confirmar a venda", onClose: () => {
+  }, placeholder: "ex.: 12,50" })), /* @__PURE__ */ React23.createElement("div", { className: "fld" }, /* @__PURE__ */ React23.createElement("label", { htmlFor: "venda-frete" }, "Frete (R$, se houver)"), /* @__PURE__ */ React23.createElement("input", { id: "venda-frete", type: "text", inputMode: "decimal", autoComplete: "off", value: frete, onChange: (e) => setFrete(e.target.value) }))), /* @__PURE__ */ React23.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Animais da venda", /* @__PURE__ */ React23.createElement("small", null, tot.qtd, " com peso")), linhas.map((l, i) => /* @__PURE__ */ React23.createElement(LinhaVenda, { key: l.k, n: i + 1, linha: l, dados, hoje, crias, onMudar: mudarLinha, onTirar: tirarLinha, onEnterPeso: enterNoPeso })), /* @__PURE__ */ React23.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React23.createElement("button", { type: "button", className: "btn quiet", onClick: adicionarLinha }, /* @__PURE__ */ React23.createElement(Plus8, { size: 18 }), " Adicionar animal"), semPeso > 0 && /* @__PURE__ */ React23.createElement("button", { type: "button", className: "btn quiet", onClick: preencherPesos }, /* @__PURE__ */ React23.createElement(Scale2, { size: 18 }), " Usar o \xFAltimo peso dos ", semPeso, " sem peso")), /* @__PURE__ */ React23.createElement("div", { className: "totais", "data-testid": "totais-venda" }, /* @__PURE__ */ React23.createElement("div", { className: "grande" }, tot.valor > 0 ? fmtBRL(tot.valor) : "R$ \u2014"), /* @__PURE__ */ React23.createElement("div", { style: { fontSize: 14.5, lineHeight: 1.5 } }, /* @__PURE__ */ React23.createElement("b", null, tot.qtd), " animal(is) \xB7 ", /* @__PURE__ */ React23.createElement("b", null, fmtKg(tot.kg)), tot.qtd ? ` (m\xE9dia ${fmtKg(tot.kgMedio)})` : "", tot.frete > 0 && /* @__PURE__ */ React23.createElement(React23.Fragment, null, " \xB7 frete ", fmtBRL(tot.frete), " \xB7 l\xEDquido ", /* @__PURE__ */ React23.createElement("b", null, fmtBRL(tot.liquido)))), tot.porTipo.length > 0 && /* @__PURE__ */ React23.createElement("div", { style: { fontSize: 13.5, color: "var(--mut)", marginTop: 4 } }, tot.porTipo.map((t) => `${t.qtd} ${t.tipo} (${fmtKg(t.kg)})`).join(" \xB7 "))), erros.length > 0 && /* @__PURE__ */ React23.createElement(Aviso, null, "Falta ajustar:", /* @__PURE__ */ React23.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, erros.map((t, i) => /* @__PURE__ */ React23.createElement("li", { key: i }, t)))), resultado && /* @__PURE__ */ React23.createElement(Aviso, { tipo: "ok" }, resultado, modoTeste ? " (modo teste: s\xF3 na tela, nada foi para a planilha)" : ""), /* @__PURE__ */ React23.createElement("button", { className: "btn wide", onClick: conferir, disabled: travado || gravando }, /* @__PURE__ */ React23.createElement(ShoppingCart3, { size: 18 }), " Conferir e vender"), /* @__PURE__ */ React23.createElement("h3", { className: "h2", style: { fontSize: 18, marginTop: 28 } }, "Vendas anteriores"), /* @__PURE__ */ React23.createElement(Historico, { dados }), confirmando && /* @__PURE__ */ React23.createElement(Modal, { titulo: "Confirmar a venda", onClose: () => {
     if (!gravando) {
       setConfirmando(null);
       setErroGravar("");
     }
-  } }, /* @__PURE__ */ React22.createElement("div", { "data-testid": "confirmar-venda" }, /* @__PURE__ */ React22.createElement("p", { style: { margin: "0 0 6px", fontSize: 15.5, lineHeight: 1.5 } }, /* @__PURE__ */ React22.createElement("b", null, confirmando.tot.qtd), " animal(is) para ", /* @__PURE__ */ React22.createElement("b", null, confirmando.form.comprador.trim()), " em ", formatarDataBR(confirmando.form.data), "."), /* @__PURE__ */ React22.createElement("div", { className: "totais", style: { marginTop: 6 } }, /* @__PURE__ */ React22.createElement("div", { className: "grande" }, fmtBRL(confirmando.tot.valor)), /* @__PURE__ */ React22.createElement("div", { style: { fontSize: 14.5, lineHeight: 1.5 } }, fmtKg(confirmando.tot.kg), " (m\xE9dia ", fmtKg(confirmando.tot.kgMedio), ") a ", fmtBRL(numPeso(confirmando.form.valorKg)), " o kg", confirmando.tot.frete > 0 && /* @__PURE__ */ React22.createElement(React22.Fragment, null, " \xB7 frete ", fmtBRL(confirmando.tot.frete), " \xB7 l\xEDquido ", fmtBRL(confirmando.tot.liquido))), /* @__PURE__ */ React22.createElement("div", { style: { fontSize: 13.5, color: "var(--mut)", marginTop: 4 } }, confirmando.tot.porTipo.map((t) => `${t.qtd} ${t.tipo}`).join(" \xB7 "))), confirmando.avisos.length > 0 && /* @__PURE__ */ React22.createElement(Aviso, { tipo: "info" }, /* @__PURE__ */ React22.createElement("ul", { style: { margin: 0, paddingLeft: 18 } }, confirmando.avisos.map((t, i) => /* @__PURE__ */ React22.createElement("li", { key: i }, t)))), /* @__PURE__ */ React22.createElement("p", { className: "sub" }, "Os animais com n\xFAmero cadastrado saem do rebanho ao confirmar."), erroGravar && /* @__PURE__ */ React22.createElement(Aviso, null, erroGravar), /* @__PURE__ */ React22.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React22.createElement("button", { className: "btn", onClick: confirmar, disabled: gravando }, gravando ? /* @__PURE__ */ React22.createElement(Loader212, { size: 18, className: "spin" }) : /* @__PURE__ */ React22.createElement(ShoppingCart3, { size: 18 }), " ", gravando ? "Gravando..." : "Confirmar venda"), /* @__PURE__ */ React22.createElement("button", { className: "btn quiet", onClick: () => {
+  } }, /* @__PURE__ */ React23.createElement("div", { "data-testid": "confirmar-venda" }, /* @__PURE__ */ React23.createElement("p", { style: { margin: "0 0 6px", fontSize: 15.5, lineHeight: 1.5 } }, /* @__PURE__ */ React23.createElement("b", null, confirmando.tot.qtd), " animal(is) para ", /* @__PURE__ */ React23.createElement("b", null, confirmando.form.comprador.trim()), " em ", formatarDataBR(confirmando.form.data), "."), /* @__PURE__ */ React23.createElement("div", { className: "totais", style: { marginTop: 6 } }, /* @__PURE__ */ React23.createElement("div", { className: "grande" }, fmtBRL(confirmando.tot.valor)), /* @__PURE__ */ React23.createElement("div", { style: { fontSize: 14.5, lineHeight: 1.5 } }, fmtKg(confirmando.tot.kg), " (m\xE9dia ", fmtKg(confirmando.tot.kgMedio), ") a ", fmtBRL(numPeso(confirmando.form.valorKg)), " o kg", confirmando.tot.frete > 0 && /* @__PURE__ */ React23.createElement(React23.Fragment, null, " \xB7 frete ", fmtBRL(confirmando.tot.frete), " \xB7 l\xEDquido ", fmtBRL(confirmando.tot.liquido))), /* @__PURE__ */ React23.createElement("div", { style: { fontSize: 13.5, color: "var(--mut)", marginTop: 4 } }, confirmando.tot.porTipo.map((t) => `${t.qtd} ${t.tipo}`).join(" \xB7 "))), confirmando.avisos.length > 0 && /* @__PURE__ */ React23.createElement(Aviso, { tipo: "info" }, /* @__PURE__ */ React23.createElement("ul", { style: { margin: 0, paddingLeft: 18 } }, confirmando.avisos.map((t, i) => /* @__PURE__ */ React23.createElement("li", { key: i }, t)))), /* @__PURE__ */ React23.createElement("p", { className: "sub" }, "Os animais com n\xFAmero cadastrado saem do rebanho ao confirmar."), erroGravar && /* @__PURE__ */ React23.createElement(Aviso, null, erroGravar), /* @__PURE__ */ React23.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React23.createElement("button", { className: "btn", onClick: confirmar, disabled: gravando }, gravando ? /* @__PURE__ */ React23.createElement(Loader212, { size: 18, className: "spin" }) : /* @__PURE__ */ React23.createElement(ShoppingCart3, { size: 18 }), " ", gravando ? "Gravando..." : "Confirmar venda"), /* @__PURE__ */ React23.createElement("button", { className: "btn quiet", onClick: () => {
     setConfirmando(null);
     setErroGravar("");
   }, disabled: gravando }, "Voltar")))));
 }
 
 // src/telas/CriasNovilhas.jsx
-import React23, { useMemo as useMemo20, useState as useState22 } from "react";
+import React24, { useMemo as useMemo21, useState as useState23 } from "react";
 import { ShoppingCart as ShoppingCart4 } from "lucide-react";
 var ROTULO_DESTINO = { "A definir": "A definir", Matriz: "Virar matriz", Venda: "Para venda" };
 var FILTROS = [["aptas", "Aptas"], ["todas", "Todas"], ["A definir", "A definir"], ["Matriz", "Matriz"], ["Venda", "Venda"]];
 function FichaNovilha({ n, cfg, onDestino, onVender, onFechar }) {
   const hist = [...n.pontos].reverse();
   const status = n.pesoAtual === null ? "sem pesagem" : n.apta ? `apta (${fmtNum(cfg.pesoMatriz, 0)} kg ou mais)` : `faltam ${fmtNum(n.faltam, 1)} kg${n.diasParaApta ? ` \xB7 ~${n.diasParaApta} dias` : ""}`;
-  return /* @__PURE__ */ React23.createElement(Modal, { titulo: `Novilha ${n.brinco}`, onClose: onFechar, rotulo: `Novilha ${n.brinco}` }, /* @__PURE__ */ React23.createElement(Lead, { rotulo: "Nascimento", valor: n.nascData ? `${formatarDataBR(n.nascData)} \xB7 ${fmtIdade(n.idadeDias)}` : "\u2014" }), /* @__PURE__ */ React23.createElement(Lead, { rotulo: "\xDAltimo peso", valor: n.pesoAtual === null ? "sem pesagem" : `${fmtKg(n.pesoAtual)} em ${formatarDataBR(n.pesoData)}` }), /* @__PURE__ */ React23.createElement(Lead, { rotulo: "Ganho recente", valor: fmtGmd(n.gmd) }), /* @__PURE__ */ React23.createElement(Lead, { rotulo: "Para virar matriz", valor: status, cor: n.apta ? "var(--green)" : void 0 }), /* @__PURE__ */ React23.createElement(Lead, { rotulo: "Destino", valor: ROTULO_DESTINO[n.destino] || n.destino }), /* @__PURE__ */ React23.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Pesagens", /* @__PURE__ */ React23.createElement("small", null, n.pontos.length, " registro(s)")), hist.length === 0 ? /* @__PURE__ */ React23.createElement("p", { className: "sub" }, "Nenhuma pesagem ainda.") : /* @__PURE__ */ React23.createElement("ul", { className: "hist", "data-testid": "pesagens-novilha" }, hist.map((p) => /* @__PURE__ */ React23.createElement("li", { key: p.id }, /* @__PURE__ */ React23.createElement("span", null, fmtKg(p.peso), p.fonte !== "Pesagem" ? ` \xB7 ${p.fonte.toLowerCase()}` : ""), /* @__PURE__ */ React23.createElement("span", null, formatarDataBR(p.data))))), /* @__PURE__ */ React23.createElement("div", { className: "rapido", style: { marginTop: 14 } }, /* @__PURE__ */ React23.createElement("div", { className: "lbl", style: { font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 8 } }, "Destino desta novilha"), /* @__PURE__ */ React23.createElement("div", { className: "seg", role: "group", "aria-label": "Destino da novilha" }, DESTINOS_NOVILHA.map((d) => /* @__PURE__ */ React23.createElement("button", { key: d, type: "button", "aria-pressed": n.destino === d, onClick: () => onDestino([n], d) }, ROTULO_DESTINO[d])))), /* @__PURE__ */ React23.createElement("button", { className: "btn wide", onClick: () => onVender([n.brinco]) }, /* @__PURE__ */ React23.createElement(ShoppingCart4, { size: 18 }), " Vender esta novilha"));
+  return /* @__PURE__ */ React24.createElement(Modal, { titulo: `Novilha ${n.brinco}`, onClose: onFechar, rotulo: `Novilha ${n.brinco}` }, /* @__PURE__ */ React24.createElement(Lead, { rotulo: "Nascimento", valor: n.nascData ? `${formatarDataBR(n.nascData)} \xB7 ${fmtIdade(n.idadeDias)}` : "\u2014" }), /* @__PURE__ */ React24.createElement(Lead, { rotulo: "\xDAltimo peso", valor: n.pesoAtual === null ? "sem pesagem" : `${fmtKg(n.pesoAtual)} em ${formatarDataBR(n.pesoData)}` }), /* @__PURE__ */ React24.createElement(Lead, { rotulo: "Ganho recente", valor: fmtGmd(n.gmd) }), /* @__PURE__ */ React24.createElement(Lead, { rotulo: "Para virar matriz", valor: status, cor: n.apta ? "var(--green)" : void 0 }), /* @__PURE__ */ React24.createElement(Lead, { rotulo: "Destino", valor: ROTULO_DESTINO[n.destino] || n.destino }), /* @__PURE__ */ React24.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Pesagens", /* @__PURE__ */ React24.createElement("small", null, n.pontos.length, " registro(s)")), hist.length === 0 ? /* @__PURE__ */ React24.createElement("p", { className: "sub" }, "Nenhuma pesagem ainda.") : /* @__PURE__ */ React24.createElement("ul", { className: "hist", "data-testid": "pesagens-novilha" }, hist.map((p) => /* @__PURE__ */ React24.createElement("li", { key: p.id }, /* @__PURE__ */ React24.createElement("span", null, fmtKg(p.peso), p.fonte !== "Pesagem" ? ` \xB7 ${p.fonte.toLowerCase()}` : ""), /* @__PURE__ */ React24.createElement("span", null, formatarDataBR(p.data))))), /* @__PURE__ */ React24.createElement("div", { className: "rapido", style: { marginTop: 14 } }, /* @__PURE__ */ React24.createElement("div", { className: "lbl", style: { font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 8 } }, "Destino desta novilha"), /* @__PURE__ */ React24.createElement("div", { className: "seg", role: "group", "aria-label": "Destino da novilha" }, DESTINOS_NOVILHA.map((d) => /* @__PURE__ */ React24.createElement("button", { key: d, type: "button", "aria-pressed": n.destino === d, onClick: () => onDestino([n], d) }, ROTULO_DESTINO[d])))), /* @__PURE__ */ React24.createElement("button", { className: "btn wide", onClick: () => onVender([n.brinco]) }, /* @__PURE__ */ React24.createElement(ShoppingCart4, { size: 18 }), " Vender esta novilha"));
 }
 function Novilhas({ dados, hoje, onSalvarMatriz, onVender }) {
-  const cfg = useMemo20(() => configCompleta(dados.config), [dados.config]);
-  const lista5 = useMemo20(() => listarNovilhas(dados, dados.config, hoje), [dados, hoje]);
-  const [filtro, setFiltro] = useState22("todas");
-  const [marcadas, setMarcadas] = useState22(() => /* @__PURE__ */ new Set());
-  const [aberta, setAberta] = useState22(null);
-  const [msg, setMsg] = useState22("");
+  const cfg = useMemo21(() => configCompleta(dados.config), [dados.config]);
+  const lista5 = useMemo21(() => listarNovilhas(dados, dados.config, hoje), [dados, hoje]);
+  const [filtro, setFiltro] = useState23("todas");
+  const [marcadas, setMarcadas] = useState23(() => /* @__PURE__ */ new Set());
+  const [aberta, setAberta] = useState23(null);
+  const [msg, setMsg] = useState23("");
   const aptas = lista5.filter((n) => n.apta);
   const pesadas = lista5.filter((n) => n.pesoAtual !== null);
-  const pesoMedio = pesadas.length ? pesadas.reduce((s, n) => s + n.pesoAtual, 0) / pesadas.length : null;
+  const pesoMedio = pesadas.length ? pesadas.reduce((s2, n) => s2 + n.pesoAtual, 0) / pesadas.length : null;
   const semPeso = lista5.length - pesadas.length;
   const mostradas = lista5.filter((n) => filtro === "todas" ? true : filtro === "aptas" ? n.apta : n.destino === filtro);
   const escolhidas = lista5.filter((n) => marcadas.has(n.matriz.id));
   const fichaAberta = aberta ? lista5.find((n) => n.matriz.id === aberta) || null : null;
   function alternar(id) {
-    setMarcadas((s) => {
-      const x = new Set(s);
+    setMarcadas((s2) => {
+      const x = new Set(s2);
       if (x.has(id)) x.delete(id);
       else x.add(id);
       return x;
@@ -8483,14 +8753,14 @@ function Novilhas({ dados, hoje, onSalvarMatriz, onVender }) {
     setAberta(null);
     onVender(brincos.filter(Boolean));
   }
-  return /* @__PURE__ */ React23.createElement("section", { className: "sheet pad" }, /* @__PURE__ */ React23.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Novilhas"), /* @__PURE__ */ React23.createElement("p", { className: "sub" }, "F\xEAmeas desmamadas em recria. A partir de ", fmtNum(cfg.pesoMatriz, 0), " kg a novilha est\xE1 apta a virar matriz. Voc\xEA decide o destino de cada uma. (Para mudar o peso de corte, use a aba Para vender.)"), /* @__PURE__ */ React23.createElement(Kpis, { itens: [
+  return /* @__PURE__ */ React24.createElement("section", { className: "sheet pad" }, /* @__PURE__ */ React24.createElement("h2", { className: "h2", style: { marginTop: 0 } }, "Novilhas"), /* @__PURE__ */ React24.createElement("p", { className: "sub" }, "F\xEAmeas desmamadas em recria. A partir de ", fmtNum(cfg.pesoMatriz, 0), " kg a novilha est\xE1 apta a virar matriz. Voc\xEA decide o destino de cada uma. (Para mudar o peso de corte, use a aba Para vender.)"), /* @__PURE__ */ React24.createElement(Kpis, { itens: [
     { rotulo: "Novilhas no lote", valor: lista5.length, sub: `${semPeso} sem pesagem` },
     { rotulo: `Aptas (${fmtNum(cfg.pesoMatriz, 0)} kg ou mais)`, valor: aptas.length, cor: aptas.length ? "var(--green)" : void 0 },
     { rotulo: "Peso m\xE9dio", valor: pesoMedio === null ? "\u2014" : fmtKg(pesoMedio), pequeno: true },
     { rotulo: "Destino", valor: `${lista5.filter((n) => n.destino === "Matriz").length} matriz`, pequeno: true, sub: `${lista5.filter((n) => n.destino === "Venda").length} venda \xB7 ${lista5.filter((n) => n.destino === "A definir").length} a definir` }
-  ] }), lista5.length === 0 && /* @__PURE__ */ React23.createElement(Aviso, { tipo: "info" }, "Ainda n\xE3o h\xE1 novilhas no lote. Elas entram aqui quando uma f\xEAmea \xE9 desmamada (aba Pesar, modo Desmama)."), lista5.length > 0 && /* @__PURE__ */ React23.createElement(React23.Fragment, null, /* @__PURE__ */ React23.createElement("div", { className: "seg", style: { margin: "16px 0 10px", flexWrap: "wrap" }, role: "group", "aria-label": "Quais novilhas mostrar" }, FILTROS.map(([id, rot]) => /* @__PURE__ */ React23.createElement("button", { key: id, type: "button", "aria-pressed": filtro === id, onClick: () => setFiltro(id), style: { minWidth: 86 } }, rot, " ", id === "aptas" ? aptas.length : id === "todas" ? lista5.length : lista5.filter((n) => n.destino === id).length))), /* @__PURE__ */ React23.createElement("div", { className: "sheet", style: { boxShadow: "none", borderRadius: 8 } }, /* @__PURE__ */ React23.createElement("div", { className: "bar-sum" }, /* @__PURE__ */ React23.createElement("span", null, mostradas.length, " novilha(s)"), /* @__PURE__ */ React23.createElement("span", null, escolhidas.length, " marcada(s)")), mostradas.length === 0 && /* @__PURE__ */ React23.createElement("div", { className: "empty" }, "Nenhuma novilha neste filtro."), mostradas.map((n) => {
+  ] }), lista5.length === 0 && /* @__PURE__ */ React24.createElement(Aviso, { tipo: "info" }, "Ainda n\xE3o h\xE1 novilhas no lote. Elas entram aqui quando uma f\xEAmea \xE9 desmamada (aba Pesar, modo Desmama)."), lista5.length > 0 && /* @__PURE__ */ React24.createElement(React24.Fragment, null, /* @__PURE__ */ React24.createElement("div", { className: "seg", style: { margin: "16px 0 10px", flexWrap: "wrap" }, role: "group", "aria-label": "Quais novilhas mostrar" }, FILTROS.map(([id, rot]) => /* @__PURE__ */ React24.createElement("button", { key: id, type: "button", "aria-pressed": filtro === id, onClick: () => setFiltro(id), style: { minWidth: 86 } }, rot, " ", id === "aptas" ? aptas.length : id === "todas" ? lista5.length : lista5.filter((n) => n.destino === id).length))), /* @__PURE__ */ React24.createElement("div", { className: "sheet", style: { boxShadow: "none", borderRadius: 8 } }, /* @__PURE__ */ React24.createElement("div", { className: "bar-sum" }, /* @__PURE__ */ React24.createElement("span", null, mostradas.length, " novilha(s)"), /* @__PURE__ */ React24.createElement("span", null, escolhidas.length, " marcada(s)")), mostradas.length === 0 && /* @__PURE__ */ React24.createElement("div", { className: "empty" }, "Nenhuma novilha neste filtro."), mostradas.map((n) => {
     const status = n.pesoAtual === null ? "sem pesagem" : n.apta ? "apta para matriz" : `faltam ${fmtNum(n.faltam, 1)} kg${n.diasParaApta ? ` \xB7 ~${n.diasParaApta} dias` : ""}`;
-    return /* @__PURE__ */ React23.createElement("div", { className: "sel-row cols-nov", key: n.matriz.id }, /* @__PURE__ */ React23.createElement("input", { type: "checkbox", className: "chk", checked: marcadas.has(n.matriz.id), onChange: () => alternar(n.matriz.id), "aria-label": `Marcar a novilha ${n.brinco}` }), /* @__PURE__ */ React23.createElement(
+    return /* @__PURE__ */ React24.createElement("div", { className: "sel-row cols-nov", key: n.matriz.id }, /* @__PURE__ */ React24.createElement("input", { type: "checkbox", className: "chk", checked: marcadas.has(n.matriz.id), onChange: () => alternar(n.matriz.id), "aria-label": `Marcar a novilha ${n.brinco}` }), /* @__PURE__ */ React24.createElement(
       "button",
       {
         type: "button",
@@ -8499,19 +8769,19 @@ function Novilhas({ dados, hoje, onSalvarMatriz, onVender }) {
         style: { background: "transparent", border: "none", textAlign: "left", font: "600 17px var(--mono)", minHeight: 48, padding: 0, color: "inherit" }
       },
       n.brinco
-    ), /* @__PURE__ */ React23.createElement("span", { style: { display: "flex", flexDirection: "column", lineHeight: 1.25, minWidth: 0 } }, /* @__PURE__ */ React23.createElement("b", { style: { fontWeight: 600, fontSize: 15 } }, fmtIdade(n.idadeDias)), /* @__PURE__ */ React23.createElement("span", { style: { color: n.apta ? "var(--green)" : "var(--mut)" } }, ROTULO_DESTINO[n.destino] || n.destino, " \xB7 ", status)), /* @__PURE__ */ React23.createElement("span", { className: "r", style: { textAlign: "right", font: "600 15px var(--mono)" } }, n.pesoAtual === null ? "\u2014" : fmtKg(n.pesoAtual)), /* @__PURE__ */ React23.createElement("span", { className: "hide-s" }, /* @__PURE__ */ React23.createElement("span", { className: `pill ${n.apta ? "pronto" : n.pesoAtual === null ? "fora" : "falta"}` }, n.apta ? "apta" : n.pesoAtual === null ? "sem peso" : "em ganho")), /* @__PURE__ */ React23.createElement("span", { className: "hide-s m mut" }, fmtGmd(n.gmd)));
-  })), /* @__PURE__ */ React23.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 } }, /* @__PURE__ */ React23.createElement("button", { type: "button", className: "btn quiet sm", onClick: marcarAptas, disabled: !aptas.length }, "Marcar as aptas"), /* @__PURE__ */ React23.createElement("button", { type: "button", className: "btn quiet sm", onClick: () => setMarcadas(/* @__PURE__ */ new Set()), disabled: !marcadas.size }, "Limpar")), /* @__PURE__ */ React23.createElement("div", { className: "rapido", style: { marginTop: 12 } }, /* @__PURE__ */ React23.createElement("div", { className: "lbl", style: { font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 8 } }, "Destino das ", escolhidas.length, " marcada(s)"), /* @__PURE__ */ React23.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, DESTINOS_NOVILHA.map((d) => /* @__PURE__ */ React23.createElement("button", { key: d, type: "button", className: "btn quiet", disabled: !escolhidas.length, onClick: () => destinoPara(escolhidas, d) }, ROTULO_DESTINO[d])), /* @__PURE__ */ React23.createElement("button", { type: "button", className: "btn", disabled: !escolhidas.length, onClick: () => venderNovilhas(escolhidas.map((n) => n.brinco)) }, /* @__PURE__ */ React23.createElement(ShoppingCart4, { size: 18 }), " Vender marcadas")))), msg && /* @__PURE__ */ React23.createElement(Aviso, { tipo: "ok", onClose: () => setMsg("") }, msg), fichaAberta && /* @__PURE__ */ React23.createElement(FichaNovilha, { n: fichaAberta, cfg, onDestino: destinoPara, onVender: venderNovilhas, onFechar: () => setAberta(null) }));
+    ), /* @__PURE__ */ React24.createElement("span", { style: { display: "flex", flexDirection: "column", lineHeight: 1.25, minWidth: 0 } }, /* @__PURE__ */ React24.createElement("b", { style: { fontWeight: 600, fontSize: 15 } }, fmtIdade(n.idadeDias)), /* @__PURE__ */ React24.createElement("span", { style: { color: n.apta ? "var(--green)" : "var(--mut)" } }, ROTULO_DESTINO[n.destino] || n.destino, " \xB7 ", status)), /* @__PURE__ */ React24.createElement("span", { className: "r", style: { textAlign: "right", font: "600 15px var(--mono)" } }, n.pesoAtual === null ? "\u2014" : fmtKg(n.pesoAtual)), /* @__PURE__ */ React24.createElement("span", { className: "hide-s" }, /* @__PURE__ */ React24.createElement("span", { className: `pill ${n.apta ? "pronto" : n.pesoAtual === null ? "fora" : "falta"}` }, n.apta ? "apta" : n.pesoAtual === null ? "sem peso" : "em ganho")), /* @__PURE__ */ React24.createElement("span", { className: "hide-s m mut" }, fmtGmd(n.gmd)));
+  })), /* @__PURE__ */ React24.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 } }, /* @__PURE__ */ React24.createElement("button", { type: "button", className: "btn quiet sm", onClick: marcarAptas, disabled: !aptas.length }, "Marcar as aptas"), /* @__PURE__ */ React24.createElement("button", { type: "button", className: "btn quiet sm", onClick: () => setMarcadas(/* @__PURE__ */ new Set()), disabled: !marcadas.size }, "Limpar")), /* @__PURE__ */ React24.createElement("div", { className: "rapido", style: { marginTop: 12 } }, /* @__PURE__ */ React24.createElement("div", { className: "lbl", style: { font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 8 } }, "Destino das ", escolhidas.length, " marcada(s)"), /* @__PURE__ */ React24.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, DESTINOS_NOVILHA.map((d) => /* @__PURE__ */ React24.createElement("button", { key: d, type: "button", className: "btn quiet", disabled: !escolhidas.length, onClick: () => destinoPara(escolhidas, d) }, ROTULO_DESTINO[d])), /* @__PURE__ */ React24.createElement("button", { type: "button", className: "btn", disabled: !escolhidas.length, onClick: () => venderNovilhas(escolhidas.map((n) => n.brinco)) }, /* @__PURE__ */ React24.createElement(ShoppingCart4, { size: 18 }), " Vender marcadas")))), msg && /* @__PURE__ */ React24.createElement(Aviso, { tipo: "ok", onClose: () => setMsg("") }, msg), fichaAberta && /* @__PURE__ */ React24.createElement(FichaNovilha, { n: fichaAberta, cfg, onDestino: destinoPara, onVender: venderNovilhas, onFechar: () => setAberta(null) }));
 }
 
 // src/telas/NascimentosAno.jsx
-import React24, { useMemo as useMemo21, useState as useState23 } from "react";
+import React25, { useMemo as useMemo22, useState as useState24 } from "react";
 var LETRAS = "JFMAMJJASOND";
 function NascimentosAno({ dados, hoje }) {
   const { ix } = useFicha();
-  const anos = useMemo21(() => [...new Set(dados.eventos.filter((e) => e.tipo === "nascimento").map((e) => (e.data || "").slice(0, 4)).filter(Boolean))].sort().reverse(), [dados.eventos]);
-  const [ano, setAno] = useState23(() => anos.includes(String(hoje).slice(0, 4)) ? String(hoje).slice(0, 4) : anos[0] || "");
-  const [falta, setFalta] = useState23(false);
-  const doAno = useMemo21(() => dados.eventos.filter((e) => e.tipo === "nascimento" && (e.data || "").startsWith(ano)).sort((a, b) => b.data.localeCompare(a.data)), [dados.eventos, ano]);
+  const anos = useMemo22(() => [...new Set(dados.eventos.filter((e) => e.tipo === "nascimento").map((e) => (e.data || "").slice(0, 4)).filter(Boolean))].sort().reverse(), [dados.eventos]);
+  const [ano, setAno] = useState24(() => anos.includes(String(hoje).slice(0, 4)) ? String(hoje).slice(0, 4) : anos[0] || "");
+  const [falta, setFalta] = useState24(false);
+  const doAno = useMemo22(() => dados.eventos.filter((e) => e.tipo === "nascimento" && (e.data || "").startsWith(ano)).sort((a, b) => b.data.localeCompare(a.data)), [dados.eventos, ano]);
   const faltando = (e) => !e.sexo || !e.matrizId && !(situacaoHistorica(e) || {}).maeFora || !String(e.brincoBezerro ?? "").trim();
   const M = doAno.filter((e) => e.sexo === "Macho").length;
   const F = doAno.filter((e) => e.sexo === "F\xEAmea").length;
@@ -8522,7 +8792,7 @@ function NascimentosAno({ dados, hoje }) {
   const pct2 = (n) => doAno.length ? `${Math.round(n / doAno.length * 100)}%` : "";
   const lista5 = (falta ? doAno.filter(faltando) : doAno).map((e) => ix && ix.criaPorId.get(e.id) ? chaveDaCria(ix.criaPorId.get(e.id)) : null).filter(Boolean);
   const nFalta = doAno.filter(faltando).length;
-  return /* @__PURE__ */ React24.createElement("div", { "data-testid": "nascimentos-ano" }, /* @__PURE__ */ React24.createElement("div", { className: "fx-chips" }, anos.map((a) => /* @__PURE__ */ React24.createElement("button", { key: a, className: `fx-cp${ano === a ? " on" : ""}`, "aria-pressed": ano === a, onClick: () => setAno(a) }, a))), /* @__PURE__ */ React24.createElement("div", { className: "fx-resumo" }, /* @__PURE__ */ React24.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React24.createElement("small", null, "Nascimentos ", ano), /* @__PURE__ */ React24.createElement("b", null, doAno.length)), /* @__PURE__ */ React24.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React24.createElement("small", null, "Machos"), /* @__PURE__ */ React24.createElement("b", null, M), /* @__PURE__ */ React24.createElement("i", null, pct2(M))), /* @__PURE__ */ React24.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React24.createElement("small", null, "F\xEAmeas"), /* @__PURE__ */ React24.createElement("b", null, F), /* @__PURE__ */ React24.createElement("i", null, pct2(F))), /* @__PURE__ */ React24.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React24.createElement("small", null, "Natimortos"), /* @__PURE__ */ React24.createElement("b", null, nat)), /* @__PURE__ */ React24.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React24.createElement("small", null, "Ainda na fazenda"), /* @__PURE__ */ React24.createElement("b", null, vivos))), /* @__PURE__ */ React24.createElement("section", { className: "fx-card", style: { marginBottom: 12 } }, /* @__PURE__ */ React24.createElement("h3", null, "Nascimentos por m\xEAs"), /* @__PURE__ */ React24.createElement("div", { className: "fx-meses" }, porMes.map((n, i) => /* @__PURE__ */ React24.createElement("div", { key: i }, /* @__PURE__ */ React24.createElement("span", null, n || ""), /* @__PURE__ */ React24.createElement("div", { style: { height: Math.max(3, n / mx * 62), background: n ? "var(--amber)" : "var(--line2)" } }), /* @__PURE__ */ React24.createElement("small", null, LETRAS[i]))))), /* @__PURE__ */ React24.createElement("div", { className: "fx-chips" }, /* @__PURE__ */ React24.createElement("button", { className: `fx-cp${!falta ? " on" : ""}`, onClick: () => setFalta(false) }, "Todos", /* @__PURE__ */ React24.createElement("b", null, doAno.length)), /* @__PURE__ */ React24.createElement("button", { className: `fx-cp${falta ? " on" : ""}`, onClick: () => setFalta(true) }, "Faltando dados", /* @__PURE__ */ React24.createElement("b", null, nFalta))), /* @__PURE__ */ React24.createElement(ListaAnimais, { chaves: lista5, vazio: falta ? "Nenhum nascimento com dado faltando." : "Nenhum nascimento neste ano." }));
+  return /* @__PURE__ */ React25.createElement("div", { "data-testid": "nascimentos-ano" }, /* @__PURE__ */ React25.createElement("div", { className: "fx-chips" }, anos.map((a) => /* @__PURE__ */ React25.createElement("button", { key: a, className: `fx-cp${ano === a ? " on" : ""}`, "aria-pressed": ano === a, onClick: () => setAno(a) }, a))), /* @__PURE__ */ React25.createElement("div", { className: "fx-resumo" }, /* @__PURE__ */ React25.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React25.createElement("small", null, "Nascimentos ", ano), /* @__PURE__ */ React25.createElement("b", null, doAno.length)), /* @__PURE__ */ React25.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React25.createElement("small", null, "Machos"), /* @__PURE__ */ React25.createElement("b", null, M), /* @__PURE__ */ React25.createElement("i", null, pct2(M))), /* @__PURE__ */ React25.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React25.createElement("small", null, "F\xEAmeas"), /* @__PURE__ */ React25.createElement("b", null, F), /* @__PURE__ */ React25.createElement("i", null, pct2(F))), /* @__PURE__ */ React25.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React25.createElement("small", null, "Natimortos"), /* @__PURE__ */ React25.createElement("b", null, nat)), /* @__PURE__ */ React25.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React25.createElement("small", null, "Ainda na fazenda"), /* @__PURE__ */ React25.createElement("b", null, vivos))), /* @__PURE__ */ React25.createElement("section", { className: "fx-card", style: { marginBottom: 12 } }, /* @__PURE__ */ React25.createElement("h3", null, "Nascimentos por m\xEAs"), /* @__PURE__ */ React25.createElement("div", { className: "fx-meses" }, porMes.map((n, i) => /* @__PURE__ */ React25.createElement("div", { key: i }, /* @__PURE__ */ React25.createElement("span", null, n || ""), /* @__PURE__ */ React25.createElement("div", { style: { height: Math.max(3, n / mx * 62), background: n ? "var(--amber)" : "var(--line2)" } }), /* @__PURE__ */ React25.createElement("small", null, LETRAS[i]))))), /* @__PURE__ */ React25.createElement("div", { className: "fx-chips" }, /* @__PURE__ */ React25.createElement("button", { className: `fx-cp${!falta ? " on" : ""}`, onClick: () => setFalta(false) }, "Todos", /* @__PURE__ */ React25.createElement("b", null, doAno.length)), /* @__PURE__ */ React25.createElement("button", { className: `fx-cp${falta ? " on" : ""}`, onClick: () => setFalta(true) }, "Faltando dados", /* @__PURE__ */ React25.createElement("b", null, nFalta))), /* @__PURE__ */ React25.createElement(ListaAnimais, { chaves: lista5, vazio: falta ? "Nenhum nascimento com dado faltando." : "Nenhum nascimento neste ano." }));
 }
 
 // src/telas/Crias.jsx
@@ -8542,10 +8812,10 @@ function Crias({
   onAnularMorte,
   onCorrigirPesagem
 }) {
-  const [aba, setAba] = useState24("nascimentos");
-  const [vendaPreset, setVendaPreset] = useState24(null);
-  const [vendasAberta, setVendasAberta] = useState24(false);
-  const crias = useMemo22(() => listarCrias(dados, hoje), [dados, hoje]);
+  const [aba, setAba] = useState25("nascimentos");
+  const [vendaPreset, setVendaPreset] = useState25(null);
+  const [vendasAberta, setVendasAberta] = useState25(false);
+  const crias = useMemo23(() => listarCrias(dados, hoje), [dados, hoje]);
   const abas = [
     { id: "nascimentos", label: "Nascimentos" },
     { id: "lista", label: "Crias" },
@@ -8565,7 +8835,7 @@ function Crias({
     if (id === "vendas") setVendasAberta(true);
     setAba(id);
   }
-  return /* @__PURE__ */ React25.createElement("div", { className: "wrap" }, /* @__PURE__ */ React25.createElement("div", { className: "head" }, /* @__PURE__ */ React25.createElement("div", null, /* @__PURE__ */ React25.createElement("small", null, "Nascimentos e crias"), /* @__PURE__ */ React25.createElement("h1", null, "Nascimentos"))), /* @__PURE__ */ React25.createElement(IndexTabs, { tabs: abas, value: aba, onChange: mudarAba, rotulo: "Nascimentos" }), /* @__PURE__ */ React25.createElement("p", { className: "sub", style: { marginTop: -4 } }, "O lan\xE7amento do parto continua em Lan\xE7ar."), aba === "nascimentos" && /* @__PURE__ */ React25.createElement(NascimentosAno, { dados, hoje }), aba === "lista" && /* @__PURE__ */ React25.createElement(
+  return /* @__PURE__ */ React26.createElement("div", { className: "wrap" }, /* @__PURE__ */ React26.createElement("div", { className: "head" }, /* @__PURE__ */ React26.createElement("div", null, /* @__PURE__ */ React26.createElement("small", null, "Nascimentos e crias"), /* @__PURE__ */ React26.createElement("h1", null, "Nascimentos"))), /* @__PURE__ */ React26.createElement(IndexTabs, { tabs: abas, value: aba, onChange: mudarAba, rotulo: "Nascimentos" }), /* @__PURE__ */ React26.createElement("p", { className: "sub", style: { marginTop: -4 } }, "O lan\xE7amento do parto continua em Lan\xE7ar."), aba === "nascimentos" && /* @__PURE__ */ React26.createElement(NascimentosAno, { dados, hoje }), aba === "lista" && /* @__PURE__ */ React26.createElement(
     ListaCrias,
     {
       crias,
@@ -8581,16 +8851,16 @@ function Crias({
       onEditarMorte,
       onAnularMorte
     }
-  ), aba === "pesar" && /* @__PURE__ */ React25.createElement(Pesar, { dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorrigirPesagem }), aba === "vender" && ownerMode && /* @__PURE__ */ React25.createElement(ParaVender, { crias, dados, hoje, onSalvarConfig, onVender: irParaVenda, modoTeste }), aba === "novilhas" && ownerMode && /* @__PURE__ */ React25.createElement(Novilhas, { dados, hoje, onSalvarMatriz, onVender: irParaVenda }), ownerMode && vendasAberta && /* @__PURE__ */ React25.createElement("div", { hidden: aba !== "vendas" }, /* @__PURE__ */ React25.createElement(Vendas, { dados, hoje, crias, preset: vendaPreset, onVender, modoTeste })));
+  ), aba === "pesar" && /* @__PURE__ */ React26.createElement(Pesar, { dados, hoje, crias, ownerMode, modoTeste, onGravarLote, onCorrigirPesagem }), aba === "vender" && ownerMode && /* @__PURE__ */ React26.createElement(ParaVender, { crias, dados, hoje, onSalvarConfig, onVender: irParaVenda, modoTeste }), aba === "novilhas" && ownerMode && /* @__PURE__ */ React26.createElement(Novilhas, { dados, hoje, onSalvarMatriz, onVender: irParaVenda }), ownerMode && vendasAberta && /* @__PURE__ */ React26.createElement("div", { hidden: aba !== "vendas" }, /* @__PURE__ */ React26.createElement(Vendas, { dados, hoje, crias, preset: vendaPreset, onVender, modoTeste })));
 }
 
 // src/telas/Rebanho.jsx
-import React27, { useEffect as useEffect12, useMemo as useMemo23, useState as useState26 } from "react";
-import { Search as Search9, Lock as Lock2, Save as Save13, Plus as Plus10 } from "lucide-react";
+import React28, { useEffect as useEffect12, useMemo as useMemo24, useState as useState27 } from "react";
+import { Search as Search9, Lock as Lock2, Save as Save14, Plus as Plus10 } from "lucide-react";
 
 // src/telas/Touros.jsx
-import React26, { useState as useState25 } from "react";
-import { Plus as Plus9, Save as Save12 } from "lucide-react";
+import React27, { useState as useState26 } from "react";
+import { Plus as Plus9, Save as Save13 } from "lucide-react";
 var CAMPOS_SEMEN = [
   ["fornecedor", "Central / fornecedor"],
   ["codigoCentral", "C\xF3digo do touro na central"],
@@ -8625,8 +8895,8 @@ var CAMPOS_VIVO = [
   ["andrologicoVet", "Veterin\xE1rio do exame"]
 ];
 function FormTouro({ inicial: inicial2, onSalvar, onFechar }) {
-  const [f, setF] = useState25(() => ({ tipo: "", situacao: "Ativo", ...inicial2 || {} }));
-  const [erro, setErro] = useState25("");
+  const [f, setF] = useState26(() => ({ tipo: "", situacao: "Ativo", ...inicial2 || {} }));
+  const [erro, setErro] = useState26("");
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
   const campos = f.tipo === "S\xEAmen" ? CAMPOS_SEMEN : f.tipo === "Touro vivo" ? CAMPOS_VIVO : [];
   function salvar2() {
@@ -8637,28 +8907,28 @@ function FormTouro({ inicial: inicial2, onSalvar, onFechar }) {
     }
     onSalvar(prepararTouro(f, inicial2 && inicial2.id ? inicial2 : null));
   }
-  return /* @__PURE__ */ React26.createElement(Modal, { titulo: inicial2 && inicial2.id ? `Alterar ${inicial2.nome}` : "Cadastrar touro ou s\xEAmen", onClose: onFechar }, /* @__PURE__ */ React26.createElement("div", { "data-testid": "form-touro" }, /* @__PURE__ */ React26.createElement(Rotulo, null, "\xC9 s\xEAmen ou touro vivo?"), /* @__PURE__ */ React26.createElement("div", { className: "seg", style: { marginBottom: 12 } }, TIPOS_TOURO.map((t) => /* @__PURE__ */ React26.createElement("button", { key: t, type: "button", "aria-pressed": f.tipo === t, onClick: () => set("tipo", t) }, t))), /* @__PURE__ */ React26.createElement("div", { className: "grid2" }, /* @__PURE__ */ React26.createElement("div", { className: "fld" }, /* @__PURE__ */ React26.createElement("label", { htmlFor: "tr-nome" }, "Nome *"), /* @__PURE__ */ React26.createElement("input", { id: "tr-nome", value: f.nome || "", onChange: (e) => set("nome", e.target.value) })), /* @__PURE__ */ React26.createElement("div", { className: "fld" }, /* @__PURE__ */ React26.createElement("label", { htmlFor: "tr-raca" }, "Ra\xE7a"), /* @__PURE__ */ React26.createElement("input", { id: "tr-raca", value: f.raca || "", onChange: (e) => set("raca", e.target.value) })), campos.map(([k, rot, tipo]) => /* @__PURE__ */ React26.createElement("div", { className: "fld", key: k }, /* @__PURE__ */ React26.createElement("label", { htmlFor: `tr-${k}` }, rot), Array.isArray(tipo) ? /* @__PURE__ */ React26.createElement("select", { id: `tr-${k}`, value: f[k] || "", onChange: (e) => set(k, e.target.value) }, /* @__PURE__ */ React26.createElement("option", { value: "" }, "\u2014"), tipo.map((o) => /* @__PURE__ */ React26.createElement("option", { key: o }, o))) : /* @__PURE__ */ React26.createElement("input", { id: `tr-${k}`, type: tipo === "date" ? "date" : "text", inputMode: tipo === "num" ? "decimal" : void 0, value: f[k] ?? "", onChange: (e) => set(k, e.target.value) }))), f.tipo && /* @__PURE__ */ React26.createElement("div", { className: "fld" }, /* @__PURE__ */ React26.createElement("label", { htmlFor: "tr-sit" }, "Situa\xE7\xE3o"), /* @__PURE__ */ React26.createElement("select", { id: "tr-sit", value: f.situacao || "Ativo", onChange: (e) => set("situacao", e.target.value) }, /* @__PURE__ */ React26.createElement("option", null, "Ativo"), /* @__PURE__ */ React26.createElement("option", null, "Inativo"))), f.situacao === "Inativo" && /* @__PURE__ */ React26.createElement(React26.Fragment, null, /* @__PURE__ */ React26.createElement("div", { className: "fld" }, /* @__PURE__ */ React26.createElement("label", { htmlFor: "tr-saida" }, "Data da sa\xEDda"), /* @__PURE__ */ React26.createElement("input", { id: "tr-saida", type: "date", value: f.dataSaida || "", onChange: (e) => set("dataSaida", e.target.value) })), /* @__PURE__ */ React26.createElement("div", { className: "fld" }, /* @__PURE__ */ React26.createElement("label", { htmlFor: "tr-mot" }, "Motivo da sa\xEDda"), /* @__PURE__ */ React26.createElement("input", { id: "tr-mot", value: f.motivoSaida || "", onChange: (e) => set("motivoSaida", e.target.value) })))), /* @__PURE__ */ React26.createElement("div", { className: "fld" }, /* @__PURE__ */ React26.createElement("label", { htmlFor: "tr-obs" }, "Observa\xE7\xF5es"), /* @__PURE__ */ React26.createElement("input", { id: "tr-obs", value: f.observacoes || "", onChange: (e) => set("observacoes", e.target.value) })), erro && /* @__PURE__ */ React26.createElement(Aviso, null, erro), /* @__PURE__ */ React26.createElement("button", { className: "btn wide", onClick: salvar2 }, /* @__PURE__ */ React26.createElement(Save12, { size: 18 }), " Salvar")));
+  return /* @__PURE__ */ React27.createElement(Modal, { titulo: inicial2 && inicial2.id ? `Alterar ${inicial2.nome}` : "Cadastrar touro ou s\xEAmen", onClose: onFechar }, /* @__PURE__ */ React27.createElement("div", { "data-testid": "form-touro" }, /* @__PURE__ */ React27.createElement(Rotulo, null, "\xC9 s\xEAmen ou touro vivo?"), /* @__PURE__ */ React27.createElement("div", { className: "seg", style: { marginBottom: 12 } }, TIPOS_TOURO.map((t) => /* @__PURE__ */ React27.createElement("button", { key: t, type: "button", "aria-pressed": f.tipo === t, onClick: () => set("tipo", t) }, t))), /* @__PURE__ */ React27.createElement("div", { className: "grid2" }, /* @__PURE__ */ React27.createElement("div", { className: "fld" }, /* @__PURE__ */ React27.createElement("label", { htmlFor: "tr-nome" }, "Nome *"), /* @__PURE__ */ React27.createElement("input", { id: "tr-nome", value: f.nome || "", onChange: (e) => set("nome", e.target.value) })), /* @__PURE__ */ React27.createElement("div", { className: "fld" }, /* @__PURE__ */ React27.createElement("label", { htmlFor: "tr-raca" }, "Ra\xE7a"), /* @__PURE__ */ React27.createElement("input", { id: "tr-raca", value: f.raca || "", onChange: (e) => set("raca", e.target.value) })), campos.map(([k, rot, tipo]) => /* @__PURE__ */ React27.createElement("div", { className: "fld", key: k }, /* @__PURE__ */ React27.createElement("label", { htmlFor: `tr-${k}` }, rot), Array.isArray(tipo) ? /* @__PURE__ */ React27.createElement("select", { id: `tr-${k}`, value: f[k] || "", onChange: (e) => set(k, e.target.value) }, /* @__PURE__ */ React27.createElement("option", { value: "" }, "\u2014"), tipo.map((o) => /* @__PURE__ */ React27.createElement("option", { key: o }, o))) : /* @__PURE__ */ React27.createElement("input", { id: `tr-${k}`, type: tipo === "date" ? "date" : "text", inputMode: tipo === "num" ? "decimal" : void 0, value: f[k] ?? "", onChange: (e) => set(k, e.target.value) }))), f.tipo && /* @__PURE__ */ React27.createElement("div", { className: "fld" }, /* @__PURE__ */ React27.createElement("label", { htmlFor: "tr-sit" }, "Situa\xE7\xE3o"), /* @__PURE__ */ React27.createElement("select", { id: "tr-sit", value: f.situacao || "Ativo", onChange: (e) => set("situacao", e.target.value) }, /* @__PURE__ */ React27.createElement("option", null, "Ativo"), /* @__PURE__ */ React27.createElement("option", null, "Inativo"))), f.situacao === "Inativo" && /* @__PURE__ */ React27.createElement(React27.Fragment, null, /* @__PURE__ */ React27.createElement("div", { className: "fld" }, /* @__PURE__ */ React27.createElement("label", { htmlFor: "tr-saida" }, "Data da sa\xEDda"), /* @__PURE__ */ React27.createElement("input", { id: "tr-saida", type: "date", value: f.dataSaida || "", onChange: (e) => set("dataSaida", e.target.value) })), /* @__PURE__ */ React27.createElement("div", { className: "fld" }, /* @__PURE__ */ React27.createElement("label", { htmlFor: "tr-mot" }, "Motivo da sa\xEDda"), /* @__PURE__ */ React27.createElement("input", { id: "tr-mot", value: f.motivoSaida || "", onChange: (e) => set("motivoSaida", e.target.value) })))), /* @__PURE__ */ React27.createElement("div", { className: "fld" }, /* @__PURE__ */ React27.createElement("label", { htmlFor: "tr-obs" }, "Observa\xE7\xF5es"), /* @__PURE__ */ React27.createElement("input", { id: "tr-obs", value: f.observacoes || "", onChange: (e) => set("observacoes", e.target.value) })), erro && /* @__PURE__ */ React27.createElement(Aviso, null, erro), /* @__PURE__ */ React27.createElement("button", { className: "btn wide", onClick: salvar2 }, /* @__PURE__ */ React27.createElement(Save13, { size: 18 }), " Salvar")));
 }
 function Ficha2({ t, dados, ownerMode, onAlterar, onFechar }) {
   const hoje = todayISO();
   const e = estoqueSemen(t, dados.eventos);
   const filhos = dados.eventos.filter((x) => x.tipo === "iatf" && x.touroId === t.id).length;
   const campos = (t.tipo === "Touro vivo" ? CAMPOS_VIVO : CAMPOS_SEMEN).filter(([, , , dinheiro]) => ownerMode || !dinheiro);
-  return /* @__PURE__ */ React26.createElement(Modal, { titulo: t.nome, onClose: onFechar }, /* @__PURE__ */ React26.createElement(Lead, { rotulo: "Tipo", valor: t.tipo || "n\xE3o informado" }), /* @__PURE__ */ React26.createElement(Lead, { rotulo: "Ra\xE7a", valor: t.raca || "\u2014" }), /* @__PURE__ */ React26.createElement(Lead, { rotulo: "Situa\xE7\xE3o", valor: t.situacao || "Ativo" }), t.tipo !== "Touro vivo" && /* @__PURE__ */ React26.createElement(Lead, { rotulo: "Doses", valor: `${e.restantes} restam (${e.usadas} usadas de ${e.compradas}${e.ajuste ? `, ajuste ${e.ajuste}` : ""})` }), t.tipo === "Touro vivo" && t.dataNascimento && /* @__PURE__ */ React26.createElement(Lead, { rotulo: "Idade", valor: (idadeMesesDias(t.dataNascimento, hoje) || {}).texto || "\u2014" }), t.tipo === "Touro vivo" && /* @__PURE__ */ React26.createElement(Lead, { rotulo: "Androl\xF3gico", valor: t.andrologicoData ? `${formatarDataBR(t.andrologicoData)} ${t.andrologicoResultado || ""}${andrologicoVencido(t, hoje) ? " (vencido)" : ""}` : "sem exame", cor: andrologicoVencido(t, hoje) ? "var(--late)" : void 0 }), campos.filter(([k]) => t[k] !== void 0 && t[k] !== "" && !["dataNascimento", "andrologicoData", "andrologicoResultado"].includes(k)).map(([k, rot, tipo]) => /* @__PURE__ */ React26.createElement(Lead, { key: k, rotulo: rot, valor: tipo === "date" ? formatarDataBR(t[k]) : String(t[k]) })), filhos > 0 && /* @__PURE__ */ React26.createElement(Lead, { rotulo: "Insemina\xE7\xF5es com ele", valor: filhos }), t.observacoes && /* @__PURE__ */ React26.createElement("p", { className: "sub" }, t.observacoes), ownerMode && /* @__PURE__ */ React26.createElement("button", { className: "btn wide", style: { marginTop: 14 }, onClick: onAlterar }, "Alterar cadastro"));
+  return /* @__PURE__ */ React27.createElement(Modal, { titulo: t.nome, onClose: onFechar }, /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Tipo", valor: t.tipo || "n\xE3o informado" }), /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Ra\xE7a", valor: t.raca || "\u2014" }), /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Situa\xE7\xE3o", valor: t.situacao || "Ativo" }), t.tipo !== "Touro vivo" && /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Doses", valor: `${e.restantes} restam (${e.usadas} usadas de ${e.compradas}${e.ajuste ? `, ajuste ${e.ajuste}` : ""})` }), t.tipo === "Touro vivo" && t.dataNascimento && /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Idade", valor: (idadeMesesDias(t.dataNascimento, hoje) || {}).texto || "\u2014" }), t.tipo === "Touro vivo" && /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Androl\xF3gico", valor: t.andrologicoData ? `${formatarDataBR(t.andrologicoData)} ${t.andrologicoResultado || ""}${andrologicoVencido(t, hoje) ? " (vencido)" : ""}` : "sem exame", cor: andrologicoVencido(t, hoje) ? "var(--late)" : void 0 }), campos.filter(([k]) => t[k] !== void 0 && t[k] !== "" && !["dataNascimento", "andrologicoData", "andrologicoResultado"].includes(k)).map(([k, rot, tipo]) => /* @__PURE__ */ React27.createElement(Lead, { key: k, rotulo: rot, valor: tipo === "date" ? formatarDataBR(t[k]) : String(t[k]) })), filhos > 0 && /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Insemina\xE7\xF5es com ele", valor: filhos }), t.observacoes && /* @__PURE__ */ React27.createElement("p", { className: "sub" }, t.observacoes), ownerMode && /* @__PURE__ */ React27.createElement("button", { className: "btn wide", style: { marginTop: 14 }, onClick: onAlterar }, "Alterar cadastro"));
 }
 function Touros({ dados, ownerMode, onSalvarTouro }) {
-  const [tipo, setTipo] = useState25("todos");
-  const [aberto, setAberto] = useState25(null);
-  const [editando, setEditando] = useState25(null);
-  const [msg, setMsg] = useState25("");
+  const [tipo, setTipo] = useState26("todos");
+  const [aberto, setAberto] = useState26(null);
+  const [editando, setEditando] = useState26(null);
+  const [msg, setMsg] = useState26("");
   const hoje = todayISO();
   const lista5 = dados.touros.filter((t2) => !ehBoi(t2)).filter((t2) => tipo === "todos" || (tipo === "vivo" ? t2.tipo === "Touro vivo" : t2.tipo !== "Touro vivo")).sort((a, b) => (a.situacao === "Inativo") - (b.situacao === "Inativo") || String(a.nome).localeCompare(String(b.nome), "pt-BR"));
   const t = aberto ? dados.touros.find((x) => x.id === aberto) : null;
-  return /* @__PURE__ */ React26.createElement("section", { "data-testid": "touros" }, /* @__PURE__ */ React26.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 } }, /* @__PURE__ */ React26.createElement("div", { className: "pills", style: { margin: 0 } }, [["todos", "Todos"], ["semen", "S\xEAmen"], ["vivo", "Touros vivos"]].map(([id, r]) => /* @__PURE__ */ React26.createElement("button", { key: id, "aria-pressed": tipo === id, onClick: () => setTipo(id) }, r))), ownerMode && /* @__PURE__ */ React26.createElement("button", { className: "btn sm", onClick: () => setEditando({}) }, /* @__PURE__ */ React26.createElement(Plus9, { size: 15 }), " Cadastrar touro ou s\xEAmen")), msg && /* @__PURE__ */ React26.createElement(Aviso, { tipo: "ok", onClose: () => setMsg("") }, msg), /* @__PURE__ */ React26.createElement("div", { className: "sheet" }, lista5.length === 0 && /* @__PURE__ */ React26.createElement("div", { className: "empty" }, "Nenhum cadastrado aqui.", ownerMode ? ' Use "Cadastrar touro ou s\xEAmen".' : ""), lista5.map((x) => {
+  return /* @__PURE__ */ React27.createElement("section", { "data-testid": "touros" }, /* @__PURE__ */ React27.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 } }, /* @__PURE__ */ React27.createElement("div", { className: "pills", style: { margin: 0 } }, [["todos", "Todos"], ["semen", "S\xEAmen"], ["vivo", "Touros vivos"]].map(([id, r]) => /* @__PURE__ */ React27.createElement("button", { key: id, "aria-pressed": tipo === id, onClick: () => setTipo(id) }, r))), ownerMode && /* @__PURE__ */ React27.createElement("button", { className: "btn sm", onClick: () => setEditando({}) }, /* @__PURE__ */ React27.createElement(Plus9, { size: 15 }), " Cadastrar touro ou s\xEAmen")), msg && /* @__PURE__ */ React27.createElement(Aviso, { tipo: "ok", onClose: () => setMsg("") }, msg), /* @__PURE__ */ React27.createElement("div", { className: "sheet" }, lista5.length === 0 && /* @__PURE__ */ React27.createElement("div", { className: "empty" }, "Nenhum cadastrado aqui.", ownerMode ? ' Use "Cadastrar touro ou s\xEAmen".' : ""), lista5.map((x) => {
     const e = estoqueSemen(x, dados.eventos);
     const venc = andrologicoVencido(x, hoje);
-    return /* @__PURE__ */ React26.createElement("button", { key: x.id, className: "led-r", style: { "--cols": "minmax(0,1fr) auto", minHeight: 62, opacity: x.situacao === "Inativo" ? 0.55 : 1 }, onClick: () => setAberto(x.id), "aria-label": `Abrir ${x.nome}` }, /* @__PURE__ */ React26.createElement("span", { className: "two" }, /* @__PURE__ */ React26.createElement("b", null, x.nome), /* @__PURE__ */ React26.createElement("span", null, [x.tipo || "tipo n\xE3o informado", x.raca, x.tipo === "Touro vivo" ? x.brinco && `brinco ${x.brinco}` : x.fornecedor, x.partida && `partida ${x.partida}`].filter(Boolean).join(" \xB7 ")), venc && /* @__PURE__ */ React26.createElement("span", { className: "late" }, "Exame androl\xF3gico ", x.andrologicoData ? "vencido" : "n\xE3o registrado")), x.tipo !== "Touro vivo" && e.compradas > 0 && /* @__PURE__ */ React26.createElement("span", { className: "r", style: { color: e.restantes <= 0 ? "var(--late)" : e.restantes <= 5 ? "var(--amber)" : "var(--green)" } }, e.restantes, " dose(s)", ownerMode && /* @__PURE__ */ React26.createElement("div", { style: { font: "500 11.5px var(--body)", color: "var(--mut)" } }, e.usadas, " de ", e.compradas, x.custoDose ? ` \xB7 ${fmtBRL(parseFloat(x.custoDose))}` : "")));
-  })), t && !editando && /* @__PURE__ */ React26.createElement(Ficha2, { t, dados, ownerMode, onFechar: () => setAberto(null), onAlterar: () => setEditando(t) }), editando && ownerMode && /* @__PURE__ */ React26.createElement(FormTouro, { inicial: editando, onFechar: () => setEditando(null), onSalvar: (novo) => {
+    return /* @__PURE__ */ React27.createElement("button", { key: x.id, className: "led-r", style: { "--cols": "minmax(0,1fr) auto", minHeight: 62, opacity: x.situacao === "Inativo" ? 0.55 : 1 }, onClick: () => setAberto(x.id), "aria-label": `Abrir ${x.nome}` }, /* @__PURE__ */ React27.createElement("span", { className: "two" }, /* @__PURE__ */ React27.createElement("b", null, x.nome), /* @__PURE__ */ React27.createElement("span", null, [x.tipo || "tipo n\xE3o informado", x.raca, x.tipo === "Touro vivo" ? x.brinco && `brinco ${x.brinco}` : x.fornecedor, x.partida && `partida ${x.partida}`].filter(Boolean).join(" \xB7 ")), venc && /* @__PURE__ */ React27.createElement("span", { className: "late" }, "Exame androl\xF3gico ", x.andrologicoData ? "vencido" : "n\xE3o registrado")), x.tipo !== "Touro vivo" && e.compradas > 0 && /* @__PURE__ */ React27.createElement("span", { className: "r", style: { color: e.restantes <= 0 ? "var(--late)" : e.restantes <= 5 ? "var(--amber)" : "var(--green)" } }, e.restantes, " dose(s)", ownerMode && /* @__PURE__ */ React27.createElement("div", { style: { font: "500 11.5px var(--body)", color: "var(--mut)" } }, e.usadas, " de ", e.compradas, x.custoDose ? ` \xB7 ${fmtBRL(parseFloat(x.custoDose))}` : "")));
+  })), t && !editando && /* @__PURE__ */ React27.createElement(Ficha2, { t, dados, ownerMode, onFechar: () => setAberto(null), onAlterar: () => setEditando(t) }), editando && ownerMode && /* @__PURE__ */ React27.createElement(FormTouro, { inicial: editando, onFechar: () => setEditando(null), onSalvar: (novo) => {
     onSalvarTouro(novo);
     setEditando(null);
     setAberto(null);
@@ -8671,12 +8941,12 @@ function VacinasDaVaca({ m, dados }) {
   const aps = (aplicacoesPorAnimal(dados).get(m.id) || []).slice().reverse();
   const prots = protocolosDoAnimal(dados, m.id);
   const sit = situacaoVacinaVaca(dados, m);
-  return /* @__PURE__ */ React27.createElement(React27.Fragment, null, sit.texto && /* @__PURE__ */ React27.createElement("div", { style: { margin: "6px 0" } }, /* @__PURE__ */ React27.createElement("span", { className: `vac-tag ${sit.nivel}` }, sit.texto)), prots.length > 0 && /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Protocolos", valor: prots.slice(0, 3).map((p) => p.nome).join(", ") }), aps.length > 0 && /* @__PURE__ */ React27.createElement(React27.Fragment, null, /* @__PURE__ */ React27.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Vacinas e medicamentos", /* @__PURE__ */ React27.createElement("small", null, aps.length)), /* @__PURE__ */ React27.createElement("ul", { className: "hist", "data-testid": "vacinas-vaca" }, aps.slice(0, 12).map((a, i) => /* @__PURE__ */ React27.createElement("li", { key: i }, /* @__PURE__ */ React27.createElement("span", null, a.tipo, a.produto ? ` \xB7 ${a.produto}` : "", a.etapa ? ` (${a.etapa})` : ""), /* @__PURE__ */ React27.createElement("span", null, formatarDataBR(a.data)))))));
+  return /* @__PURE__ */ React28.createElement(React28.Fragment, null, sit.texto && /* @__PURE__ */ React28.createElement("div", { style: { margin: "6px 0" } }, /* @__PURE__ */ React28.createElement("span", { className: `vac-tag ${sit.nivel}` }, sit.texto)), prots.length > 0 && /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Protocolos", valor: prots.slice(0, 3).map((p) => p.nome).join(", ") }), aps.length > 0 && /* @__PURE__ */ React28.createElement(React28.Fragment, null, /* @__PURE__ */ React28.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Vacinas e medicamentos", /* @__PURE__ */ React28.createElement("small", null, aps.length)), /* @__PURE__ */ React28.createElement("ul", { className: "hist", "data-testid": "vacinas-vaca" }, aps.slice(0, 12).map((a, i) => /* @__PURE__ */ React28.createElement("li", { key: i }, /* @__PURE__ */ React28.createElement("span", null, a.tipo, a.produto ? ` \xB7 ${a.produto}` : "", a.etapa ? ` (${a.etapa})` : ""), /* @__PURE__ */ React28.createElement("span", null, formatarDataBR(a.data)))))));
 }
 function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar, editarDireto }) {
-  const [edit, setEdit] = useState26(!!editarDireto);
-  const [form, setForm] = useState26({ ...m });
-  const hist = useMemo23(
+  const [edit, setEdit] = useState27(!!editarDireto);
+  const [form, setForm] = useState27({ ...m });
+  const hist = useMemo24(
     () => dados.eventos.filter((e) => e.matrizId === m.id || e.tipo === "manejo" && String(e.presentes || "").split(",").includes(m.id)).sort((a, b) => (b.data || "").localeCompare(a.data || "")),
     [dados.eventos, m.id]
   );
@@ -8697,12 +8967,12 @@ function ModalMatriz({ m, dados, ownerMode, onSalvar, onFechar, editarDireto }) 
     });
     onFechar();
   }
-  return /* @__PURE__ */ React27.createElement(Modal, { titulo: `Matriz ${m.brinco}`, onClose: onFechar, rotulo: `Matriz ${m.brinco}` }, !edit ? /* @__PURE__ */ React27.createElement(React27.Fragment, null, /* @__PURE__ */ React27.createElement("div", { style: { marginBottom: 6 } }, /* @__PURE__ */ React27.createElement(Tag, { status: m.status })), /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Categoria", valor: m.categoria || "\u2014" }), m.destino && /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Destino da novilha", valor: m.destino === "Matriz" ? "virar matriz" : m.destino === "Venda" ? "venda" : "a definir" }), m.status === "Vendida" && /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Baixa", valor: `Vendida${m.dataBaixa ? ` em ${formatarDataBR(m.dataBaixa)}` : ""}`, cor: "var(--mut)" }), m.status === "Morta" && /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Baixa", valor: `${m.motivoBaixa || "Morta"}${m.dataBaixa ? ` em ${formatarDataBR(m.dataBaixa)}` : ""}`, cor: "var(--late)" }), /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Ra\xE7a", valor: m.raca || "\u2014" }), /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Lote / piquete", valor: m.lote || "\u2014" }), /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Nascimento", valor: m.dataNascimento ? formatarDataBR(m.dataNascimento) : "\u2014" }), /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Partos na fazenda", valor: partos }), /* @__PURE__ */ React27.createElement(Lead, { rotulo: "Partos antes de entrar", valor: m.partosAnteriores || 0 }), /* @__PURE__ */ React27.createElement(Lead, { rotulo: "\xDAltimo parto", valor: ult ? `${formatarDataBR(ult)}${cria ? ` (cria ${cria})` : ""}` : "\u2014" }), /* @__PURE__ */ React27.createElement(VacinasDaVaca, { m, dados }), /* @__PURE__ */ React27.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Hist\xF3rico", /* @__PURE__ */ React27.createElement("small", null, hist.length, " lan\xE7amento(s)")), hist.length === 0 ? /* @__PURE__ */ React27.createElement("p", { className: "sub" }, "Nada lan\xE7ado para esta vaca ainda.") : /* @__PURE__ */ React27.createElement("ul", { className: "hist", "data-testid": "historico" }, hist.map((e) => /* @__PURE__ */ React27.createElement("li", { key: e.id }, /* @__PURE__ */ React27.createElement("span", null, descreverEvento(e, dados).replace(/ · (mãe|vaca) \S+/, "").replace(/ · \d+ animal\(is\)/, "")), /* @__PURE__ */ React27.createElement("span", null, formatarDataBR(e.data))))), m.status === "Vendida" || m.status === "Morta" ? /* @__PURE__ */ React27.createElement("p", { className: "sub", style: { marginTop: 16 } }, m.status === "Morta" ? "Animal morto: o cadastro fica guardado s\xF3 para consulta. Para corrigir a morte, use Lan\xE7ar > Morte (com a senha)." : "Animal vendido: o cadastro fica guardado s\xF3 para consulta.") : ownerMode ? /* @__PURE__ */ React27.createElement("button", { className: "btn wide", style: { marginTop: 16 }, onClick: () => setEdit(true) }, "Alterar cadastro") : /* @__PURE__ */ React27.createElement("p", { className: "sub", style: { marginTop: 16, display: "flex", gap: 8, alignItems: "center" } }, /* @__PURE__ */ React27.createElement(Lock2, { size: 15, style: { flex: "none" } }), " S\xF3 o propriet\xE1rio altera o cadastro. Use o cadeado e a senha.")) : /* @__PURE__ */ React27.createElement(React27.Fragment, null, CAMPOS_EDICAO_MATRIZ.map((c) => /* @__PURE__ */ React27.createElement(Campo, { key: c.key, campo: c, value: form[c.key], onChange: (k, v) => setForm((f) => ({ ...f, [k]: v })), matrizes: [], touros: [] })), /* @__PURE__ */ React27.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React27.createElement("button", { className: "btn", style: { flex: 1 }, onClick: salvar2 }, /* @__PURE__ */ React27.createElement(Save13, { size: 17 }), " Salvar altera\xE7\xF5es"), /* @__PURE__ */ React27.createElement("button", { className: "btn quiet", onClick: () => setEdit(false) }, "Cancelar"))));
+  return /* @__PURE__ */ React28.createElement(Modal, { titulo: `Matriz ${m.brinco}`, onClose: onFechar, rotulo: `Matriz ${m.brinco}` }, !edit ? /* @__PURE__ */ React28.createElement(React28.Fragment, null, /* @__PURE__ */ React28.createElement("div", { style: { marginBottom: 6 } }, /* @__PURE__ */ React28.createElement(Tag, { status: m.status })), /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Categoria", valor: m.categoria || "\u2014" }), m.destino && /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Destino da novilha", valor: m.destino === "Matriz" ? "virar matriz" : m.destino === "Venda" ? "venda" : "a definir" }), m.status === "Vendida" && /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Baixa", valor: `Vendida${m.dataBaixa ? ` em ${formatarDataBR(m.dataBaixa)}` : ""}`, cor: "var(--mut)" }), m.status === "Morta" && /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Baixa", valor: `${m.motivoBaixa || "Morta"}${m.dataBaixa ? ` em ${formatarDataBR(m.dataBaixa)}` : ""}`, cor: "var(--late)" }), /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Ra\xE7a", valor: m.raca || "\u2014" }), /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Lote / piquete", valor: m.lote || "\u2014" }), /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Nascimento", valor: m.dataNascimento ? formatarDataBR(m.dataNascimento) : "\u2014" }), /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Partos na fazenda", valor: partos }), /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Partos antes de entrar", valor: m.partosAnteriores || 0 }), /* @__PURE__ */ React28.createElement(Lead, { rotulo: "\xDAltimo parto", valor: ult ? `${formatarDataBR(ult)}${cria ? ` (cria ${cria})` : ""}` : "\u2014" }), /* @__PURE__ */ React28.createElement(VacinasDaVaca, { m, dados }), /* @__PURE__ */ React28.createElement("h3", { className: "h2", style: { fontSize: 18 } }, "Hist\xF3rico", /* @__PURE__ */ React28.createElement("small", null, hist.length, " lan\xE7amento(s)")), hist.length === 0 ? /* @__PURE__ */ React28.createElement("p", { className: "sub" }, "Nada lan\xE7ado para esta vaca ainda.") : /* @__PURE__ */ React28.createElement("ul", { className: "hist", "data-testid": "historico" }, hist.map((e) => /* @__PURE__ */ React28.createElement("li", { key: e.id }, /* @__PURE__ */ React28.createElement("span", null, descreverEvento(e, dados).replace(/ · (mãe|vaca) \S+/, "").replace(/ · \d+ animal\(is\)/, "")), /* @__PURE__ */ React28.createElement("span", null, formatarDataBR(e.data))))), (m.status === "Vendida" || m.status === "Morta") && !ownerMode ? /* @__PURE__ */ React28.createElement("p", { className: "sub", style: { marginTop: 16 } }, m.status === "Morta" ? "Animal morto: o cadastro fica guardado s\xF3 para consulta. Para corrigir a morte, use Lan\xE7ar > Morte (com a senha)." : "Animal vendido: o cadastro fica guardado s\xF3 para consulta.") : ownerMode ? /* @__PURE__ */ React28.createElement("button", { className: "btn wide", style: { marginTop: 16 }, onClick: () => setEdit(true) }, "Alterar cadastro") : /* @__PURE__ */ React28.createElement("p", { className: "sub", style: { marginTop: 16, display: "flex", gap: 8, alignItems: "center" } }, /* @__PURE__ */ React28.createElement(Lock2, { size: 15, style: { flex: "none" } }), " S\xF3 o propriet\xE1rio altera o cadastro. Use o cadeado e a senha.")) : /* @__PURE__ */ React28.createElement(React28.Fragment, null, CAMPOS_EDICAO_MATRIZ.map((c) => /* @__PURE__ */ React28.createElement(Campo, { key: c.key, campo: c, value: form[c.key], onChange: (k, v) => setForm((f) => ({ ...f, [k]: v })), matrizes: [], touros: [] })), /* @__PURE__ */ React28.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React28.createElement("button", { className: "btn", style: { flex: 1 }, onClick: salvar2 }, /* @__PURE__ */ React28.createElement(Save14, { size: 17 }), " Salvar altera\xE7\xF5es"), /* @__PURE__ */ React28.createElement("button", { className: "btn quiet", onClick: () => setEdit(false) }, "Cancelar"))));
 }
 function ModalBoi({ boi, dados, onSalvar, onFechar }) {
   const novo = !boi;
-  const [f, setF] = useState26(() => boi ? { ...boi, categoria: categoriaBoi(boi) } : { categoria: "Boi", brinco: "", raca: "", origem: "Comprado", dataCompra: todayISO(), pesoAtual: "", vendedor: "", valorCompra: "", lote: "", observacoes: "", dataNascimento: "" });
-  const [erro, setErro] = useState26("");
+  const [f, setF] = useState27(() => boi ? { ...boi, categoria: categoriaBoi(boi) } : { categoria: "Boi", brinco: "", raca: "", origem: "Comprado", dataCompra: todayISO(), pesoAtual: "", vendedor: "", valorCompra: "", lote: "", observacoes: "", dataNascimento: "" });
+  const [erro, setErro] = useState27("");
   const set = (k, v) => {
     setF((x) => ({ ...x, [k]: v }));
     setErro("");
@@ -8738,23 +9008,23 @@ function ModalBoi({ boi, dados, onSalvar, onFechar }) {
   }
   const lotes = opcoesAtuais("lotes", "");
   const racas = opcoesAtuais("racas", "");
-  const inp = (k, rot, tipo = "text", extra) => /* @__PURE__ */ React27.createElement("div", { className: "fld" }, /* @__PURE__ */ React27.createElement("label", { htmlFor: `boi-${k}` }, rot), /* @__PURE__ */ React27.createElement("input", { id: `boi-${k}`, type: tipo, inputMode: tipo === "number" ? "decimal" : void 0, value: f[k] || "", onChange: (e) => set(k, e.target.value), ...extra }));
-  return /* @__PURE__ */ React27.createElement(Modal, { titulo: novo ? "Cadastrar boi" : `Boi ${boi.brinco}`, onClose: onFechar }, /* @__PURE__ */ React27.createElement("div", { className: "fld", role: "group", "aria-label": "Categoria" }, /* @__PURE__ */ React27.createElement("span", { className: "lbl", style: { display: "block", font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 6 } }, "Categoria"), /* @__PURE__ */ React27.createElement("div", { className: "seg" }, CATEGORIAS_BOI.map((c) => /* @__PURE__ */ React27.createElement("button", { key: c, type: "button", "aria-pressed": f.categoria === c, onClick: () => set("categoria", c) }, c)))), inp("brinco", "Brinco *", "text", { inputMode: "numeric", autoFocus: novo }), inp("raca", "Ra\xE7a", "text", { list: "boi-racas" }), /* @__PURE__ */ React27.createElement("datalist", { id: "boi-racas" }, racas.map((x) => /* @__PURE__ */ React27.createElement("option", { key: x, value: x }))), /* @__PURE__ */ React27.createElement("div", { className: "fld", role: "group", "aria-label": "Origem" }, /* @__PURE__ */ React27.createElement("span", { className: "lbl", style: { display: "block", font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 6 } }, "Origem"), /* @__PURE__ */ React27.createElement("div", { className: "seg" }, ["Comprado", "Nascido na fazenda"].map((c) => /* @__PURE__ */ React27.createElement("button", { key: c, type: "button", "aria-pressed": f.origem === c, onClick: () => set("origem", c) }, c)))), inp("dataCompra", f.origem === "Nascido na fazenda" ? "Data de entrada no lote" : "Data de entrada (compra)", "date"), inp("dataNascimento", "Nascimento (se souber)", "date"), inp("pesoAtual", "Peso de entrada (kg)", "number"), f.origem === "Comprado" && inp("vendedor", "Vendedor"), f.origem === "Comprado" && inp("valorCompra", "Valor da compra (R$)", "number"), inp("lote", "Lote / pasto", "text", { list: "boi-lotes" }), /* @__PURE__ */ React27.createElement("datalist", { id: "boi-lotes" }, lotes.map((x) => /* @__PURE__ */ React27.createElement("option", { key: x, value: x }))), inp("observacoes", "Observa\xE7\xE3o"), !novo && /* @__PURE__ */ React27.createElement(React27.Fragment, null, inp("dataSaida", "Sa\xEDda (venda, morte) em", "date"), f.dataSaida && inp("motivoSaida", "Motivo da sa\xEDda")), erro && /* @__PURE__ */ React27.createElement(Aviso, null, erro), /* @__PURE__ */ React27.createElement("button", { className: "btn wide", onClick: salvar2 }, /* @__PURE__ */ React27.createElement(Save13, { size: 17 }), " ", novo ? "Cadastrar" : "Salvar altera\xE7\xF5es"));
+  const inp = (k, rot, tipo = "text", extra) => /* @__PURE__ */ React28.createElement("div", { className: "fld" }, /* @__PURE__ */ React28.createElement("label", { htmlFor: `boi-${k}` }, rot), /* @__PURE__ */ React28.createElement("input", { id: `boi-${k}`, type: tipo, inputMode: tipo === "number" ? "decimal" : void 0, value: f[k] || "", onChange: (e) => set(k, e.target.value), ...extra }));
+  return /* @__PURE__ */ React28.createElement(Modal, { titulo: novo ? "Cadastrar boi" : `Boi ${boi.brinco}`, onClose: onFechar }, /* @__PURE__ */ React28.createElement("div", { className: "fld", role: "group", "aria-label": "Categoria" }, /* @__PURE__ */ React28.createElement("span", { className: "lbl", style: { display: "block", font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 6 } }, "Categoria"), /* @__PURE__ */ React28.createElement("div", { className: "seg" }, CATEGORIAS_BOI.map((c) => /* @__PURE__ */ React28.createElement("button", { key: c, type: "button", "aria-pressed": f.categoria === c, onClick: () => set("categoria", c) }, c)))), inp("brinco", "Brinco *", "text", { inputMode: "numeric", autoFocus: novo }), inp("raca", "Ra\xE7a", "text", { list: "boi-racas" }), /* @__PURE__ */ React28.createElement("datalist", { id: "boi-racas" }, racas.map((x) => /* @__PURE__ */ React28.createElement("option", { key: x, value: x }))), /* @__PURE__ */ React28.createElement("div", { className: "fld", role: "group", "aria-label": "Origem" }, /* @__PURE__ */ React28.createElement("span", { className: "lbl", style: { display: "block", font: "600 11.5px var(--mono)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--mut)", marginBottom: 6 } }, "Origem"), /* @__PURE__ */ React28.createElement("div", { className: "seg" }, ["Comprado", "Nascido na fazenda"].map((c) => /* @__PURE__ */ React28.createElement("button", { key: c, type: "button", "aria-pressed": f.origem === c, onClick: () => set("origem", c) }, c)))), inp("dataCompra", f.origem === "Nascido na fazenda" ? "Data de entrada no lote" : "Data de entrada (compra)", "date"), inp("dataNascimento", "Nascimento (se souber)", "date"), inp("pesoAtual", "Peso de entrada (kg)", "number"), f.origem === "Comprado" && inp("vendedor", "Vendedor"), f.origem === "Comprado" && inp("valorCompra", "Valor da compra (R$)", "number"), inp("lote", "Lote / pasto", "text", { list: "boi-lotes" }), /* @__PURE__ */ React28.createElement("datalist", { id: "boi-lotes" }, lotes.map((x) => /* @__PURE__ */ React28.createElement("option", { key: x, value: x }))), inp("observacoes", "Observa\xE7\xE3o"), !novo && /* @__PURE__ */ React28.createElement(React28.Fragment, null, inp("dataSaida", "Sa\xEDda (venda, morte) em", "date"), f.dataSaida && inp("motivoSaida", "Motivo da sa\xEDda")), erro && /* @__PURE__ */ React28.createElement(Aviso, null, erro), /* @__PURE__ */ React28.createElement("button", { className: "btn wide", onClick: salvar2 }, /* @__PURE__ */ React28.createElement(Save14, { size: 17 }), " ", novo ? "Cadastrar" : "Salvar altera\xE7\xF5es"));
 }
 var STATUS_MATRIZ = [["todos", "Todas"], ["Cheia", "Cheias"], ["Vazia", "Vazias"], ["Descarte", "Descarte"], ["Vendida", "Vendidas"], ["Morta", "Mortas"]];
 function Rebanho({ dados, hoje, ownerMode, onSalvarTouro, onNovasMatrizes }) {
   const { ix, abrir } = useFicha();
-  const [aba, setAba] = useState26("todos");
-  const [busca, setBusca] = useState26("");
-  const [reb, setReb] = useState26("todos");
-  const [stat, setStat] = useState26("todos");
-  const [fc, setFc] = useState26("fazenda");
-  const [sexo, setSexo] = useState26("");
-  const [ano, setAno] = useState26(String(hoje).slice(0, 4));
-  const [boiAberto, setBoiAberto] = useState26(null);
-  const [verSaiu, setVerSaiu] = useState26(false);
+  const [aba, setAba] = useState27("todos");
+  const [busca, setBusca] = useState27("");
+  const [reb, setReb] = useState27("todos");
+  const [stat, setStat] = useState27("todos");
+  const [fc, setFc] = useState27("fazenda");
+  const [sexo, setSexo] = useState27("");
+  const [ano, setAno] = useState27(String(hoje).slice(0, 4));
+  const [boiAberto, setBoiAberto] = useState27(null);
+  const [verSaiu, setVerSaiu] = useState27(false);
   useEffect12(() => setBusca(""), [aba]);
-  const plantel = useMemo23(() => dados.matrizes.filter((m) => m.status !== "Vendida" && m.status !== "Morta"), [dados.matrizes]);
+  const plantel = useMemo24(() => dados.matrizes.filter((m) => m.status !== "Vendida" && m.status !== "Morta"), [dados.matrizes]);
   const vacas = plantel.filter((m) => m.categoria !== "Novilha");
   const novs = plantel.filter((m) => m.categoria === "Novilha");
   const bezerros = ix ? ix.crias.filter(naFazenda) : [];
@@ -8765,7 +9035,7 @@ function Rebanho({ dados, hoje, ownerMode, onSalvarTouro, onNovasMatrizes }) {
   const q = busca.trim();
   const fb = (b) => !q || String(b ?? "").startsWith(q);
   const ordem = (a, b) => String(a.brinco).localeCompare(String(b.brinco), "pt-BR", { numeric: true });
-  const anos = useMemo23(() => ix ? [...new Set(ix.crias.map((c) => (c.nascData || "").slice(0, 4)).filter(Boolean))].sort().reverse() : [], [ix]);
+  const anos = useMemo24(() => ix ? [...new Set(ix.crias.map((c) => (c.nascData || "").slice(0, 4)).filter(Boolean))].sort().reverse() : [], [ix]);
   let chaves = [];
   if (aba === "todos") {
     if (reb === "todos" || reb === "vacas") chaves.push(...vacas.filter((m) => fb(m.brinco)).sort(ordem).map((m) => `m:${m.id}`));
@@ -8787,21 +9057,21 @@ function Rebanho({ dados, hoje, ownerMode, onSalvarTouro, onNovasMatrizes }) {
   } else if (aba === "bois") {
     chaves = (verSaiu ? bois : boisAtivos).filter((t) => fb(t.brinco)).sort(ordem).map((t) => `t:${t.id}`);
   }
-  const contar = (s) => dados.matrizes.filter((m) => m.status === s).length;
-  const Chip2 = ({ on, onClick, children }) => /* @__PURE__ */ React27.createElement("button", { className: `fx-cp${on ? " on" : ""}`, "aria-pressed": on, onClick }, children);
-  return /* @__PURE__ */ React27.createElement("div", { className: "wrap" }, /* @__PURE__ */ React27.createElement("div", { className: "head" }, /* @__PURE__ */ React27.createElement("div", null, /* @__PURE__ */ React27.createElement("small", null, "Livro do rebanho"), /* @__PURE__ */ React27.createElement("h1", null, "Rebanho"))), /* @__PURE__ */ React27.createElement("p", { className: "sub", style: { marginTop: -6 } }, "Todos os animais da fazenda. Toque em qualquer um para abrir a ficha."), /* @__PURE__ */ React27.createElement("div", { className: "fx-resumo", "data-testid": "resumo-rebanho" }, /* @__PURE__ */ React27.createElement("button", { className: "fx-kpi", onClick: () => {
+  const contar = (s2) => dados.matrizes.filter((m) => m.status === s2).length;
+  const Chip2 = ({ on, onClick, children }) => /* @__PURE__ */ React28.createElement("button", { className: `fx-cp${on ? " on" : ""}`, "aria-pressed": on, onClick }, children);
+  return /* @__PURE__ */ React28.createElement("div", { className: "wrap" }, /* @__PURE__ */ React28.createElement("div", { className: "head" }, /* @__PURE__ */ React28.createElement("div", null, /* @__PURE__ */ React28.createElement("small", null, "Livro do rebanho"), /* @__PURE__ */ React28.createElement("h1", null, "Rebanho"))), /* @__PURE__ */ React28.createElement("p", { className: "sub", style: { marginTop: -6 } }, "Todos os animais da fazenda. Toque em qualquer um para abrir a ficha."), /* @__PURE__ */ React28.createElement("div", { className: "fx-resumo", "data-testid": "resumo-rebanho" }, /* @__PURE__ */ React28.createElement("button", { className: "fx-kpi", onClick: () => {
     setAba("todos");
     setReb("vacas");
-  } }, /* @__PURE__ */ React27.createElement("small", null, "Vacas"), /* @__PURE__ */ React27.createElement("b", null, vacas.length), /* @__PURE__ */ React27.createElement("i", null, vacas.filter((m) => m.status === "Cheia").length, " cheias")), /* @__PURE__ */ React27.createElement("button", { className: "fx-kpi", onClick: () => {
+  } }, /* @__PURE__ */ React28.createElement("small", null, "Vacas"), /* @__PURE__ */ React28.createElement("b", null, vacas.length), /* @__PURE__ */ React28.createElement("i", null, vacas.filter((m) => m.status === "Cheia").length, " cheias")), /* @__PURE__ */ React28.createElement("button", { className: "fx-kpi", onClick: () => {
     setAba("todos");
     setReb("novilhas");
-  } }, /* @__PURE__ */ React27.createElement("small", null, "Novilhas"), /* @__PURE__ */ React27.createElement("b", null, novs.length)), /* @__PURE__ */ React27.createElement("button", { className: "fx-kpi", onClick: () => {
+  } }, /* @__PURE__ */ React28.createElement("small", null, "Novilhas"), /* @__PURE__ */ React28.createElement("b", null, novs.length)), /* @__PURE__ */ React28.createElement("button", { className: "fx-kpi", onClick: () => {
     setAba("todos");
     setReb("bezerros");
-  } }, /* @__PURE__ */ React27.createElement("small", null, "Bezerros(as) na fazenda"), /* @__PURE__ */ React27.createElement("b", null, bezerros.length), /* @__PURE__ */ React27.createElement("i", null, bezerros.filter((c) => c.sexo === "Macho").length, "M \xB7 ", bezerros.filter((c) => c.sexo === "F\xEAmea").length, "F")), /* @__PURE__ */ React27.createElement("button", { className: "fx-kpi", onClick: () => setAba("bois") }, /* @__PURE__ */ React27.createElement("small", null, "Bois"), /* @__PURE__ */ React27.createElement("b", null, boisAtivos.length)), /* @__PURE__ */ React27.createElement("button", { className: "fx-kpi", onClick: () => setAba("touros") }, /* @__PURE__ */ React27.createElement("small", null, "Touros / s\xEAmen"), /* @__PURE__ */ React27.createElement("b", null, touros.length)), confirmar.length > 0 && /* @__PURE__ */ React27.createElement("button", { className: "fx-kpi", onClick: () => {
+  } }, /* @__PURE__ */ React28.createElement("small", null, "Bezerros(as) na fazenda"), /* @__PURE__ */ React28.createElement("b", null, bezerros.length), /* @__PURE__ */ React28.createElement("i", null, bezerros.filter((c) => c.sexo === "Macho").length, "M \xB7 ", bezerros.filter((c) => c.sexo === "F\xEAmea").length, "F")), /* @__PURE__ */ React28.createElement("button", { className: "fx-kpi", onClick: () => setAba("bois") }, /* @__PURE__ */ React28.createElement("small", null, "Bois"), /* @__PURE__ */ React28.createElement("b", null, boisAtivos.length)), /* @__PURE__ */ React28.createElement("button", { className: "fx-kpi", onClick: () => setAba("touros") }, /* @__PURE__ */ React28.createElement("small", null, "Touros / s\xEAmen"), /* @__PURE__ */ React28.createElement("b", null, touros.length)), confirmar.length > 0 && /* @__PURE__ */ React28.createElement("button", { className: "fx-kpi", onClick: () => {
     setAba("crias");
     setFc("confirmar");
-  } }, /* @__PURE__ */ React27.createElement("small", null, "Crias a confirmar"), /* @__PURE__ */ React27.createElement("b", { style: { color: "var(--amber)" } }, confirmar.length))), /* @__PURE__ */ React27.createElement(
+  } }, /* @__PURE__ */ React28.createElement("small", null, "Crias a confirmar"), /* @__PURE__ */ React28.createElement("b", { style: { color: "var(--amber)" } }, confirmar.length))), /* @__PURE__ */ React28.createElement(
     IndexTabs,
     {
       rotulo: "Rebanho",
@@ -8815,17 +9085,17 @@ function Rebanho({ dados, hoje, ownerMode, onSalvarTouro, onNovasMatrizes }) {
         { id: "bois", label: "Bois", count: boisAtivos.length }
       ]
     }
-  ), aba !== "touros" && /* @__PURE__ */ React27.createElement("label", { className: "search fx-search" }, /* @__PURE__ */ React27.createElement(Search9, null), /* @__PURE__ */ React27.createElement("input", { placeholder: "Filtrar pelo brinco", "aria-label": "Filtrar pelo brinco", inputMode: "numeric", value: busca, onChange: (e) => setBusca(e.target.value) })), aba === "todos" && /* @__PURE__ */ React27.createElement("div", { className: "fx-chips" }, [["todos", "Todos"], ["vacas", "Vacas", vacas.length], ["novilhas", "Novilhas", novs.length], ["bezerros", "Bezerros(as)", bezerros.length], ["bois", "Bois", boisAtivos.length], ["touros", "Touros", touros.length]].map(([v, t, n]) => /* @__PURE__ */ React27.createElement(Chip2, { key: v, on: reb === v, onClick: () => setReb(v) }, t, n !== void 0 && /* @__PURE__ */ React27.createElement("b", null, n)))), aba === "matrizes" && /* @__PURE__ */ React27.createElement("div", { className: "fx-chips" }, STATUS_MATRIZ.filter(([v]) => v === "todos" || contar(v) > 0 || v === "Descarte").map(([v, t]) => /* @__PURE__ */ React27.createElement(Chip2, { key: v, on: stat === v, onClick: () => setStat(v) }, t, v !== "todos" && /* @__PURE__ */ React27.createElement("b", null, contar(v))))), aba === "crias" && /* @__PURE__ */ React27.createElement(React27.Fragment, null, /* @__PURE__ */ React27.createElement("div", { className: "fx-chips" }, [["fazenda", "Na fazenda"], ["confirmar", "A confirmar"], ["vendidas", "Vendidas"], ["mortas", "Mortas"], ["todas", "Todas"]].map(([v, t]) => /* @__PURE__ */ React27.createElement(Chip2, { key: v, on: fc === v, onClick: () => setFc(v) }, t))), /* @__PURE__ */ React27.createElement("div", { className: "fx-chips" }, [["", "Machos e f\xEAmeas"], ["Macho", "Machos"], ["F\xEAmea", "F\xEAmeas"]].map(([v, t]) => /* @__PURE__ */ React27.createElement(Chip2, { key: v, on: sexo === v, onClick: () => setSexo(v) }, t)), fc !== "fazenda" && anos.map((a) => /* @__PURE__ */ React27.createElement(Chip2, { key: a, on: ano === a, onClick: () => setAno(ano === a ? "" : a) }, a)))), aba === "bois" && /* @__PURE__ */ React27.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 } }, ownerMode && /* @__PURE__ */ React27.createElement("button", { className: "btn", onClick: () => setBoiAberto("novo"), "data-testid": "cadastrar-boi" }, /* @__PURE__ */ React27.createElement(Plus10, { size: 17 }), " Cadastrar boi"), bois.length > boisAtivos.length && /* @__PURE__ */ React27.createElement(Chip2, { on: verSaiu, onClick: () => setVerSaiu(!verSaiu) }, "Mostrar os que sa\xEDram")), aba === "touros" ? /* @__PURE__ */ React27.createElement(Touros, { dados, ownerMode, onSalvarTouro }) : /* @__PURE__ */ React27.createElement(ListaAnimais, { chaves, vazio: aba === "bois" ? ownerMode ? 'Nenhum boi cadastrado ainda. Toque em "Cadastrar boi".' : "Nenhum boi cadastrado ainda." : void 0 }), !ownerMode && /* @__PURE__ */ React27.createElement("p", { className: "sub", style: { marginTop: 14, display: "flex", gap: 8, alignItems: "center" } }, /* @__PURE__ */ React27.createElement(Lock2, { size: 15, style: { flex: "none" } }), " Modo funcion\xE1rio: aqui voc\xEA consulta. Alterar cadastro \xE9 s\xF3 com a senha do propriet\xE1rio."), boiAberto && /* @__PURE__ */ React27.createElement(ModalBoi, { boi: boiAberto === "novo" ? null : boiAberto, dados, onSalvar: onSalvarTouro, onFechar: () => setBoiAberto(null) }));
+  ), aba !== "touros" && /* @__PURE__ */ React28.createElement("label", { className: "search fx-search" }, /* @__PURE__ */ React28.createElement(Search9, null), /* @__PURE__ */ React28.createElement("input", { placeholder: "Filtrar pelo brinco", "aria-label": "Filtrar pelo brinco", inputMode: "numeric", value: busca, onChange: (e) => setBusca(e.target.value) })), aba === "todos" && /* @__PURE__ */ React28.createElement("div", { className: "fx-chips" }, [["todos", "Todos"], ["vacas", "Vacas", vacas.length], ["novilhas", "Novilhas", novs.length], ["bezerros", "Bezerros(as)", bezerros.length], ["bois", "Bois", boisAtivos.length], ["touros", "Touros", touros.length]].map(([v, t, n]) => /* @__PURE__ */ React28.createElement(Chip2, { key: v, on: reb === v, onClick: () => setReb(v) }, t, n !== void 0 && /* @__PURE__ */ React28.createElement("b", null, n)))), aba === "matrizes" && /* @__PURE__ */ React28.createElement("div", { className: "fx-chips" }, STATUS_MATRIZ.filter(([v]) => v === "todos" || contar(v) > 0 || v === "Descarte").map(([v, t]) => /* @__PURE__ */ React28.createElement(Chip2, { key: v, on: stat === v, onClick: () => setStat(v) }, t, v !== "todos" && /* @__PURE__ */ React28.createElement("b", null, contar(v))))), aba === "crias" && /* @__PURE__ */ React28.createElement(React28.Fragment, null, /* @__PURE__ */ React28.createElement("div", { className: "fx-chips" }, [["fazenda", "Na fazenda"], ["confirmar", "A confirmar"], ["vendidas", "Vendidas"], ["mortas", "Mortas"], ["todas", "Todas"]].map(([v, t]) => /* @__PURE__ */ React28.createElement(Chip2, { key: v, on: fc === v, onClick: () => setFc(v) }, t))), /* @__PURE__ */ React28.createElement("div", { className: "fx-chips" }, [["", "Machos e f\xEAmeas"], ["Macho", "Machos"], ["F\xEAmea", "F\xEAmeas"]].map(([v, t]) => /* @__PURE__ */ React28.createElement(Chip2, { key: v, on: sexo === v, onClick: () => setSexo(v) }, t)), fc !== "fazenda" && anos.map((a) => /* @__PURE__ */ React28.createElement(Chip2, { key: a, on: ano === a, onClick: () => setAno(ano === a ? "" : a) }, a)))), aba === "bois" && /* @__PURE__ */ React28.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 } }, ownerMode && /* @__PURE__ */ React28.createElement("button", { className: "btn", onClick: () => setBoiAberto("novo"), "data-testid": "cadastrar-boi" }, /* @__PURE__ */ React28.createElement(Plus10, { size: 17 }), " Cadastrar boi"), bois.length > boisAtivos.length && /* @__PURE__ */ React28.createElement(Chip2, { on: verSaiu, onClick: () => setVerSaiu(!verSaiu) }, "Mostrar os que sa\xEDram")), aba === "touros" ? /* @__PURE__ */ React28.createElement(Touros, { dados, ownerMode, onSalvarTouro }) : /* @__PURE__ */ React28.createElement(ListaAnimais, { chaves, vazio: aba === "bois" ? ownerMode ? 'Nenhum boi cadastrado ainda. Toque em "Cadastrar boi".' : "Nenhum boi cadastrado ainda." : void 0 }), !ownerMode && /* @__PURE__ */ React28.createElement("p", { className: "sub", style: { marginTop: 14, display: "flex", gap: 8, alignItems: "center" } }, /* @__PURE__ */ React28.createElement(Lock2, { size: 15, style: { flex: "none" } }), " Modo funcion\xE1rio: aqui voc\xEA consulta. Alterar cadastro \xE9 s\xF3 com a senha do propriet\xE1rio."), boiAberto && /* @__PURE__ */ React28.createElement(ModalBoi, { boi: boiAberto === "novo" ? null : boiAberto, dados, onSalvar: onSalvarTouro, onFechar: () => setBoiAberto(null) }));
 }
 
 // src/telas/Painel.jsx
-import React28, { useMemo as useMemo24, useState as useState27 } from "react";
+import React29, { useMemo as useMemo25, useState as useState28 } from "react";
 import { Download, RefreshCw } from "lucide-react";
 function Painel({ anoSel, dados, ano, hoje, go, onExcel, onSync, onRecarregar, modoTeste, sincronizando }) {
-  const [confirmar, setConfirmar] = useState27(false);
-  const evsAno = useMemo24(() => filtrarPorAno(dados.eventos, ano), [dados.eventos, ano]);
-  const k = useMemo24(() => calcularKPIs(dados.matrizes, evsAno), [dados.matrizes, evsAno]);
-  const cheias = useMemo24(() => linhasPrevisao(dados.matrizes, dados.eventos, "Cheia", hoje, ""), [dados, hoje]);
+  const [confirmar, setConfirmar] = useState28(false);
+  const evsAno = useMemo25(() => filtrarPorAno(dados.eventos, ano), [dados.eventos, ano]);
+  const k = useMemo25(() => calcularKPIs(dados.matrizes, evsAno), [dados.matrizes, evsAno]);
+  const cheias = useMemo25(() => linhasPrevisao(dados.matrizes, dados.eventos, "Cheia", hoje, ""), [dados, hoje]);
   const atrasadas = cheias.filter((l) => l.dias !== null && l.dias < 0).length;
   const semPrev = cheias.filter((l) => l.dias === null).length;
   const sinal = cheias.filter((l) => l.dias !== null && l.dias >= 0 && l.dias <= 30).length;
@@ -8836,15 +9106,15 @@ function Painel({ anoSel, dados, ano, hoje, go, onExcel, onSync, onRecarregar, m
   plantel.forEach((m) => {
     brincos[m.brinco] = (brincos[m.brinco] || 0) + 1;
   });
-  const crias = useMemo24(() => listarCrias(dados, hoje), [dados, hoje]);
+  const crias = useMemo25(() => listarCrias(dados, hoje), [dados, hoje]);
   const criasAtivas = crias.filter((c) => c.ativa);
   const criasSemPeso = criasAtivas.filter((c) => c.pesoAtual === null).length;
   const orfas = criasAtivas.filter((c) => c.orfa).length;
-  const machos = useMemo24(() => analiseMachos(crias, dados.config), [crias, dados.config]);
-  const novilhas = useMemo24(() => listarNovilhas(dados, dados.config, hoje), [dados, hoje]);
+  const machos = useMemo25(() => analiseMachos(crias, dados.config), [crias, dados.config]);
+  const novilhas = useMemo25(() => listarNovilhas(dados, dados.config, hoje), [dados, hoje]);
   const novilhasAptas = novilhas.filter((n) => n.apta).length;
   const duplicados = Object.values(brincos).filter((n) => n > 1).length;
-  const porMes = useMemo24(() => {
+  const porMes = useMemo25(() => {
     const mapa = {};
     evsAno.filter((e) => e.tipo === "nascimento" && e.data).forEach((e) => {
       const kk = e.data.slice(0, 7);
@@ -8853,7 +9123,7 @@ function Painel({ anoSel, dados, ano, hoje, go, onExcel, onSync, onRecarregar, m
     return Object.entries(mapa).sort().slice(-12);
   }, [evsAno]);
   const maxMes = Math.max(1, ...porMes.map(([, n]) => n));
-  const recentes = useMemo24(
+  const recentes = useMemo25(
     () => [...dados.eventos].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).slice(0, 8),
     [dados.eventos]
   );
@@ -8869,47 +9139,47 @@ function Painel({ anoSel, dados, ano, hoje, go, onExcel, onSync, onRecarregar, m
     semRacaLote > 0 && { rotulo: "Matrizes sem ra\xE7a ou lote no cadastro", valor: semRacaLote, onClick: () => go("rebanho") },
     duplicados > 0 && { rotulo: "Brincos repetidos no cadastro", valor: duplicados, cor: "var(--late)" }
   ].filter(Boolean);
-  return /* @__PURE__ */ React28.createElement("div", { className: "wrap" }, /* @__PURE__ */ React28.createElement("div", { className: "head" }, /* @__PURE__ */ React28.createElement("div", null, /* @__PURE__ */ React28.createElement("small", null, "Propriet\xE1rio \xB7 ", rot), /* @__PURE__ */ React28.createElement("h1", null, "Painel")), /* @__PURE__ */ React28.createElement("div", { className: "acts noprint" }, anoSel, /* @__PURE__ */ React28.createElement("button", { className: "btn ghost sm", onClick: onExcel }, /* @__PURE__ */ React28.createElement(Download, { size: 16 }), " Excel de ", rot))), /* @__PURE__ */ React28.createElement("h2", { className: "h2", style: { marginTop: 4 } }, "Rebanho hoje", /* @__PURE__ */ React28.createElement("small", null, formatarDataBR(hoje))), /* @__PURE__ */ React28.createElement(Kpis, { itens: [
+  return /* @__PURE__ */ React29.createElement("div", { className: "wrap" }, /* @__PURE__ */ React29.createElement("div", { className: "head" }, /* @__PURE__ */ React29.createElement("div", null, /* @__PURE__ */ React29.createElement("small", null, "Propriet\xE1rio \xB7 ", rot), /* @__PURE__ */ React29.createElement("h1", null, "Painel")), /* @__PURE__ */ React29.createElement("div", { className: "acts noprint" }, anoSel, /* @__PURE__ */ React29.createElement("button", { className: "btn ghost sm", onClick: onExcel }, /* @__PURE__ */ React29.createElement(Download, { size: 16 }), " Excel de ", rot))), /* @__PURE__ */ React29.createElement("h2", { className: "h2", style: { marginTop: 4 } }, "Rebanho hoje", /* @__PURE__ */ React29.createElement("small", null, formatarDataBR(hoje))), /* @__PURE__ */ React29.createElement(Kpis, { itens: [
     { rotulo: "Matrizes", valor: k.total },
     { rotulo: "Cheias", valor: k.cheias, cor: "var(--green)", sub: `${pc(k.cheias).toFixed(0)}% das ativas` },
     { rotulo: "Vazias", valor: k.vazias, cor: "var(--amber)", sub: `${pc(k.vazias).toFixed(0)}% das ativas` },
     { rotulo: "Descarte", valor: k.descartes, cor: "var(--late)" }
-  ] }), /* @__PURE__ */ React28.createElement("div", { className: "panel", style: { marginTop: 12 } }, /* @__PURE__ */ React28.createElement("div", { className: "sbar", role: "img", "aria-label": `${k.cheias} cheias, ${k.vazias} vazias, ${k.descartes} em descarte` }, /* @__PURE__ */ React28.createElement("i", { style: { width: `${k.total ? k.cheias / k.total * 100 : 0}%`, background: "var(--green)" } }), /* @__PURE__ */ React28.createElement("i", { style: { width: `${k.total ? k.vazias / k.total * 100 : 0}%`, background: "var(--amber)" } }), /* @__PURE__ */ React28.createElement("i", { style: { width: `${k.total ? k.descartes / k.total * 100 : 0}%`, background: "var(--late)" } })), /* @__PURE__ */ React28.createElement("div", { className: "legend" }, /* @__PURE__ */ React28.createElement("span", { style: { "--c": "var(--green)" } }, "Cheias"), /* @__PURE__ */ React28.createElement("span", { style: { "--c": "var(--amber)" } }, "Vazias"), /* @__PURE__ */ React28.createElement("span", { style: { "--c": "var(--late)" } }, "Descarte")), /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Partos previstos nos pr\xF3ximos 30 dias", valor: sinal, onClick: () => go("parto") }), /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Novilhas em recria", valor: k.emRecria })), /* @__PURE__ */ React28.createElement("h2", { className: "h2" }, "Crias e novilhas", /* @__PURE__ */ React28.createElement("small", null, "hoje")), /* @__PURE__ */ React28.createElement(Kpis, { itens: [
+  ] }), /* @__PURE__ */ React29.createElement("div", { className: "panel", style: { marginTop: 12 } }, /* @__PURE__ */ React29.createElement("div", { className: "sbar", role: "img", "aria-label": `${k.cheias} cheias, ${k.vazias} vazias, ${k.descartes} em descarte` }, /* @__PURE__ */ React29.createElement("i", { style: { width: `${k.total ? k.cheias / k.total * 100 : 0}%`, background: "var(--green)" } }), /* @__PURE__ */ React29.createElement("i", { style: { width: `${k.total ? k.vazias / k.total * 100 : 0}%`, background: "var(--amber)" } }), /* @__PURE__ */ React29.createElement("i", { style: { width: `${k.total ? k.descartes / k.total * 100 : 0}%`, background: "var(--late)" } })), /* @__PURE__ */ React29.createElement("div", { className: "legend" }, /* @__PURE__ */ React29.createElement("span", { style: { "--c": "var(--green)" } }, "Cheias"), /* @__PURE__ */ React29.createElement("span", { style: { "--c": "var(--amber)" } }, "Vazias"), /* @__PURE__ */ React29.createElement("span", { style: { "--c": "var(--late)" } }, "Descarte")), /* @__PURE__ */ React29.createElement(Lead, { rotulo: "Partos previstos nos pr\xF3ximos 30 dias", valor: sinal, onClick: () => go("parto") }), /* @__PURE__ */ React29.createElement(Lead, { rotulo: "Novilhas em recria", valor: k.emRecria })), /* @__PURE__ */ React29.createElement("h2", { className: "h2" }, "Crias e novilhas", /* @__PURE__ */ React29.createElement("small", null, "hoje")), /* @__PURE__ */ React29.createElement(Kpis, { itens: [
     { rotulo: "Crias no rebanho", valor: criasAtivas.length, sub: `${criasAtivas.filter((c) => c.sexo === "Macho").length} machos \xB7 ${criasAtivas.filter((c) => c.sexo === "F\xEAmea").length} f\xEAmeas` },
     { rotulo: machos.cfg.metaPesoMacho ? `Machos com ${machos.cfg.metaPesoMacho} kg ou mais` : "Machos no peso alvo", valor: machos.cfg.metaPesoMacho ? machos.prontos : "\u2014", cor: machos.prontos ? "var(--green)" : void 0, sub: machos.cfg.metaQtdMacho ? `meta ${machos.cfg.metaQtdMacho}` : "defina a meta em Crias" },
     { rotulo: `Novilhas aptas (${novilhas.length ? "de " + novilhas.length : "nenhuma no lote"})`, valor: novilhasAptas, cor: novilhasAptas ? "var(--green)" : void 0 },
     { rotulo: "Sem pesagem", valor: criasSemPeso, cor: criasSemPeso ? "var(--amber)" : void 0, sub: "crias no rebanho" }
-  ] }), /* @__PURE__ */ React28.createElement("h2", { className: "h2" }, "Movimento de ", rot), /* @__PURE__ */ React28.createElement(Kpis, { itens: [
+  ] }), /* @__PURE__ */ React29.createElement("h2", { className: "h2" }, "Movimento de ", rot), /* @__PURE__ */ React29.createElement(Kpis, { itens: [
     { rotulo: "Nascimentos", valor: k.nascimentos + k.natimortos, sub: `${k.machos} machos \xB7 ${k.femeas} f\xEAmeas` },
     { rotulo: "IATF / coberturas", valor: k.iatfs },
     { rotulo: "Toques", valor: k.diagnosticos, sub: k.diagnosticos ? `${k.taxaPrenhez.toFixed(0)}% prenhes` : "nenhum no per\xEDodo" },
     { rotulo: "Desmamas", valor: k.desmamas, sub: k.desmamas ? `peso m\xE9dio ${k.pesoMedioDesmama.toFixed(0)} kg` : "nenhuma no per\xEDodo" },
     { rotulo: "Mortes", valor: k.mortes, cor: k.mortes ? "var(--late)" : void 0, sub: k.mortes ? `${k.mortesCrias} crias \xB7 ${k.mortes - k.mortesCrias} outros` : "nenhuma no per\xEDodo" }
-  ] }), /* @__PURE__ */ React28.createElement("div", { className: "cols2", style: { marginTop: 16 } }, /* @__PURE__ */ React28.createElement("div", { className: "panel" }, /* @__PURE__ */ React28.createElement("h3", null, "Nascimentos por m\xEAs"), porMes.length === 0 ? /* @__PURE__ */ React28.createElement("p", { className: "sub" }, "Nenhum nascimento lan\xE7ado em ", rot, ".") : /* @__PURE__ */ React28.createElement("div", { className: "mbars", role: "img", "aria-label": "Nascimentos por m\xEAs" }, porMes.map(([mes, n]) => /* @__PURE__ */ React28.createElement("div", { className: "c", key: mes }, /* @__PURE__ */ React28.createElement("b", null, n), /* @__PURE__ */ React28.createElement("i", { style: { height: `${n / maxMes * 100}%` } }), /* @__PURE__ */ React28.createElement("span", null, mesCurto(mes))))), /* @__PURE__ */ React28.createElement(Lead, { rotulo: "Perda ao nascer (natimortos)", valor: `${k.taxaPerda.toFixed(0)}% \xB7 ${k.natimortos}`, cor: k.taxaPerda > 5 ? "var(--late)" : void 0 })), /* @__PURE__ */ React28.createElement("div", { className: "panel" }, /* @__PURE__ */ React28.createElement("h3", null, "A conferir"), pendencias.length === 0 ? /* @__PURE__ */ React28.createElement("p", { className: "sub" }, "Nada pendente. Tudo em ordem.") : pendencias.map((p) => /* @__PURE__ */ React28.createElement(Lead, { key: p.rotulo, rotulo: p.rotulo, valor: p.valor, onClick: p.onClick, cor: p.cor })))), /* @__PURE__ */ React28.createElement("h2", { className: "h2" }, "Dinheiro de ", rot), /* @__PURE__ */ React28.createElement(Kpis, { itens: [
+  ] }), /* @__PURE__ */ React29.createElement("div", { className: "cols2", style: { marginTop: 16 } }, /* @__PURE__ */ React29.createElement("div", { className: "panel" }, /* @__PURE__ */ React29.createElement("h3", null, "Nascimentos por m\xEAs"), porMes.length === 0 ? /* @__PURE__ */ React29.createElement("p", { className: "sub" }, "Nenhum nascimento lan\xE7ado em ", rot, ".") : /* @__PURE__ */ React29.createElement("div", { className: "mbars", role: "img", "aria-label": "Nascimentos por m\xEAs" }, porMes.map(([mes, n]) => /* @__PURE__ */ React29.createElement("div", { className: "c", key: mes }, /* @__PURE__ */ React29.createElement("b", null, n), /* @__PURE__ */ React29.createElement("i", { style: { height: `${n / maxMes * 100}%` } }), /* @__PURE__ */ React29.createElement("span", null, mesCurto(mes))))), /* @__PURE__ */ React29.createElement(Lead, { rotulo: "Perda ao nascer (natimortos)", valor: `${k.taxaPerda.toFixed(0)}% \xB7 ${k.natimortos}`, cor: k.taxaPerda > 5 ? "var(--late)" : void 0 })), /* @__PURE__ */ React29.createElement("div", { className: "panel" }, /* @__PURE__ */ React29.createElement("h3", null, "A conferir"), pendencias.length === 0 ? /* @__PURE__ */ React29.createElement("p", { className: "sub" }, "Nada pendente. Tudo em ordem.") : pendencias.map((p) => /* @__PURE__ */ React29.createElement(Lead, { key: p.rotulo, rotulo: p.rotulo, valor: p.valor, onClick: p.onClick, cor: p.cor })))), /* @__PURE__ */ React29.createElement("h2", { className: "h2" }, "Dinheiro de ", rot), /* @__PURE__ */ React29.createElement(Kpis, { itens: [
     { rotulo: "Vendas", valor: fmtBRL(k.receitaTotal), pequeno: true },
     { rotulo: "Custos", valor: fmtBRL(k.custoTotal), pequeno: true, sub: "IATF, toque, insumo e frete" },
     { rotulo: "Custo por bezerro", valor: fmtBRL(k.custoPorBezerro), pequeno: true, cor: "var(--amber)" },
     { rotulo: "Margem", valor: fmtBRL(k.margem), pequeno: true, cor: k.margem >= 0 ? "var(--green)" : "var(--late)" }
-  ] }), k.receitaTotal === 0 && k.custoTotal === 0 && /* @__PURE__ */ React28.createElement("p", { className: "sub", style: { marginTop: 8 } }, "Ainda n\xE3o h\xE1 vendas ou custos lan\xE7ados em ", rot, "."), /* @__PURE__ */ React28.createElement("h2", { className: "h2" }, "Atividade recente"), /* @__PURE__ */ React28.createElement("div", { className: "sheet" }, recentes.length === 0 ? /* @__PURE__ */ React28.createElement("div", { className: "empty" }, "Nada lan\xE7ado ainda.") : recentes.map((e) => /* @__PURE__ */ React28.createElement("div", { className: "led-r", key: e.id, style: { "--cols": "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React28.createElement("span", { style: { fontSize: 14.5 } }, descreverEvento(e, dados)), /* @__PURE__ */ React28.createElement("span", { className: "m mut" }, formatarDataBR(e.data))))), /* @__PURE__ */ React28.createElement("details", { className: "ferr noprint" }, /* @__PURE__ */ React28.createElement("summary", null, "Ferramentas avan\xE7adas"), /* @__PURE__ */ React28.createElement("div", { className: "in2" }, /* @__PURE__ */ React28.createElement("button", { className: "btn quiet sm", onClick: onRecarregar }, /* @__PURE__ */ React28.createElement(RefreshCw, { size: 15 }), " Recarregar dados da planilha"), /* @__PURE__ */ React28.createElement("button", { className: "btn quiet sm", onClick: () => setConfirmar(true), disabled: sincronizando }, /* @__PURE__ */ React28.createElement(RefreshCw, { size: 15 }), " Sincronizar planilha agora")), confirmar && /* @__PURE__ */ React28.createElement(Aviso, { tipo: "info" }, "Isso regrava a planilha inteira com o que est\xE1 na tela (nada se perde; atualiza f\xF3rmulas, formata\xE7\xE3o e a aba Resumo). ", modoTeste ? "No modo teste n\xE3o faz nada de verdade." : "Pode levar alguns segundos.", /* @__PURE__ */ React28.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8 } }, /* @__PURE__ */ React28.createElement("button", { className: "btn sm", onClick: async () => {
+  ] }), k.receitaTotal === 0 && k.custoTotal === 0 && /* @__PURE__ */ React29.createElement("p", { className: "sub", style: { marginTop: 8 } }, "Ainda n\xE3o h\xE1 vendas ou custos lan\xE7ados em ", rot, "."), /* @__PURE__ */ React29.createElement("h2", { className: "h2" }, "Atividade recente"), /* @__PURE__ */ React29.createElement("div", { className: "sheet" }, recentes.length === 0 ? /* @__PURE__ */ React29.createElement("div", { className: "empty" }, "Nada lan\xE7ado ainda.") : recentes.map((e) => /* @__PURE__ */ React29.createElement("div", { className: "led-r", key: e.id, style: { "--cols": "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React29.createElement("span", { style: { fontSize: 14.5 } }, descreverEvento(e, dados)), /* @__PURE__ */ React29.createElement("span", { className: "m mut" }, formatarDataBR(e.data))))), /* @__PURE__ */ React29.createElement("details", { className: "ferr noprint" }, /* @__PURE__ */ React29.createElement("summary", null, "Ferramentas avan\xE7adas"), /* @__PURE__ */ React29.createElement("div", { className: "in2" }, /* @__PURE__ */ React29.createElement("button", { className: "btn quiet sm", onClick: onRecarregar }, /* @__PURE__ */ React29.createElement(RefreshCw, { size: 15 }), " Recarregar dados da planilha"), /* @__PURE__ */ React29.createElement("button", { className: "btn quiet sm", onClick: () => setConfirmar(true), disabled: sincronizando }, /* @__PURE__ */ React29.createElement(RefreshCw, { size: 15 }), " Sincronizar planilha agora")), confirmar && /* @__PURE__ */ React29.createElement(Aviso, { tipo: "info" }, "Isso regrava a planilha inteira com o que est\xE1 na tela (nada se perde; atualiza f\xF3rmulas, formata\xE7\xE3o e a aba Resumo). ", modoTeste ? "No modo teste n\xE3o faz nada de verdade." : "Pode levar alguns segundos.", /* @__PURE__ */ React29.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8 } }, /* @__PURE__ */ React29.createElement("button", { className: "btn sm", onClick: async () => {
     setConfirmar(false);
     await onSync();
-  } }, "Confirmar"), /* @__PURE__ */ React28.createElement("button", { className: "btn quiet sm", onClick: () => setConfirmar(false) }, "Cancelar")))));
+  } }, "Confirmar"), /* @__PURE__ */ React29.createElement("button", { className: "btn quiet sm", onClick: () => setConfirmar(false) }, "Cancelar")))));
 }
 
 // src/telas/Relatorios.jsx
-import React29, { useMemo as useMemo25, useState as useState28 } from "react";
+import React30, { useMemo as useMemo26, useState as useState29 } from "react";
 import { Printer, Download as Download2, FileDown as FileDown6, Loader2 as Loader213 } from "lucide-react";
 function Relatorios({ anoSel, dados, ano, hoje, ownerMode, onExcel, onExcelRelatorio }) {
   const lista5 = RELATORIOS_APP.filter((r) => ownerMode || r.todos);
-  const [aba, setAba] = useState28(lista5[0].id);
-  const [tipoPlan, setTipoPlan] = useState28("matrizes");
-  const [gerando, setGerando] = useState28(false);
-  const [erroPdf, setErroPdf] = useState28("");
+  const [aba, setAba] = useState29(lista5[0].id);
+  const [tipoPlan, setTipoPlan] = useState29("matrizes");
+  const [gerando, setGerando] = useState29(false);
+  const [erroPdf, setErroPdf] = useState29("");
   const abas = [...lista5.map((r) => ({ id: r.id, label: r.curto })), ...ownerMode ? [{ id: "planilha", label: "Planilha" }] : []];
   const def = lista5.find((r) => r.id === aba) || (aba === "planilha" ? null : lista5[0]);
-  const rel = useMemo25(() => def ? montarRelatorioApp(def.id, dados, ano, hoje, { dono: ownerMode }) : null, [def && def.id, dados, ano, hoje, ownerMode]);
-  const evsAno = useMemo25(() => filtrarPorAno(dados.eventos, ano), [dados.eventos, ano]);
-  const linhasPlan = useMemo25(
+  const rel = useMemo26(() => def ? montarRelatorioApp(def.id, dados, ano, hoje, { dono: ownerMode }) : null, [def && def.id, dados, ano, hoje, ownerMode]);
+  const evsAno = useMemo26(() => filtrarPorAno(dados.eventos, ano), [dados.eventos, ano]);
+  const linhasPlan = useMemo26(
     () => aba === "planilha" && ownerMode ? linhasPlanilha(tipoPlan, { matrizes: dados.matrizes, touros: dados.touros, eventos: evsAno, todosEventos: dados.eventos }) : [],
     [aba, tipoPlan, dados, evsAno, ownerMode]
   );
@@ -8925,16 +9195,16 @@ function Relatorios({ anoSel, dados, ano, hoje, ownerMode, onExcel, onExcelRelat
     }
     setGerando(false);
   }
-  return /* @__PURE__ */ React29.createElement("div", { className: "wrap" }, /* @__PURE__ */ React29.createElement("div", { className: "head" }, /* @__PURE__ */ React29.createElement("div", null, /* @__PURE__ */ React29.createElement("small", null, ownerMode ? "Propriet\xE1rio" : "Funcion\xE1rio", " \xB7 ", rotuloAno(ano)), /* @__PURE__ */ React29.createElement("h1", null, aba === "planilha" ? "Planilha" : "Relat\xF3rios")), /* @__PURE__ */ React29.createElement("div", { className: "acts noprint" }, anoSel, def && /* @__PURE__ */ React29.createElement("button", { className: "btn sm", onClick: pdf, disabled: gerando }, gerando ? /* @__PURE__ */ React29.createElement(Loader213, { size: 16, className: "spin" }) : /* @__PURE__ */ React29.createElement(FileDown6, { size: 16 }), " PDF"), def && /* @__PURE__ */ React29.createElement("button", { className: "btn quiet sm", onClick: () => window.print() }, /* @__PURE__ */ React29.createElement(Printer, { size: 16 }), " Imprimir"), def && ownerMode && /* @__PURE__ */ React29.createElement("button", { className: "btn ghost sm", onClick: () => onExcelRelatorio(rel) }, /* @__PURE__ */ React29.createElement(Download2, { size: 16 }), " Excel"), aba === "planilha" && ownerMode && /* @__PURE__ */ React29.createElement("button", { className: "btn ghost sm", onClick: onExcel }, /* @__PURE__ */ React29.createElement(Download2, { size: 16 }), " Excel completo de ", rotuloAno(ano)))), erroPdf && /* @__PURE__ */ React29.createElement("p", { className: "late", role: "alert" }, erroPdf), /* @__PURE__ */ React29.createElement(IndexTabs, { tabs: abas, value: aba, onChange: setAba, rotulo: "Relat\xF3rios" }), /* @__PURE__ */ React29.createElement("div", { className: "sheet pad" }, def && rel && /* @__PURE__ */ React29.createElement(React29.Fragment, null, /* @__PURE__ */ React29.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rel.titulo), rel.subtitulo && /* @__PURE__ */ React29.createElement("p", { className: "sub" }, rel.subtitulo), !def.porAno && /* @__PURE__ */ React29.createElement("p", { className: "sub" }, "Este relat\xF3rio mostra a situa\xE7\xE3o de hoje e n\xE3o muda com o ano escolhido."), /* @__PURE__ */ React29.createElement(Kpis, { itens: rel.resumo.map((r) => ({ rotulo: r.rotulo, valor: r.valor })) }), rel.secoes.map((s) => /* @__PURE__ */ React29.createElement(SecaoRelatorio, { key: s.titulo, secao: s }))), aba === "planilha" && ownerMode && /* @__PURE__ */ React29.createElement(React29.Fragment, null, /* @__PURE__ */ React29.createElement("p", { className: "sub" }, "Os dados brutos de cada aba, como est\xE3o na planilha. Os lan\xE7amentos mostram s\xF3 ", rotuloAno(ano), "; matrizes e touros aparecem inteiros."), /* @__PURE__ */ React29.createElement("div", { className: "seg", style: { flexWrap: "wrap", marginBottom: 14 }, role: "group", "aria-label": "Aba da planilha" }, ABAS_EXCEL.map(([nome, tipo]) => /* @__PURE__ */ React29.createElement("button", { key: tipo, "aria-pressed": tipoPlan === tipo, onClick: () => setTipoPlan(tipo), style: { flex: "0 0 auto", minHeight: 40, fontSize: 13 } }, nome))), /* @__PURE__ */ React29.createElement(TabelaLinhas, { rows: linhasPlan }))));
+  return /* @__PURE__ */ React30.createElement("div", { className: "wrap" }, /* @__PURE__ */ React30.createElement("div", { className: "head" }, /* @__PURE__ */ React30.createElement("div", null, /* @__PURE__ */ React30.createElement("small", null, ownerMode ? "Propriet\xE1rio" : "Funcion\xE1rio", " \xB7 ", rotuloAno(ano)), /* @__PURE__ */ React30.createElement("h1", null, aba === "planilha" ? "Planilha" : "Relat\xF3rios")), /* @__PURE__ */ React30.createElement("div", { className: "acts noprint" }, anoSel, def && /* @__PURE__ */ React30.createElement("button", { className: "btn sm", onClick: pdf, disabled: gerando }, gerando ? /* @__PURE__ */ React30.createElement(Loader213, { size: 16, className: "spin" }) : /* @__PURE__ */ React30.createElement(FileDown6, { size: 16 }), " PDF"), def && /* @__PURE__ */ React30.createElement("button", { className: "btn quiet sm", onClick: () => window.print() }, /* @__PURE__ */ React30.createElement(Printer, { size: 16 }), " Imprimir"), def && ownerMode && /* @__PURE__ */ React30.createElement("button", { className: "btn ghost sm", onClick: () => onExcelRelatorio(rel) }, /* @__PURE__ */ React30.createElement(Download2, { size: 16 }), " Excel"), aba === "planilha" && ownerMode && /* @__PURE__ */ React30.createElement("button", { className: "btn ghost sm", onClick: onExcel }, /* @__PURE__ */ React30.createElement(Download2, { size: 16 }), " Excel completo de ", rotuloAno(ano)))), erroPdf && /* @__PURE__ */ React30.createElement("p", { className: "late", role: "alert" }, erroPdf), /* @__PURE__ */ React30.createElement(IndexTabs, { tabs: abas, value: aba, onChange: setAba, rotulo: "Relat\xF3rios" }), /* @__PURE__ */ React30.createElement("div", { className: "sheet pad" }, def && rel && /* @__PURE__ */ React30.createElement(React30.Fragment, null, /* @__PURE__ */ React30.createElement("h2", { className: "h2", style: { marginTop: 0 } }, rel.titulo), rel.subtitulo && /* @__PURE__ */ React30.createElement("p", { className: "sub" }, rel.subtitulo), !def.porAno && /* @__PURE__ */ React30.createElement("p", { className: "sub" }, "Este relat\xF3rio mostra a situa\xE7\xE3o de hoje e n\xE3o muda com o ano escolhido."), /* @__PURE__ */ React30.createElement(Kpis, { itens: rel.resumo.map((r) => ({ rotulo: r.rotulo, valor: r.valor })) }), rel.secoes.map((s2) => /* @__PURE__ */ React30.createElement(SecaoRelatorio, { key: s2.titulo, secao: s2 }))), aba === "planilha" && ownerMode && /* @__PURE__ */ React30.createElement(React30.Fragment, null, /* @__PURE__ */ React30.createElement("p", { className: "sub" }, "Os dados brutos de cada aba, como est\xE3o na planilha. Os lan\xE7amentos mostram s\xF3 ", rotuloAno(ano), "; matrizes e touros aparecem inteiros."), /* @__PURE__ */ React30.createElement("div", { className: "seg", style: { flexWrap: "wrap", marginBottom: 14 }, role: "group", "aria-label": "Aba da planilha" }, ABAS_EXCEL.map(([nome, tipo]) => /* @__PURE__ */ React30.createElement("button", { key: tipo, "aria-pressed": tipoPlan === tipo, onClick: () => setTipoPlan(tipo), style: { flex: "0 0 auto", minHeight: 40, fontSize: 13 } }, nome))), /* @__PURE__ */ React30.createElement(TabelaLinhas, { rows: linhasPlan }))));
 }
 
 // src/telas/Cadastros.jsx
-import React30, { useState as useState29 } from "react";
+import React31, { useState as useState30 } from "react";
 import { Plus as Plus11, X as X5, RotateCcw } from "lucide-react";
 function Lista2({ def, dados, onSalvar }) {
   const itens2 = itensCadastro(dados, def.id, valoresUsados(dados, def.id));
-  const [novo, setNovo] = useState29("");
-  const [aberto, setAberto] = useState29(false);
+  const [novo, setNovo] = useState30("");
+  const [aberto, setAberto] = useState30(false);
   const ativos2 = itens2.filter((x) => x.ativo);
   const inativos = itens2.filter((x) => !x.ativo);
   function salvar2(lista5) {
@@ -8948,22 +9218,22 @@ function Lista2({ def, dados, onSalvar }) {
     setNovo("");
   }
   const alternar = (it) => salvar2(itens2.map((x) => x === it ? { ...x, ativo: !x.ativo } : x));
-  return /* @__PURE__ */ React30.createElement("section", { className: "fx-card fx-cad", "data-testid": `cad-${def.id}` }, /* @__PURE__ */ React30.createElement("h3", null, def.titulo, /* @__PURE__ */ React30.createElement("span", null, ativos2.length)), /* @__PURE__ */ React30.createElement("p", null, def.desc), /* @__PURE__ */ React30.createElement("div", { className: "vals" }, ativos2.map((x) => /* @__PURE__ */ React30.createElement("span", { className: "v", key: x.v }, x.v, /* @__PURE__ */ React30.createElement("button", { "aria-label": `Desativar ${x.v}`, title: "Desativar (some das op\xE7\xF5es)", onClick: () => alternar(x) }, /* @__PURE__ */ React30.createElement(X5, { size: 13 })))), !aberto ? /* @__PURE__ */ React30.createElement("button", { className: "v add", onClick: () => setAberto(true) }, /* @__PURE__ */ React30.createElement(Plus11, { size: 13 }), " adicionar") : /* @__PURE__ */ React30.createElement("span", { className: "v add", style: { padding: "0 4px 0 10px" } }, /* @__PURE__ */ React30.createElement("input", { autoFocus: true, value: novo, onChange: (e) => setNovo(e.target.value), onKeyDown: (e) => {
+  return /* @__PURE__ */ React31.createElement("section", { className: "fx-card fx-cad", "data-testid": `cad-${def.id}` }, /* @__PURE__ */ React31.createElement("h3", null, def.titulo, /* @__PURE__ */ React31.createElement("span", null, ativos2.length)), /* @__PURE__ */ React31.createElement("p", null, def.desc), /* @__PURE__ */ React31.createElement("div", { className: "vals" }, ativos2.map((x) => /* @__PURE__ */ React31.createElement("span", { className: "v", key: x.v }, x.v, /* @__PURE__ */ React31.createElement("button", { "aria-label": `Desativar ${x.v}`, title: "Desativar (some das op\xE7\xF5es)", onClick: () => alternar(x) }, /* @__PURE__ */ React31.createElement(X5, { size: 13 })))), !aberto ? /* @__PURE__ */ React31.createElement("button", { className: "v add", onClick: () => setAberto(true) }, /* @__PURE__ */ React31.createElement(Plus11, { size: 13 }), " adicionar") : /* @__PURE__ */ React31.createElement("span", { className: "v add", style: { padding: "0 4px 0 10px" } }, /* @__PURE__ */ React31.createElement("input", { autoFocus: true, value: novo, onChange: (e) => setNovo(e.target.value), onKeyDown: (e) => {
     if (e.key === "Enter") adicionar();
     if (e.key === "Escape") setAberto(false);
-  }, placeholder: "Novo item", "aria-label": `Novo item em ${def.titulo}` }), /* @__PURE__ */ React30.createElement("button", { onClick: adicionar, "aria-label": "Adicionar" }, /* @__PURE__ */ React30.createElement(Plus11, { size: 14 })))), inativos.length > 0 && /* @__PURE__ */ React30.createElement("div", { className: "vals", style: { marginTop: 8 } }, /* @__PURE__ */ React30.createElement("small", { className: "mut", style: { width: "100%" } }, "Desativados (n\xE3o aparecem nas op\xE7\xF5es):"), inativos.map((x) => /* @__PURE__ */ React30.createElement("span", { className: "v off", key: x.v }, x.v, /* @__PURE__ */ React30.createElement("button", { "aria-label": `Reativar ${x.v}`, title: "Reativar", onClick: () => alternar(x) }, /* @__PURE__ */ React30.createElement(RotateCcw, { size: 12 }))))));
+  }, placeholder: "Novo item", "aria-label": `Novo item em ${def.titulo}` }), /* @__PURE__ */ React31.createElement("button", { onClick: adicionar, "aria-label": "Adicionar" }, /* @__PURE__ */ React31.createElement(Plus11, { size: 14 })))), inativos.length > 0 && /* @__PURE__ */ React31.createElement("div", { className: "vals", style: { marginTop: 8 } }, /* @__PURE__ */ React31.createElement("small", { className: "mut", style: { width: "100%" } }, "Desativados (n\xE3o aparecem nas op\xE7\xF5es):"), inativos.map((x) => /* @__PURE__ */ React31.createElement("span", { className: "v off", key: x.v }, x.v, /* @__PURE__ */ React31.createElement("button", { "aria-label": `Reativar ${x.v}`, title: "Reativar", onClick: () => alternar(x) }, /* @__PURE__ */ React31.createElement(RotateCcw, { size: 12 }))))));
 }
 function Cadastros({ dados, onSalvarCadastros, scriptAntigo }) {
-  const [msg, setMsg] = useState29(null);
+  const [msg, setMsg] = useState30(null);
   function salvar2(json3) {
     const r = onSalvarCadastros(json3);
     setMsg(r ? { tipo: "erro", t: r } : null);
   }
-  return /* @__PURE__ */ React30.createElement("div", { className: "wrap" }, /* @__PURE__ */ React30.createElement("div", { className: "head" }, /* @__PURE__ */ React30.createElement("div", null, /* @__PURE__ */ React30.createElement("small", null, "S\xF3 o propriet\xE1rio"), /* @__PURE__ */ React30.createElement("h1", null, "Cadastros"))), /* @__PURE__ */ React30.createElement("p", { className: "sub", style: { marginTop: -6 } }, "As listas que aparecem nos campos do app. Toque no \xD7 para desativar um item (ele some das op\xE7\xF5es, mas o que j\xE1 foi lan\xE7ado continua igual). Os itens j\xE1 usados nos lan\xE7amentos aparecem aqui sozinhos."), scriptAntigo && /* @__PURE__ */ React30.createElement(Aviso, null, "Para gravar os cadastros a planilha precisa do script 15. Implante a vers\xE3o nova do script (fonte/Code_v15.gs). Enquanto isso as mudan\xE7as ficam s\xF3 na tela."), msg && /* @__PURE__ */ React30.createElement(Aviso, { onClose: () => setMsg(null) }, msg.t), LISTAS_CADASTRO.map((d) => /* @__PURE__ */ React30.createElement(Lista2, { key: d.id, def: d, dados, onSalvar: salvar2 })));
+  return /* @__PURE__ */ React31.createElement("div", { className: "wrap" }, /* @__PURE__ */ React31.createElement("div", { className: "head" }, /* @__PURE__ */ React31.createElement("div", null, /* @__PURE__ */ React31.createElement("small", null, "S\xF3 o propriet\xE1rio"), /* @__PURE__ */ React31.createElement("h1", null, "Cadastros"))), /* @__PURE__ */ React31.createElement("p", { className: "sub", style: { marginTop: -6 } }, "As listas que aparecem nos campos do app. Toque no \xD7 para desativar um item (ele some das op\xE7\xF5es, mas o que j\xE1 foi lan\xE7ado continua igual). Os itens j\xE1 usados nos lan\xE7amentos aparecem aqui sozinhos."), scriptAntigo && /* @__PURE__ */ React31.createElement(Aviso, null, "Para gravar os cadastros a planilha precisa do script 15. Implante a vers\xE3o nova do script (fonte/Code_v15.gs). Enquanto isso as mudan\xE7as ficam s\xF3 na tela."), msg && /* @__PURE__ */ React31.createElement(Aviso, { onClose: () => setMsg(null) }, msg.t), LISTAS_CADASTRO.map((d) => /* @__PURE__ */ React31.createElement(Lista2, { key: d.id, def: d, dados, onSalvar: salvar2 })));
 }
 
 // src/telas/Inventario.jsx
-import React31, { useMemo as useMemo26, useState as useState30 } from "react";
+import React32, { useMemo as useMemo27, useState as useState31 } from "react";
 import { Search as Search10, FileDown as FileDown7, Loader2 as Loader214, CheckCircle2 } from "lucide-react";
 
 // src/inventario.js
@@ -9004,10 +9274,10 @@ function ultimosPesos(ix) {
   });
   return out;
 }
-function analisarInventario(ix, opcoes) {
-  const an = analisarConferencia(ix, opcoes);
+function analisarInventario(ix, opcoes2) {
+  const an = analisarConferencia(ix, opcoes2);
   const hoje = ix.hoje;
-  const i = opcoes && opcoes.rodada != null ? opcoes.rodada : an.atual;
+  const i = opcoes2 && opcoes2.rodada != null ? opcoes2.rodada : an.atual;
   const rod = an.rodadas[i];
   const naRod = (d) => d >= rod.inicio && (!rod.fim || d < rod.fim);
   const pesos = ultimosPesos(ix);
@@ -9046,7 +9316,9 @@ function analisarInventario(ix, opcoes) {
     const peso = c && c.pesoAtual && c.pesoData && c.pesoData !== c.nascData ? { peso: c.pesoAtual, data: c.pesoData } : pesos.get(l.k) || (m && ix.ultimoPeso ? ix.ultimoPeso(m.brinco) : null) || null;
     const notas = vMan.map((v) => v.nota).filter(Boolean);
     const pend = vMan.find((v) => v.mudar === "pendente");
+    const idade = meses2(nasc, hoje);
     return {
+      bezerraVelha: !!(c && c.sexo === "F\xEAmea" && idade !== null && idade >= 12 && (l.status === "Mamando" || l.status === "Desmamado")),
       k: l.k,
       brinco: l.brinco,
       cat,
@@ -9149,6 +9421,50 @@ function lotesInventario(inv) {
   };
 }
 
+// src/ferramentas/novilhas12m.js
+function planoNovilhas12m(dados, hoje, agora) {
+  const ix = indiceRebanho(dados, hoje);
+  const inv = analisarInventario(ix);
+  const porK = new Map(inv.animais.map((l) => [l.k, l]));
+  const vistasConfirmar = new Set(inv.confirmadas.map((c) => c.id));
+  const now = agora || (/* @__PURE__ */ new Date()).toISOString();
+  const out = { matrizes: [], pulados: [], porSituacao: {} };
+  ix.crias.forEach((c) => {
+    if (c.novilha || c.sexo !== "F\xEAmea" || !c.nascData || diasEntre(c.nascData, hoje) <= 365) return;
+    const naFazenda2 = c.situacao === "mamando" || c.situacao === "desmamado" || c.situacao === "confirmar" && vistasConfirmar.has(c.id);
+    if (!naFazenda2) return;
+    const brinco = String(c.brinco || "").trim();
+    if (!brinco) {
+      out.pulados.push({ brinco: "s/ n\xBA", nasc: c.nascData, motivo: "sem brinco" });
+      return;
+    }
+    const dup = dados.matrizes.find((m) => String(m.brinco).trim() === brinco && m.status !== "Vendida" && m.status !== "Morta");
+    if (dup) {
+      out.pulados.push({ brinco, nasc: c.nascData, motivo: `j\xE1 existe matriz ativa ${dup.brinco} (${dup.categoria})` });
+      return;
+    }
+    const l = porK.get(`c:${c.id}`);
+    const lote = padronizarLote(l && l.loteConferido || "NOVILHAS", dados.matrizes);
+    out.porSituacao[c.situacao] = (out.porSituacao[c.situacao] || 0) + 1;
+    out.matrizes.push({
+      id: idNovilha(c.id),
+      brinco: /^\d+$/.test(brinco) ? Number(brinco) : brinco,
+      categoria: "Novilha",
+      raca: racaDoHistorico(c.nasc) || "",
+      lote,
+      dataNascimento: c.nascData,
+      partosAnteriores: 0,
+      status: "Vazia",
+      destino: "",
+      dataBaixa: "",
+      motivoBaixa: "",
+      createdAt: now,
+      _info: `${c.situacao} \xB7 ${Math.floor(diasEntre(c.nascData, hoje) / 30.44)} m \xB7 m\xE3e ${c.maeBrinco || "?"}`
+    });
+  });
+  return out;
+}
+
 // src/telas/Inventario.jsx
 var br3 = (d) => d ? formatarDataBR(d) : "";
 var pct = (a, b) => b ? `${Math.round(a / b * 100)}%` : "\u2014";
@@ -9165,11 +9481,11 @@ var txtSit = (l) => {
 };
 var txtConf = (l) => l.resultado === "brinco" && l.conf ? `${br3(l.conf.data)} \xB7 ${l.conf.fonte}` : l.resultado === "mae" && l.conf ? `${br3(l.conf.data)} \xB7 pela m\xE3e ${l.mae}` : l.ultimoAntes ? `n\xE3o \xB7 antes ${br3(l.ultimoAntes.data)}` : "n\xE3o";
 function ConfirmarNaFazenda({ ix, lista: lista5, onConfirmar }) {
-  const femeas = lista5.filter((s) => s.sexo === "F\xEAmea");
-  const [marc, setMarc] = useState30(() => new Set(femeas.map((s) => s.id)));
-  const [lote, setLote] = useState30((femeas.find((s) => s.lote) || {}).lote || "NOVILHAS");
-  const [msg, setMsg] = useState30("");
-  const lotes = [...new Set(ix.dados.matrizes.map((m) => m.lote).filter(Boolean).concat(lista5.map((s) => s.lote).filter(Boolean)))].sort();
+  const femeas = lista5.filter((s2) => s2.sexo === "F\xEAmea");
+  const [marc, setMarc] = useState31(() => new Set(femeas.map((s2) => s2.id)));
+  const [lote, setLote] = useState31((femeas.find((s2) => s2.lote) || {}).lote || "NOVILHAS");
+  const [msg, setMsg] = useState31("");
+  const lotes = [...new Set(ix.dados.matrizes.map((m) => m.lote).filter(Boolean).concat(lista5.map((s2) => s2.lote).filter(Boolean)))].sort();
   if (!femeas.length) return null;
   const alt = (id) => setMarc((m) => {
     const n = new Set(m);
@@ -9182,43 +9498,43 @@ function ConfirmarNaFazenda({ ix, lista: lista5, onConfirmar }) {
     if (r.matrizes.length) onConfirmar(r.matrizes);
     setMsg(`${r.matrizes.length} novilha(s) confirmada(s) no lote ${lote}.${r.pulados.length ? ` Ficaram de fora: ${r.pulados.map((p) => `${p.brinco} (${p.motivo})`).join(", ")}.` : ""}`);
   }
-  return /* @__PURE__ */ React31.createElement("div", { className: "fx-card", style: { marginTop: 10, background: "var(--s2)" }, "data-testid": "confirmar-fazenda" }, /* @__PURE__ */ React31.createElement("p", { className: "sub", style: { marginTop: 0 } }, "As marcadas viram ", /* @__PURE__ */ React31.createElement("b", null, "Novilha"), " no cadastro, ligadas ao nascimento (m\xE3e, data e ra\xE7a do hist\xF3rico)."), /* @__PURE__ */ React31.createElement("div", { className: "fx-chips" }, femeas.map((s) => /* @__PURE__ */ React31.createElement("label", { key: s.id, className: `fx-cp${marc.has(s.id) ? " on" : ""}`, style: { display: "inline-flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React31.createElement("input", { type: "checkbox", checked: marc.has(s.id), onChange: () => alt(s.id), "aria-label": `Confirmar ${s.brinco}` }), s.brinco))), /* @__PURE__ */ React31.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React31.createElement("label", { className: "sub", style: { margin: 0 } }, "Lote ", /* @__PURE__ */ React31.createElement("input", { className: "fx-cp", style: { minWidth: 140 }, list: "inv-lotes", value: lote, onChange: (e) => setLote(e.target.value), "aria-label": "Lote das novilhas confirmadas" })), /* @__PURE__ */ React31.createElement("datalist", { id: "inv-lotes" }, lotes.map((x) => /* @__PURE__ */ React31.createElement("option", { key: x, value: x }))), /* @__PURE__ */ React31.createElement("button", { className: "btn sm", onClick: confirmar, disabled: !marc.size || !lote.trim(), "data-testid": "confirmar-fazenda-sim" }, /* @__PURE__ */ React31.createElement(CheckCircle2, { size: 16 }), " Confirmar ", marc.size, " na fazenda")), msg && /* @__PURE__ */ React31.createElement("p", { className: "sub", style: { color: "var(--green)" }, "data-testid": "confirmar-fazenda-msg" }, msg));
+  return /* @__PURE__ */ React32.createElement("div", { className: "fx-card", style: { marginTop: 10, background: "var(--s2)" }, "data-testid": "confirmar-fazenda" }, /* @__PURE__ */ React32.createElement("p", { className: "sub", style: { marginTop: 0 } }, "As marcadas viram ", /* @__PURE__ */ React32.createElement("b", null, "Novilha"), " no cadastro, ligadas ao nascimento (m\xE3e, data e ra\xE7a do hist\xF3rico)."), /* @__PURE__ */ React32.createElement("div", { className: "fx-chips" }, femeas.map((s2) => /* @__PURE__ */ React32.createElement("label", { key: s2.id, className: `fx-cp${marc.has(s2.id) ? " on" : ""}`, style: { display: "inline-flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React32.createElement("input", { type: "checkbox", checked: marc.has(s2.id), onChange: () => alt(s2.id), "aria-label": `Confirmar ${s2.brinco}` }), s2.brinco))), /* @__PURE__ */ React32.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React32.createElement("label", { className: "sub", style: { margin: 0 } }, "Lote ", /* @__PURE__ */ React32.createElement("input", { className: "fx-cp", style: { minWidth: 140 }, list: "inv-lotes", value: lote, onChange: (e) => setLote(e.target.value), "aria-label": "Lote das novilhas confirmadas" })), /* @__PURE__ */ React32.createElement("datalist", { id: "inv-lotes" }, lotes.map((x) => /* @__PURE__ */ React32.createElement("option", { key: x, value: x }))), /* @__PURE__ */ React32.createElement("button", { className: "btn sm", onClick: confirmar, disabled: !marc.size || !lote.trim(), "data-testid": "confirmar-fazenda-sim" }, /* @__PURE__ */ React32.createElement(CheckCircle2, { size: 16 }), " Confirmar ", marc.size, " na fazenda")), msg && /* @__PURE__ */ React32.createElement("p", { className: "sub", style: { color: "var(--green)" }, "data-testid": "confirmar-fazenda-msg" }, msg));
 }
 function AplicarLotes({ lista: lista5, onDecidir }) {
   const comPend = lista5.filter((l) => l.pendencia);
-  const [marc, setMarc] = useState30(() => new Set(comPend.map((l) => l.k)));
-  const [msg, setMsg] = useState30("");
+  const [marc, setMarc] = useState31(() => new Set(comPend.map((l) => l.k)));
+  const [msg, setMsg] = useState31("");
   if (!comPend.length) return null;
   const todos = marc.size === comPend.length;
   function aplicar(sim) {
     const dec = comPend.filter((l) => marc.has(l.k)).map((l) => ({ ...l.pendencia, aprovar: sim }));
     setMsg(onDecidir(dec) || "");
   }
-  return /* @__PURE__ */ React31.createElement("div", { className: "fx-card", style: { marginTop: 10, background: "var(--s2)" }, "data-testid": "aplicar-lotes" }, /* @__PURE__ */ React31.createElement("p", { className: "sub", style: { marginTop: 0 } }, comPend.length, " matriz(es) t\xEAm a mudan\xE7a de lote esperando voc\xEA nos manejos. Marcadas: ", /* @__PURE__ */ React31.createElement("b", null, marc.size), ".", " ", /* @__PURE__ */ React31.createElement("button", { className: "link", onClick: () => setMarc(todos ? /* @__PURE__ */ new Set() : new Set(comPend.map((l) => l.k))) }, todos ? "desmarcar todas" : "marcar todas")), /* @__PURE__ */ React31.createElement("div", { className: "fx-chips", style: { maxHeight: 180, overflow: "auto" } }, comPend.map((l) => /* @__PURE__ */ React31.createElement("label", { key: l.k, className: `fx-cp${marc.has(l.k) ? " on" : ""}`, style: { display: "inline-flex", alignItems: "center", gap: 6 }, title: `${l.loteSistema || "sem lote"} \u2192 ${l.loteConferido}` }, /* @__PURE__ */ React31.createElement("input", { type: "checkbox", checked: marc.has(l.k), "aria-label": `Aplicar lote em ${l.brinco}`, onChange: () => setMarc((m) => {
+  return /* @__PURE__ */ React32.createElement("div", { className: "fx-card", style: { marginTop: 10, background: "var(--s2)" }, "data-testid": "aplicar-lotes" }, /* @__PURE__ */ React32.createElement("p", { className: "sub", style: { marginTop: 0 } }, comPend.length, " matriz(es) t\xEAm a mudan\xE7a de lote esperando voc\xEA nos manejos. Marcadas: ", /* @__PURE__ */ React32.createElement("b", null, marc.size), ".", " ", /* @__PURE__ */ React32.createElement("button", { className: "link", onClick: () => setMarc(todos ? /* @__PURE__ */ new Set() : new Set(comPend.map((l) => l.k))) }, todos ? "desmarcar todas" : "marcar todas")), /* @__PURE__ */ React32.createElement("div", { className: "fx-chips", style: { maxHeight: 180, overflow: "auto" } }, comPend.map((l) => /* @__PURE__ */ React32.createElement("label", { key: l.k, className: `fx-cp${marc.has(l.k) ? " on" : ""}`, style: { display: "inline-flex", alignItems: "center", gap: 6 }, title: `${l.loteSistema || "sem lote"} \u2192 ${l.loteConferido}` }, /* @__PURE__ */ React32.createElement("input", { type: "checkbox", checked: marc.has(l.k), "aria-label": `Aplicar lote em ${l.brinco}`, onChange: () => setMarc((m) => {
     const n = new Set(m);
     if (n.has(l.k)) n.delete(l.k);
     else n.add(l.k);
     return n;
-  }) }), l.brinco))), /* @__PURE__ */ React31.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React31.createElement("button", { className: "btn sm", disabled: !marc.size, onClick: () => aplicar(true), "data-testid": "aplicar-lotes-sim" }, /* @__PURE__ */ React31.createElement(CheckCircle2, { size: 16 }), " Mudar ", marc.size, " para o lote conferido"), /* @__PURE__ */ React31.createElement("button", { className: "btn sm quiet", disabled: !marc.size, onClick: () => aplicar(false) }, "Manter no lote atual")), msg && /* @__PURE__ */ React31.createElement("p", { className: "sub", style: { color: "var(--green)" }, "data-testid": "aplicar-lotes-msg" }, msg));
+  }) }), l.brinco))), /* @__PURE__ */ React32.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React32.createElement("button", { className: "btn sm", disabled: !marc.size, onClick: () => aplicar(true), "data-testid": "aplicar-lotes-sim" }, /* @__PURE__ */ React32.createElement(CheckCircle2, { size: 16 }), " Mudar ", marc.size, " para o lote conferido"), /* @__PURE__ */ React32.createElement("button", { className: "btn sm quiet", disabled: !marc.size, onClick: () => aplicar(false) }, "Manter no lote atual")), msg && /* @__PURE__ */ React32.createElement("p", { className: "sub", style: { color: "var(--green)" }, "data-testid": "aplicar-lotes-msg" }, msg));
 }
 function Inventario({ hoje, ownerMode, onDecidirLote, onConfirmarNovilhas }) {
   const { ix, abrir } = useFicha();
-  const [iR, setIR] = useState30(null);
-  const inv = useMemo26(() => ix ? analisarInventario(ix, { rodada: iR }) : null, [ix, iR]);
-  const [aba, setAba] = useState30("resumo");
-  const [res, setRes] = useState30("");
-  const [cat, setCat] = useState30("");
-  const [lote, setLote] = useState30("");
-  const [tipoLote, setTipoLote] = useState30("sistema");
-  const [extra, setExtra] = useState30("");
-  const [busca, setBusca] = useState30("");
-  const [gerando, setGerando] = useState30("");
+  const [iR, setIR] = useState31(null);
+  const inv = useMemo27(() => ix ? analisarInventario(ix, { rodada: iR }) : null, [ix, iR]);
+  const [aba, setAba] = useState31("resumo");
+  const [res, setRes] = useState31("");
+  const [cat, setCat] = useState31("");
+  const [lote, setLote] = useState31("");
+  const [tipoLote, setTipoLote] = useState31("sistema");
+  const [extra, setExtra] = useState31("");
+  const [busca, setBusca] = useState31("");
+  const [gerando, setGerando] = useState31("");
   if (!inv) return null;
   const r = resumoInventario(inv);
   const L = lotesInventario(inv);
   const rod = inv.rodada;
   const periodo = `${rod.nome}: desde ${br3(rod.inicio)}${rod.fim ? ` at\xE9 ${br3(rod.fim)}` : ""}`;
-  const divTotal = r.loteDif + r.duplos + r.semCadastro + r.fora + inv.confirmadas.length + r.novilhasQuePariram;
+  const divTotal = r.loteDif + r.duplos + r.semCadastro + r.fora + inv.confirmadas.length + r.novilhasQuePariram + inv.animais.filter((l) => l.bezerraVelha).length;
   const verAnimais = (o) => {
     setRes(o.res ?? "");
     setCat(o.cat ?? "");
@@ -9290,12 +9606,12 @@ function Inventario({ hoje, ownerMode, onDecidirLote, onConfirmarNovilhas }) {
           secoes: [
             { titulo: "Lote do sistema diferente do lote conferido", colunas: COLS2, linhas: inv.animais.filter((l) => l.loteDif).map(linhaPDF2) },
             { titulo: "Passaram em dois lotes", colunas: COLS2, linhas: inv.animais.filter((l) => l.duplo).map((l) => ({ ...linhaPDF2(l), lc: l.lotesConf.join(" e ") })) },
-            { titulo: "Brincos anotados sem cadastro", colunas: [{ k: "brinco", label: "Brinco" }, { k: "data", label: "Data" }, { k: "lote", label: "Lote" }, { k: "manejo", label: "Manejo" }, { k: "nota", label: "Observa\xE7\xE3o" }], linhas: inv.semCadastro.map((s) => ({ ...s, data: br3(s.data) })) },
-            { titulo: "Passaram no curral mas est\xE3o fora do rebanho no sistema", colunas: [{ k: "brinco", label: "Brinco" }, { k: "rot", label: "Animal" }, { k: "situacao", label: "No sistema" }, { k: "data", label: "Visto em" }], linhas: inv.fora.map((s) => ({ ...s, data: br3(s.data) })) },
-            { titulo: "Crias a confirmar que passaram no curral", colunas: [{ k: "brinco", label: "Brinco" }, { k: "rot", label: "Animal" }, { k: "mae", label: "M\xE3e" }, { k: "nasc", label: "Nascimento" }, { k: "lote", label: "Lote conferido" }], linhas: inv.confirmadas.map((s) => ({ ...s, nasc: br3(s.nasc) })) },
+            { titulo: "Brincos anotados sem cadastro", colunas: [{ k: "brinco", label: "Brinco" }, { k: "data", label: "Data" }, { k: "lote", label: "Lote" }, { k: "manejo", label: "Manejo" }, { k: "nota", label: "Observa\xE7\xE3o" }], linhas: inv.semCadastro.map((s2) => ({ ...s2, data: br3(s2.data) })) },
+            { titulo: "Passaram no curral mas est\xE3o fora do rebanho no sistema", colunas: [{ k: "brinco", label: "Brinco" }, { k: "rot", label: "Animal" }, { k: "situacao", label: "No sistema" }, { k: "data", label: "Visto em" }], linhas: inv.fora.map((s2) => ({ ...s2, data: br3(s2.data) })) },
+            { titulo: "Crias a confirmar que passaram no curral", colunas: [{ k: "brinco", label: "Brinco" }, { k: "rot", label: "Animal" }, { k: "mae", label: "M\xE3e" }, { k: "nasc", label: "Nascimento" }, { k: "lote", label: "Lote conferido" }], linhas: inv.confirmadas.map((s2) => ({ ...s2, nasc: br3(s2.nasc) })) },
             { titulo: "Novilhas que j\xE1 pariram (categoria a corrigir)", colunas: COLS2, linhas: inv.animais.filter((l) => l.novilhaQuePariu).map(linhaPDF2) },
             { titulo: "N\xE3o conferidos", colunas: COLS2, linhas: inv.animais.filter((l) => l.resultado === "nao").map(linhaPDF2) }
-          ].filter((s) => s.linhas.length)
+          ].filter((s2) => s2.linhas.length)
         }, { paisagem: true, arquivo: `inventario-divergencias-${hoje}.pdf` });
       }
     } catch (e) {
@@ -9303,29 +9619,32 @@ function Inventario({ hoje, ownerMode, onDecidirLote, onConfirmarNovilhas }) {
     }
     setGerando("");
   }
-  const BotaoPDF = ({ tipo, children, quiet }) => /* @__PURE__ */ React31.createElement("button", { className: `btn sm${quiet ? " quiet" : ""}`, onClick: () => pdf(tipo), disabled: !!gerando, "data-testid": `inv-pdf-${tipo}` }, gerando === tipo ? /* @__PURE__ */ React31.createElement(Loader214, { size: 16, className: "spin" }) : /* @__PURE__ */ React31.createElement(FileDown7, { size: 16 }), " ", children);
-  const Chip2 = ({ on, onClick, children, testid }) => /* @__PURE__ */ React31.createElement("button", { className: `fx-cp${on ? " on" : ""}`, "aria-pressed": on, onClick, "data-testid": testid }, children);
-  return /* @__PURE__ */ React31.createElement("div", { className: "wrap", "data-testid": "inventario" }, /* @__PURE__ */ React31.createElement("div", { className: "head" }, /* @__PURE__ */ React31.createElement("div", null, /* @__PURE__ */ React31.createElement("small", null, "Rebanho vivo x sistema"), /* @__PURE__ */ React31.createElement("h1", null, "Invent\xE1rio"))), /* @__PURE__ */ React31.createElement("p", { className: "sub pd-lead" }, /* @__PURE__ */ React31.createElement("b", null, periodo), ". Dos ", /* @__PURE__ */ React31.createElement("b", null, r.total + r.aConfirmar), " animais (", r.total, " no sistema", r.aConfirmar ? ` + ${r.aConfirmar} a confirmar que passou` : "", "), ", /* @__PURE__ */ React31.createElement("b", null, r.vivos), " foram conferidos vivos (", pct(r.vivos, r.total + r.aConfirmar), "): ", r.brinco, " pelo brinco e ", r.mae, " bezerros pela m\xE3e.", " ", "Faltam ", /* @__PURE__ */ React31.createElement("b", null, r.nao), ". A data da confer\xEAncia \xE9 a data do manejo."), inv.rodadas.length > 1 && /* @__PURE__ */ React31.createElement("div", { className: "fx-chips" }, inv.rodadas.map((x, i) => /* @__PURE__ */ React31.createElement(Chip2, { key: x.n, on: inv.iRodada === i, onClick: () => setIR(i), testid: `rodada-${x.n}` }, x.nome, " \xB7 ", br3(x.inicio)))), /* @__PURE__ */ React31.createElement(IndexTabs, { rotulo: "Invent\xE1rio", value: aba, onChange: setAba, tabs: [
+  const BotaoPDF = ({ tipo, children, quiet }) => /* @__PURE__ */ React32.createElement("button", { className: `btn sm${quiet ? " quiet" : ""}`, onClick: () => pdf(tipo), disabled: !!gerando, "data-testid": `inv-pdf-${tipo}` }, gerando === tipo ? /* @__PURE__ */ React32.createElement(Loader214, { size: 16, className: "spin" }) : /* @__PURE__ */ React32.createElement(FileDown7, { size: 16 }), " ", children);
+  const Chip2 = ({ on, onClick, children, testid }) => /* @__PURE__ */ React32.createElement("button", { className: `fx-cp${on ? " on" : ""}`, "aria-pressed": on, onClick, "data-testid": testid }, children);
+  return /* @__PURE__ */ React32.createElement("div", { className: "wrap", "data-testid": "inventario" }, /* @__PURE__ */ React32.createElement("div", { className: "head" }, /* @__PURE__ */ React32.createElement("div", null, /* @__PURE__ */ React32.createElement("small", null, "Rebanho vivo x sistema"), /* @__PURE__ */ React32.createElement("h1", null, "Invent\xE1rio"))), /* @__PURE__ */ React32.createElement("p", { className: "sub pd-lead" }, /* @__PURE__ */ React32.createElement("b", null, periodo), ". Dos ", /* @__PURE__ */ React32.createElement("b", null, r.total + r.aConfirmar), " animais (", r.total, " no sistema", r.aConfirmar ? ` + ${r.aConfirmar} a confirmar que passou` : "", "), ", /* @__PURE__ */ React32.createElement("b", null, r.vivos), " foram conferidos vivos (", pct(r.vivos, r.total + r.aConfirmar), "): ", r.brinco, " pelo brinco e ", r.mae, " bezerros pela m\xE3e.", " ", "Faltam ", /* @__PURE__ */ React32.createElement("b", null, r.nao), ". A data da confer\xEAncia \xE9 a data do manejo."), inv.rodadas.length > 1 && /* @__PURE__ */ React32.createElement("div", { className: "fx-chips" }, inv.rodadas.map((x, i) => /* @__PURE__ */ React32.createElement(Chip2, { key: x.n, on: inv.iRodada === i, onClick: () => setIR(i), testid: `rodada-${x.n}` }, x.nome, " \xB7 ", br3(x.inicio)))), /* @__PURE__ */ React32.createElement(IndexTabs, { rotulo: "Invent\xE1rio", value: aba, onChange: setAba, tabs: [
     { id: "resumo", label: "Resumo" },
     { id: "animais", label: "Animais", count: inv.animais.length },
     { id: "lotes", label: "Lotes", count: L.conferidos.length },
     { id: "divergencias", label: "Diverg\xEAncias", count: divTotal }
-  ] }), aba === "resumo" && /* @__PURE__ */ React31.createElement("div", { style: { marginTop: 14 }, "data-testid": "inv-resumo" }, /* @__PURE__ */ React31.createElement("div", { className: "fx-resumo" }, /* @__PURE__ */ React31.createElement("button", { className: "fx-kpi", onClick: () => verAnimais({}) }, /* @__PURE__ */ React31.createElement("small", null, "No sistema"), /* @__PURE__ */ React31.createElement("b", null, r.total), r.aConfirmar ? /* @__PURE__ */ React31.createElement("i", null, "+", r.aConfirmar, " a confirmar") : null), /* @__PURE__ */ React31.createElement("button", { className: "fx-kpi", onClick: () => verAnimais({ res: "brinco" }) }, /* @__PURE__ */ React31.createElement("small", null, "Conferidos pelo brinco"), /* @__PURE__ */ React31.createElement("b", { style: { color: "var(--green)" } }, r.brinco)), /* @__PURE__ */ React31.createElement("button", { className: "fx-kpi", onClick: () => verAnimais({ res: "mae" }) }, /* @__PURE__ */ React31.createElement("small", null, "Bezerros pela m\xE3e"), /* @__PURE__ */ React31.createElement("b", { style: { color: COR_RES.mae } }, r.mae), /* @__PURE__ */ React31.createElement("i", null, "ao p\xE9, sem brinco anotado")), /* @__PURE__ */ React31.createElement("button", { className: "fx-kpi", onClick: () => verAnimais({ res: "nao" }), "data-testid": "kpi-nao" }, /* @__PURE__ */ React31.createElement("small", null, "N\xE3o conferidos"), /* @__PURE__ */ React31.createElement("b", { style: { color: "var(--amber)" } }, r.nao), /* @__PURE__ */ React31.createElement("i", null, r.suspeitas, " suspeitas")), /* @__PURE__ */ React31.createElement("button", { className: "fx-kpi", onClick: () => verAnimais({ extra: "loteDif" }) }, /* @__PURE__ */ React31.createElement("small", null, "Lote diferente"), /* @__PURE__ */ React31.createElement("b", { style: { color: "var(--late)" } }, r.loteDif), /* @__PURE__ */ React31.createElement("i", null, "sistema x curral")), /* @__PURE__ */ React31.createElement("button", { className: "fx-kpi", onClick: () => setAba("divergencias") }, /* @__PURE__ */ React31.createElement("small", null, "Sem cadastro"), /* @__PURE__ */ React31.createElement("b", { style: { color: "var(--late)" } }, r.semCadastro), /* @__PURE__ */ React31.createElement("i", null, "brincos anotados"))), /* @__PURE__ */ React31.createElement("div", { className: "pd-tabela-box", style: { maxHeight: "none" } }, /* @__PURE__ */ React31.createElement("table", { className: "pd-tabela", "data-testid": "inv-tabela-cat" }, /* @__PURE__ */ React31.createElement("thead", null, /* @__PURE__ */ React31.createElement("tr", null, /* @__PURE__ */ React31.createElement("th", null, "Categoria"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "No sistema"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "Pelo brinco"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "Pela m\xE3e"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "N\xE3o conferidos"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "% conferido"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "Lote diferente"))), /* @__PURE__ */ React31.createElement("tbody", null, r.porCat.map((c) => /* @__PURE__ */ React31.createElement("tr", { key: c.id, onClick: () => verAnimais({ cat: c.id }), "data-testid": `inv-cat-${c.id}` }, /* @__PURE__ */ React31.createElement("td", null, /* @__PURE__ */ React31.createElement("b", null, c.nome), c.aConfirmar ? /* @__PURE__ */ React31.createElement("small", null, "+", c.aConfirmar, " a confirmar que passaram") : null), /* @__PURE__ */ React31.createElement("td", { className: "num" }, c.total), /* @__PURE__ */ React31.createElement("td", { className: "num", style: { color: "var(--green)" } }, c.brinco), /* @__PURE__ */ React31.createElement("td", { className: "num" }, c.mae || ""), /* @__PURE__ */ React31.createElement("td", { className: "num", style: { color: c.nao ? "var(--amber)" : void 0 } }, c.nao), /* @__PURE__ */ React31.createElement("td", { className: "num" }, pct(c.brinco + c.mae, c.total + c.aConfirmar)), /* @__PURE__ */ React31.createElement("td", { className: "num" }, c.loteDif || ""))), /* @__PURE__ */ React31.createElement("tr", { style: { cursor: "default" } }, /* @__PURE__ */ React31.createElement("td", null, /* @__PURE__ */ React31.createElement("b", null, "Total")), /* @__PURE__ */ React31.createElement("td", { className: "num" }, /* @__PURE__ */ React31.createElement("b", null, r.total)), /* @__PURE__ */ React31.createElement("td", { className: "num" }, /* @__PURE__ */ React31.createElement("b", null, r.brinco)), /* @__PURE__ */ React31.createElement("td", { className: "num" }, /* @__PURE__ */ React31.createElement("b", null, r.mae)), /* @__PURE__ */ React31.createElement("td", { className: "num" }, /* @__PURE__ */ React31.createElement("b", null, r.nao)), /* @__PURE__ */ React31.createElement("td", { className: "num" }, /* @__PURE__ */ React31.createElement("b", null, pct(r.vivos, r.total + r.aConfirmar))), /* @__PURE__ */ React31.createElement("td", { className: "num" }, /* @__PURE__ */ React31.createElement("b", null, r.loteDif)))))), /* @__PURE__ */ React31.createElement("div", { className: "pd-pdf", style: { marginTop: 12 } }, /* @__PURE__ */ React31.createElement(BotaoPDF, { tipo: "completo" }, "PDF do invent\xE1rio completo"), /* @__PURE__ */ React31.createElement(BotaoPDF, { tipo: "divergencias", quiet: true }, "PDF das diverg\xEAncias")), /* @__PURE__ */ React31.createElement("details", { className: "pd-defs" }, /* @__PURE__ */ React31.createElement("summary", null, "Como o invent\xE1rio conta"), /* @__PURE__ */ React31.createElement("ul", null, /* @__PURE__ */ React31.createElement("li", null, /* @__PURE__ */ React31.createElement("b", null, "No sistema"), ': matrizes n\xE3o vendidas nem mortas (descarte entra), crias mamando e desmamadas, touros vivos e bois. Crias do hist\xF3rico "a confirmar" s\xF3 entram quando passam no curral.'), /* @__PURE__ */ React31.createElement("li", null, /* @__PURE__ */ React31.createElement("b", null, "Conferido pelo brinco"), ": o n\xFAmero aparece num manejo, toque, IATF, pesagem, desmama ou parto da rodada."), /* @__PURE__ */ React31.createElement("li", null, /* @__PURE__ */ React31.createElement("b", null, "Pela m\xE3e"), ": bezerro mamando sem o brinco anotado, mas a m\xE3e passou no curral. Conta como vivo, mas vale anotar o brinco no pr\xF3ximo manejo."), /* @__PURE__ */ React31.createElement("li", null, /* @__PURE__ */ React31.createElement("b", null, "Lote conferido"), ": o lote do \xFAltimo manejo da rodada em que o animal passou. O bezerro mamando fica com o lote da m\xE3e."), /* @__PURE__ */ React31.createElement("li", null, /* @__PURE__ */ React31.createElement("b", null, "Rodadas"), ": a primeira come\xE7a em ", br3(inv.inicio), ". Cada toque geral abre a seguinte.")))), aba === "animais" && /* @__PURE__ */ React31.createElement("div", { style: { marginTop: 14 }, "data-testid": "inv-animais" }, /* @__PURE__ */ React31.createElement("div", { className: "fx-chips" }, /* @__PURE__ */ React31.createElement(Chip2, { on: !res, onClick: () => setRes("") }, "Todos", /* @__PURE__ */ React31.createElement("b", null, r.total + r.aConfirmar)), /* @__PURE__ */ React31.createElement(Chip2, { on: res === "brinco", onClick: () => setRes("brinco"), testid: "inv-f-brinco" }, "Conferidos", /* @__PURE__ */ React31.createElement("b", null, r.brinco)), /* @__PURE__ */ React31.createElement(Chip2, { on: res === "mae", onClick: () => setRes("mae"), testid: "inv-f-mae" }, "Pela m\xE3e", /* @__PURE__ */ React31.createElement("b", null, r.mae)), /* @__PURE__ */ React31.createElement(Chip2, { on: res === "nao", onClick: () => setRes("nao"), testid: "inv-f-nao" }, "N\xE3o conferidos", /* @__PURE__ */ React31.createElement("b", null, r.nao))), /* @__PURE__ */ React31.createElement("div", { className: "fx-chips" }, /* @__PURE__ */ React31.createElement(Chip2, { on: !extra, onClick: () => setExtra("") }, "Sem destaque"), /* @__PURE__ */ React31.createElement(Chip2, { on: extra === "loteDif", onClick: () => setExtra("loteDif"), testid: "inv-f-lotedif" }, "Lote diferente", /* @__PURE__ */ React31.createElement("b", null, r.loteDif)), /* @__PURE__ */ React31.createElement(Chip2, { on: extra === "suspeita", onClick: () => setExtra("suspeita") }, "Suspeitas", /* @__PURE__ */ React31.createElement("b", null, r.suspeitas)), r.duplos > 0 && /* @__PURE__ */ React31.createElement(Chip2, { on: extra === "duplo", onClick: () => setExtra("duplo") }, "Dois lotes", /* @__PURE__ */ React31.createElement("b", null, r.duplos)), /* @__PURE__ */ React31.createElement(Chip2, { on: extra === "obs", onClick: () => setExtra("obs") }, "Com observa\xE7\xE3o"), inv.rodadas.length > 1 && /* @__PURE__ */ React31.createElement(Chip2, { on: extra === "todas", onClick: () => setExtra("todas") }, "Faltaram em todas")), /* @__PURE__ */ React31.createElement("div", { className: "fx-chips" }, /* @__PURE__ */ React31.createElement("select", { className: "fx-cp", value: cat, onChange: (e) => setCat(e.target.value), "aria-label": "Categoria", "data-testid": "inv-cat" }, /* @__PURE__ */ React31.createElement("option", { value: "" }, "Todas as categorias"), CATS_INV.map((c) => /* @__PURE__ */ React31.createElement("option", { key: c.id, value: c.id }, c.nome))), /* @__PURE__ */ React31.createElement("select", { className: "fx-cp", value: tipoLote, onChange: (e) => {
+  ] }), aba === "resumo" && /* @__PURE__ */ React32.createElement("div", { style: { marginTop: 14 }, "data-testid": "inv-resumo" }, /* @__PURE__ */ React32.createElement("div", { className: "fx-resumo" }, /* @__PURE__ */ React32.createElement("button", { className: "fx-kpi", onClick: () => verAnimais({}) }, /* @__PURE__ */ React32.createElement("small", null, "No sistema"), /* @__PURE__ */ React32.createElement("b", null, r.total), r.aConfirmar ? /* @__PURE__ */ React32.createElement("i", null, "+", r.aConfirmar, " a confirmar") : null), /* @__PURE__ */ React32.createElement("button", { className: "fx-kpi", onClick: () => verAnimais({ res: "brinco" }) }, /* @__PURE__ */ React32.createElement("small", null, "Conferidos pelo brinco"), /* @__PURE__ */ React32.createElement("b", { style: { color: "var(--green)" } }, r.brinco)), /* @__PURE__ */ React32.createElement("button", { className: "fx-kpi", onClick: () => verAnimais({ res: "mae" }) }, /* @__PURE__ */ React32.createElement("small", null, "Bezerros pela m\xE3e"), /* @__PURE__ */ React32.createElement("b", { style: { color: COR_RES.mae } }, r.mae), /* @__PURE__ */ React32.createElement("i", null, "ao p\xE9, sem brinco anotado")), /* @__PURE__ */ React32.createElement("button", { className: "fx-kpi", onClick: () => verAnimais({ res: "nao" }), "data-testid": "kpi-nao" }, /* @__PURE__ */ React32.createElement("small", null, "N\xE3o conferidos"), /* @__PURE__ */ React32.createElement("b", { style: { color: "var(--amber)" } }, r.nao), /* @__PURE__ */ React32.createElement("i", null, r.suspeitas, " suspeitas")), /* @__PURE__ */ React32.createElement("button", { className: "fx-kpi", onClick: () => verAnimais({ extra: "loteDif" }) }, /* @__PURE__ */ React32.createElement("small", null, "Lote diferente"), /* @__PURE__ */ React32.createElement("b", { style: { color: "var(--late)" } }, r.loteDif), /* @__PURE__ */ React32.createElement("i", null, "sistema x curral")), /* @__PURE__ */ React32.createElement("button", { className: "fx-kpi", onClick: () => setAba("divergencias") }, /* @__PURE__ */ React32.createElement("small", null, "Sem cadastro"), /* @__PURE__ */ React32.createElement("b", { style: { color: "var(--late)" } }, r.semCadastro), /* @__PURE__ */ React32.createElement("i", null, "brincos anotados"))), /* @__PURE__ */ React32.createElement("div", { className: "pd-tabela-box", style: { maxHeight: "none" } }, /* @__PURE__ */ React32.createElement("table", { className: "pd-tabela", "data-testid": "inv-tabela-cat" }, /* @__PURE__ */ React32.createElement("thead", null, /* @__PURE__ */ React32.createElement("tr", null, /* @__PURE__ */ React32.createElement("th", null, "Categoria"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "No sistema"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "Pelo brinco"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "Pela m\xE3e"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "N\xE3o conferidos"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "% conferido"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "Lote diferente"))), /* @__PURE__ */ React32.createElement("tbody", null, r.porCat.map((c) => /* @__PURE__ */ React32.createElement("tr", { key: c.id, onClick: () => verAnimais({ cat: c.id }), "data-testid": `inv-cat-${c.id}` }, /* @__PURE__ */ React32.createElement("td", null, /* @__PURE__ */ React32.createElement("b", null, c.nome), c.aConfirmar ? /* @__PURE__ */ React32.createElement("small", null, "+", c.aConfirmar, " a confirmar que passaram") : null), /* @__PURE__ */ React32.createElement("td", { className: "num" }, c.total), /* @__PURE__ */ React32.createElement("td", { className: "num", style: { color: "var(--green)" } }, c.brinco), /* @__PURE__ */ React32.createElement("td", { className: "num" }, c.mae || ""), /* @__PURE__ */ React32.createElement("td", { className: "num", style: { color: c.nao ? "var(--amber)" : void 0 } }, c.nao), /* @__PURE__ */ React32.createElement("td", { className: "num" }, pct(c.brinco + c.mae, c.total + c.aConfirmar)), /* @__PURE__ */ React32.createElement("td", { className: "num" }, c.loteDif || ""))), /* @__PURE__ */ React32.createElement("tr", { style: { cursor: "default" } }, /* @__PURE__ */ React32.createElement("td", null, /* @__PURE__ */ React32.createElement("b", null, "Total")), /* @__PURE__ */ React32.createElement("td", { className: "num" }, /* @__PURE__ */ React32.createElement("b", null, r.total)), /* @__PURE__ */ React32.createElement("td", { className: "num" }, /* @__PURE__ */ React32.createElement("b", null, r.brinco)), /* @__PURE__ */ React32.createElement("td", { className: "num" }, /* @__PURE__ */ React32.createElement("b", null, r.mae)), /* @__PURE__ */ React32.createElement("td", { className: "num" }, /* @__PURE__ */ React32.createElement("b", null, r.nao)), /* @__PURE__ */ React32.createElement("td", { className: "num" }, /* @__PURE__ */ React32.createElement("b", null, pct(r.vivos, r.total + r.aConfirmar))), /* @__PURE__ */ React32.createElement("td", { className: "num" }, /* @__PURE__ */ React32.createElement("b", null, r.loteDif)))))), /* @__PURE__ */ React32.createElement("div", { className: "pd-pdf", style: { marginTop: 12 } }, /* @__PURE__ */ React32.createElement(BotaoPDF, { tipo: "completo" }, "PDF do invent\xE1rio completo"), /* @__PURE__ */ React32.createElement(BotaoPDF, { tipo: "divergencias", quiet: true }, "PDF das diverg\xEAncias")), /* @__PURE__ */ React32.createElement("details", { className: "pd-defs" }, /* @__PURE__ */ React32.createElement("summary", null, "Como o invent\xE1rio conta"), /* @__PURE__ */ React32.createElement("ul", null, /* @__PURE__ */ React32.createElement("li", null, /* @__PURE__ */ React32.createElement("b", null, "No sistema"), ': matrizes n\xE3o vendidas nem mortas (descarte entra), crias mamando e desmamadas, touros vivos e bois. Crias do hist\xF3rico "a confirmar" s\xF3 entram quando passam no curral.'), /* @__PURE__ */ React32.createElement("li", null, /* @__PURE__ */ React32.createElement("b", null, "Conferido pelo brinco"), ": o n\xFAmero aparece num manejo, toque, IATF, pesagem, desmama ou parto da rodada."), /* @__PURE__ */ React32.createElement("li", null, /* @__PURE__ */ React32.createElement("b", null, "Pela m\xE3e"), ": bezerro mamando sem o brinco anotado, mas a m\xE3e passou no curral. Conta como vivo, mas vale anotar o brinco no pr\xF3ximo manejo."), /* @__PURE__ */ React32.createElement("li", null, /* @__PURE__ */ React32.createElement("b", null, "Lote conferido"), ": o lote do \xFAltimo manejo da rodada em que o animal passou. O bezerro mamando fica com o lote da m\xE3e."), /* @__PURE__ */ React32.createElement("li", null, /* @__PURE__ */ React32.createElement("b", null, "Rodadas"), ": a primeira come\xE7a em ", br3(inv.inicio), ". Cada toque geral abre a seguinte.")))), aba === "animais" && /* @__PURE__ */ React32.createElement("div", { style: { marginTop: 14 }, "data-testid": "inv-animais" }, /* @__PURE__ */ React32.createElement("div", { className: "fx-chips" }, /* @__PURE__ */ React32.createElement(Chip2, { on: !res, onClick: () => setRes("") }, "Todos", /* @__PURE__ */ React32.createElement("b", null, r.total + r.aConfirmar)), /* @__PURE__ */ React32.createElement(Chip2, { on: res === "brinco", onClick: () => setRes("brinco"), testid: "inv-f-brinco" }, "Conferidos", /* @__PURE__ */ React32.createElement("b", null, r.brinco)), /* @__PURE__ */ React32.createElement(Chip2, { on: res === "mae", onClick: () => setRes("mae"), testid: "inv-f-mae" }, "Pela m\xE3e", /* @__PURE__ */ React32.createElement("b", null, r.mae)), /* @__PURE__ */ React32.createElement(Chip2, { on: res === "nao", onClick: () => setRes("nao"), testid: "inv-f-nao" }, "N\xE3o conferidos", /* @__PURE__ */ React32.createElement("b", null, r.nao))), /* @__PURE__ */ React32.createElement("div", { className: "fx-chips" }, /* @__PURE__ */ React32.createElement(Chip2, { on: !extra, onClick: () => setExtra("") }, "Sem destaque"), /* @__PURE__ */ React32.createElement(Chip2, { on: extra === "loteDif", onClick: () => setExtra("loteDif"), testid: "inv-f-lotedif" }, "Lote diferente", /* @__PURE__ */ React32.createElement("b", null, r.loteDif)), /* @__PURE__ */ React32.createElement(Chip2, { on: extra === "suspeita", onClick: () => setExtra("suspeita") }, "Suspeitas", /* @__PURE__ */ React32.createElement("b", null, r.suspeitas)), r.duplos > 0 && /* @__PURE__ */ React32.createElement(Chip2, { on: extra === "duplo", onClick: () => setExtra("duplo") }, "Dois lotes", /* @__PURE__ */ React32.createElement("b", null, r.duplos)), /* @__PURE__ */ React32.createElement(Chip2, { on: extra === "obs", onClick: () => setExtra("obs") }, "Com observa\xE7\xE3o"), inv.rodadas.length > 1 && /* @__PURE__ */ React32.createElement(Chip2, { on: extra === "todas", onClick: () => setExtra("todas") }, "Faltaram em todas")), /* @__PURE__ */ React32.createElement("div", { className: "fx-chips" }, /* @__PURE__ */ React32.createElement("select", { className: "fx-cp", value: cat, onChange: (e) => setCat(e.target.value), "aria-label": "Categoria", "data-testid": "inv-cat" }, /* @__PURE__ */ React32.createElement("option", { value: "" }, "Todas as categorias"), CATS_INV.map((c) => /* @__PURE__ */ React32.createElement("option", { key: c.id, value: c.id }, c.nome))), /* @__PURE__ */ React32.createElement("select", { className: "fx-cp", value: tipoLote, onChange: (e) => {
     setTipoLote(e.target.value);
     setLote("");
-  }, "aria-label": "Qual lote" }, /* @__PURE__ */ React31.createElement("option", { value: "sistema" }, "Lote no sistema"), /* @__PURE__ */ React31.createElement("option", { value: "conferido" }, "Lote conferido")), /* @__PURE__ */ React31.createElement("select", { className: "fx-cp", value: lote, onChange: (e) => setLote(e.target.value), "aria-label": "Lote", "data-testid": "inv-lote" }, /* @__PURE__ */ React31.createElement("option", { value: "" }, "Todos os lotes"), lotesOpc.map((x) => /* @__PURE__ */ React31.createElement("option", { key: x, value: x }, x)))), /* @__PURE__ */ React31.createElement("label", { className: "search fx-search" }, /* @__PURE__ */ React31.createElement(Search10, null), /* @__PURE__ */ React31.createElement("input", { placeholder: "Buscar brinco (animal, m\xE3e ou cria)", "aria-label": "Buscar brinco no invent\xE1rio", inputMode: "numeric", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React31.createElement("div", { className: "pd-pdf" }, /* @__PURE__ */ React31.createElement(BotaoPDF, { tipo: "lista" }, "PDF desta lista (", lista5.length, ")")), /* @__PURE__ */ React31.createElement("div", { className: "pd-tabela-box" }, /* @__PURE__ */ React31.createElement("table", { className: "pd-tabela inv-tabela", "data-testid": "inv-tabela" }, /* @__PURE__ */ React31.createElement("thead", null, /* @__PURE__ */ React31.createElement("tr", null, /* @__PURE__ */ React31.createElement("th", null, "Brinco"), /* @__PURE__ */ React31.createElement("th", null, "Categoria"), /* @__PURE__ */ React31.createElement("th", null, "Lote no sistema"), /* @__PURE__ */ React31.createElement("th", null, "Lote conferido"), /* @__PURE__ */ React31.createElement("th", null, "Conferido"), /* @__PURE__ */ React31.createElement("th", null, "Nascimento"), /* @__PURE__ */ React31.createElement("th", null, "M\xE3e / cria"), /* @__PURE__ */ React31.createElement("th", null, "Situa\xE7\xE3o"), /* @__PURE__ */ React31.createElement("th", null, "Obs."))), /* @__PURE__ */ React31.createElement("tbody", null, lista5.length === 0 && /* @__PURE__ */ React31.createElement("tr", null, /* @__PURE__ */ React31.createElement("td", { colSpan: 9, className: "mut" }, "Nenhum animal com esse filtro.")), lista5.map((l) => /* @__PURE__ */ React31.createElement("tr", { key: l.k, onClick: () => abrir(l.k), "data-testid": `inv-${l.brinco}` }, /* @__PURE__ */ React31.createElement("td", { className: "br" }, l.brinco, /* @__PURE__ */ React31.createElement("small", { style: { color: COR_RES[l.resultado] } }, RESULTADOS[l.resultado])), /* @__PURE__ */ React31.createElement("td", null, l.rot, /* @__PURE__ */ React31.createElement("small", null, [l.sexo === "F" ? "f\xEAmea" : "macho", l.raca].filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ React31.createElement("td", null, l.loteSistema || /* @__PURE__ */ React31.createElement("span", { className: "mut" }, "sem lote")), /* @__PURE__ */ React31.createElement("td", null, l.loteConferido ? /* @__PURE__ */ React31.createElement("span", { style: { color: l.loteDif ? "var(--late)" : "var(--green)" } }, l.loteConferido) : /* @__PURE__ */ React31.createElement("span", { className: "mut" }, "\u2014"), l.duplo && /* @__PURE__ */ React31.createElement("small", { className: "late" }, "tamb\xE9m em ", l.lotesConf.filter((x) => x !== l.loteConferido).join(", "))), /* @__PURE__ */ React31.createElement("td", null, l.resultado !== "nao" && l.conf ? /* @__PURE__ */ React31.createElement(React31.Fragment, null, br3(l.conf.data), /* @__PURE__ */ React31.createElement("small", null, l.resultado === "mae" ? `pela m\xE3e ${l.mae}` : l.conf.fonte)) : /* @__PURE__ */ React31.createElement("span", { className: "mut" }, l.ultimoAntes ? `antes: ${br3(l.ultimoAntes.data)}` : "nunca")), /* @__PURE__ */ React31.createElement("td", null, l.nasc ? br3(l.nasc) : /* @__PURE__ */ React31.createElement("span", { className: "mut" }, "\u2014"), l.idadeMeses !== null && /* @__PURE__ */ React31.createElement("small", null, l.idadeMeses, " meses")), /* @__PURE__ */ React31.createElement("td", null, l.mae ? /* @__PURE__ */ React31.createElement(React31.Fragment, null, "m\xE3e ", l.mae) : l.criaAoPe ? /* @__PURE__ */ React31.createElement(React31.Fragment, null, "cria ", l.criaAoPe.brinco, /* @__PURE__ */ React31.createElement("small", null, "ao p\xE9, ", br3(l.criaAoPe.nasc))) : /* @__PURE__ */ React31.createElement("span", { className: "mut" }, "\u2014")), /* @__PURE__ */ React31.createElement("td", null, l.status, /* @__PURE__ */ React31.createElement("small", null, txtSit(l).split(" \xB7 ").slice(1).join(" \xB7 "))), /* @__PURE__ */ React31.createElement("td", { className: "acao" }, [...l.notas, ...l.motivos].join("; ") || (l.confirmada ? "a confirmar: est\xE1 na fazenda" : "")))))))), aba === "lotes" && /* @__PURE__ */ React31.createElement("div", { style: { marginTop: 14 }, "data-testid": "inv-lotes" }, /* @__PURE__ */ React31.createElement("p", { className: "sub" }, "Os lotes do sistema ainda usam os nomes antigos. Abaixo, cada lote do curral com quantos animais passaram e de qual lote do sistema eles vieram."), /* @__PURE__ */ React31.createElement("div", { className: "pd-tabela-box", style: { maxHeight: "none", marginBottom: 14 } }, /* @__PURE__ */ React31.createElement("table", { className: "pd-tabela" }, /* @__PURE__ */ React31.createElement("thead", null, /* @__PURE__ */ React31.createElement("tr", null, /* @__PURE__ */ React31.createElement("th", null, "Lote conferido"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "Passaram"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "Mesmo lote no sistema"), /* @__PURE__ */ React31.createElement("th", null, "No sistema est\xE3o em"), /* @__PURE__ */ React31.createElement("th", null, "Categorias"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "Sem cadastro"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "Fora do rebanho"))), /* @__PURE__ */ React31.createElement("tbody", null, L.conferidos.map((x) => /* @__PURE__ */ React31.createElement("tr", { key: x.lote, onClick: () => {
+  }, "aria-label": "Qual lote" }, /* @__PURE__ */ React32.createElement("option", { value: "sistema" }, "Lote no sistema"), /* @__PURE__ */ React32.createElement("option", { value: "conferido" }, "Lote conferido")), /* @__PURE__ */ React32.createElement("select", { className: "fx-cp", value: lote, onChange: (e) => setLote(e.target.value), "aria-label": "Lote", "data-testid": "inv-lote" }, /* @__PURE__ */ React32.createElement("option", { value: "" }, "Todos os lotes"), lotesOpc.map((x) => /* @__PURE__ */ React32.createElement("option", { key: x, value: x }, x)))), /* @__PURE__ */ React32.createElement("label", { className: "search fx-search" }, /* @__PURE__ */ React32.createElement(Search10, null), /* @__PURE__ */ React32.createElement("input", { placeholder: "Buscar brinco (animal, m\xE3e ou cria)", "aria-label": "Buscar brinco no invent\xE1rio", inputMode: "numeric", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React32.createElement("div", { className: "pd-pdf" }, /* @__PURE__ */ React32.createElement(BotaoPDF, { tipo: "lista" }, "PDF desta lista (", lista5.length, ")")), /* @__PURE__ */ React32.createElement("div", { className: "pd-tabela-box" }, /* @__PURE__ */ React32.createElement("table", { className: "pd-tabela inv-tabela", "data-testid": "inv-tabela" }, /* @__PURE__ */ React32.createElement("thead", null, /* @__PURE__ */ React32.createElement("tr", null, /* @__PURE__ */ React32.createElement("th", null, "Brinco"), /* @__PURE__ */ React32.createElement("th", null, "Categoria"), /* @__PURE__ */ React32.createElement("th", null, "Lote no sistema"), /* @__PURE__ */ React32.createElement("th", null, "Lote conferido"), /* @__PURE__ */ React32.createElement("th", null, "Conferido"), /* @__PURE__ */ React32.createElement("th", null, "Nascimento"), /* @__PURE__ */ React32.createElement("th", null, "M\xE3e / cria"), /* @__PURE__ */ React32.createElement("th", null, "Situa\xE7\xE3o"), /* @__PURE__ */ React32.createElement("th", null, "Obs."))), /* @__PURE__ */ React32.createElement("tbody", null, lista5.length === 0 && /* @__PURE__ */ React32.createElement("tr", null, /* @__PURE__ */ React32.createElement("td", { colSpan: 9, className: "mut" }, "Nenhum animal com esse filtro.")), lista5.map((l) => /* @__PURE__ */ React32.createElement("tr", { key: l.k, onClick: () => abrir(l.k), "data-testid": `inv-${l.brinco}` }, /* @__PURE__ */ React32.createElement("td", { className: "br" }, l.brinco, /* @__PURE__ */ React32.createElement("small", { style: { color: COR_RES[l.resultado] } }, RESULTADOS[l.resultado])), /* @__PURE__ */ React32.createElement("td", null, l.rot, /* @__PURE__ */ React32.createElement("small", null, [l.sexo === "F" ? "f\xEAmea" : "macho", l.raca].filter(Boolean).join(" \xB7 "))), /* @__PURE__ */ React32.createElement("td", null, l.loteSistema || /* @__PURE__ */ React32.createElement("span", { className: "mut" }, "sem lote")), /* @__PURE__ */ React32.createElement("td", null, l.loteConferido ? /* @__PURE__ */ React32.createElement("span", { style: { color: l.loteDif ? "var(--late)" : "var(--green)" } }, l.loteConferido) : /* @__PURE__ */ React32.createElement("span", { className: "mut" }, "\u2014"), l.duplo && /* @__PURE__ */ React32.createElement("small", { className: "late" }, "tamb\xE9m em ", l.lotesConf.filter((x) => x !== l.loteConferido).join(", "))), /* @__PURE__ */ React32.createElement("td", null, l.resultado !== "nao" && l.conf ? /* @__PURE__ */ React32.createElement(React32.Fragment, null, br3(l.conf.data), /* @__PURE__ */ React32.createElement("small", null, l.resultado === "mae" ? `pela m\xE3e ${l.mae}` : l.conf.fonte)) : /* @__PURE__ */ React32.createElement("span", { className: "mut" }, l.ultimoAntes ? `antes: ${br3(l.ultimoAntes.data)}` : "nunca")), /* @__PURE__ */ React32.createElement("td", null, l.nasc ? br3(l.nasc) : /* @__PURE__ */ React32.createElement("span", { className: "mut" }, "\u2014"), l.idadeMeses !== null && /* @__PURE__ */ React32.createElement("small", null, l.idadeMeses, " meses")), /* @__PURE__ */ React32.createElement("td", null, l.mae ? /* @__PURE__ */ React32.createElement(React32.Fragment, null, "m\xE3e ", l.mae) : l.criaAoPe ? /* @__PURE__ */ React32.createElement(React32.Fragment, null, "cria ", l.criaAoPe.brinco, /* @__PURE__ */ React32.createElement("small", null, "ao p\xE9, ", br3(l.criaAoPe.nasc))) : /* @__PURE__ */ React32.createElement("span", { className: "mut" }, "\u2014")), /* @__PURE__ */ React32.createElement("td", null, l.status, /* @__PURE__ */ React32.createElement("small", null, txtSit(l).split(" \xB7 ").slice(1).join(" \xB7 "))), /* @__PURE__ */ React32.createElement("td", { className: "acao" }, [...l.notas, ...l.motivos].join("; ") || (l.confirmada ? "a confirmar: est\xE1 na fazenda" : "")))))))), aba === "lotes" && /* @__PURE__ */ React32.createElement("div", { style: { marginTop: 14 }, "data-testid": "inv-lotes" }, /* @__PURE__ */ React32.createElement("p", { className: "sub" }, "Os lotes do sistema ainda usam os nomes antigos. Abaixo, cada lote do curral com quantos animais passaram e de qual lote do sistema eles vieram."), /* @__PURE__ */ React32.createElement("div", { className: "pd-tabela-box", style: { maxHeight: "none", marginBottom: 14 } }, /* @__PURE__ */ React32.createElement("table", { className: "pd-tabela" }, /* @__PURE__ */ React32.createElement("thead", null, /* @__PURE__ */ React32.createElement("tr", null, /* @__PURE__ */ React32.createElement("th", null, "Lote conferido"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "Passaram"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "Mesmo lote no sistema"), /* @__PURE__ */ React32.createElement("th", null, "No sistema est\xE3o em"), /* @__PURE__ */ React32.createElement("th", null, "Categorias"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "Sem cadastro"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "Fora do rebanho"))), /* @__PURE__ */ React32.createElement("tbody", null, L.conferidos.map((x) => /* @__PURE__ */ React32.createElement("tr", { key: x.lote, onClick: () => {
     verAnimais({});
     setTipoLote("conferido");
     setLote(x.lote);
-  } }, /* @__PURE__ */ React31.createElement("td", null, /* @__PURE__ */ React31.createElement("b", null, x.lote), x.aoPe ? /* @__PURE__ */ React31.createElement("small", null, x.aoPe, " bezerro(s) ao p\xE9") : null), /* @__PURE__ */ React31.createElement("td", { className: "num" }, x.n), /* @__PURE__ */ React31.createElement("td", { className: "num", style: { color: x.igual && !x.dif ? "var(--green)" : void 0 } }, x.igual, x.n - (x.aoPe || 0) ? /* @__PURE__ */ React31.createElement("small", null, "de ", x.n - (x.aoPe || 0)) : null), /* @__PURE__ */ React31.createElement("td", null, Object.entries(x.de).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} (${n})`).join(", ") || "\u2014"), /* @__PURE__ */ React31.createElement("td", { className: "acao" }, Object.entries(x.porCat).map(([k, n]) => `${k} ${n}`).join(" \xB7 ")), /* @__PURE__ */ React31.createElement("td", { className: "num", style: { color: x.semCad ? "var(--late)" : void 0 } }, x.semCad || ""), /* @__PURE__ */ React31.createElement("td", { className: "num", style: { color: x.fora ? "var(--late)" : void 0 } }, x.fora || "")))))), /* @__PURE__ */ React31.createElement("div", { className: "pd-tabela-box", style: { maxHeight: "none" } }, /* @__PURE__ */ React31.createElement("table", { className: "pd-tabela" }, /* @__PURE__ */ React31.createElement("thead", null, /* @__PURE__ */ React31.createElement("tr", null, /* @__PURE__ */ React31.createElement("th", null, "Lote no sistema"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "Animais"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "Conferidos"), /* @__PURE__ */ React31.createElement("th", { className: "num" }, "N\xE3o conferidos"))), /* @__PURE__ */ React31.createElement("tbody", null, L.sistema.map((x) => /* @__PURE__ */ React31.createElement("tr", { key: x.lote, onClick: () => {
+  } }, /* @__PURE__ */ React32.createElement("td", null, /* @__PURE__ */ React32.createElement("b", null, x.lote), x.aoPe ? /* @__PURE__ */ React32.createElement("small", null, x.aoPe, " bezerro(s) ao p\xE9") : null), /* @__PURE__ */ React32.createElement("td", { className: "num" }, x.n), /* @__PURE__ */ React32.createElement("td", { className: "num", style: { color: x.igual && !x.dif ? "var(--green)" : void 0 } }, x.igual, x.n - (x.aoPe || 0) ? /* @__PURE__ */ React32.createElement("small", null, "de ", x.n - (x.aoPe || 0)) : null), /* @__PURE__ */ React32.createElement("td", null, Object.entries(x.de).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} (${n})`).join(", ") || "\u2014"), /* @__PURE__ */ React32.createElement("td", { className: "acao" }, Object.entries(x.porCat).map(([k, n]) => `${k} ${n}`).join(" \xB7 ")), /* @__PURE__ */ React32.createElement("td", { className: "num", style: { color: x.semCad ? "var(--late)" : void 0 } }, x.semCad || ""), /* @__PURE__ */ React32.createElement("td", { className: "num", style: { color: x.fora ? "var(--late)" : void 0 } }, x.fora || "")))))), /* @__PURE__ */ React32.createElement("div", { className: "pd-tabela-box", style: { maxHeight: "none" } }, /* @__PURE__ */ React32.createElement("table", { className: "pd-tabela" }, /* @__PURE__ */ React32.createElement("thead", null, /* @__PURE__ */ React32.createElement("tr", null, /* @__PURE__ */ React32.createElement("th", null, "Lote no sistema"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "Animais"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "Conferidos"), /* @__PURE__ */ React32.createElement("th", { className: "num" }, "N\xE3o conferidos"))), /* @__PURE__ */ React32.createElement("tbody", null, L.sistema.map((x) => /* @__PURE__ */ React32.createElement("tr", { key: x.lote, onClick: () => {
     verAnimais({ res: "nao" });
     setTipoLote("sistema");
     setLote(x.lote === "(sem lote)" ? "" : x.lote);
-  } }, /* @__PURE__ */ React31.createElement("td", null, /* @__PURE__ */ React31.createElement("b", null, x.lote)), /* @__PURE__ */ React31.createElement("td", { className: "num" }, x.n), /* @__PURE__ */ React31.createElement("td", { className: "num" }, x.conferidos), /* @__PURE__ */ React31.createElement("td", { className: "num", style: { color: x.nao ? "var(--amber)" : void 0 } }, x.nao))))))), aba === "divergencias" && /* @__PURE__ */ React31.createElement("div", { style: { marginTop: 14 }, "data-testid": "inv-divergencias" }, /* @__PURE__ */ React31.createElement("div", { className: "pd-pdf" }, /* @__PURE__ */ React31.createElement(BotaoPDF, { tipo: "divergencias" }, "PDF das diverg\xEAncias")), /* @__PURE__ */ React31.createElement("section", { className: "fx-card", style: { marginBottom: 12 } }, /* @__PURE__ */ React31.createElement("h3", null, "Lote diferente (", r.loteDif, ")"), /* @__PURE__ */ React31.createElement("p", { className: "sub" }, "Passaram no curral num lote, e no sistema est\xE3o em outro. ", /* @__PURE__ */ React31.createElement("button", { className: "link", onClick: () => verAnimais({ extra: "loteDif" }) }, "Ver a lista")), ownerMode && onDecidirLote ? /* @__PURE__ */ React31.createElement(AplicarLotes, { key: r.pendLote, lista: inv.animais.filter((l) => l.loteDif), onDecidir: onDecidirLote }) : r.pendLote > 0 && /* @__PURE__ */ React31.createElement("p", { className: "sub" }, "O propriet\xE1rio aplica o lote conferido aqui, com a senha.")), r.duplos > 0 && /* @__PURE__ */ React31.createElement("section", { className: "fx-card", style: { marginBottom: 12 } }, /* @__PURE__ */ React31.createElement("h3", null, "Passaram em dois lotes (", r.duplos, ")"), /* @__PURE__ */ React31.createElement("p", { className: "sub" }, "Ou mudaram de lote entre um manejo e outro, ou o brinco foi anotado errado."), inv.animais.filter((l) => l.duplo).map((l) => /* @__PURE__ */ React31.createElement("button", { key: l.k, className: "fx-li", onClick: () => abrir(l.k) }, /* @__PURE__ */ React31.createElement("span", { className: "fx-bb" }, l.brinco, /* @__PURE__ */ React31.createElement("small", null, l.rot)), /* @__PURE__ */ React31.createElement("span", { className: "fx-two" }, /* @__PURE__ */ React31.createElement("b", null, l.lotesConf.join(" e ")), /* @__PURE__ */ React31.createElement("span", null, "no sistema: ", l.loteSistema || "sem lote"))))), inv.semCadastro.length > 0 && /* @__PURE__ */ React31.createElement("section", { className: "fx-card", style: { marginBottom: 12 }, "data-testid": "inv-semcad" }, /* @__PURE__ */ React31.createElement("h3", null, "Brincos sem cadastro (", inv.semCadastro.length, ")"), /* @__PURE__ */ React31.createElement("p", { className: "sub" }, "Anotados no curral, mas n\xE3o existem no sistema. Cadastre em Lan\xE7ar > Nova Matriz (ou Rebanho > Bois) ou corrija o n\xFAmero no manejo."), /* @__PURE__ */ React31.createElement("div", { className: "pd-tabela-box", style: { maxHeight: "none" } }, /* @__PURE__ */ React31.createElement("table", { className: "pd-tabela" }, /* @__PURE__ */ React31.createElement("thead", null, /* @__PURE__ */ React31.createElement("tr", null, /* @__PURE__ */ React31.createElement("th", null, "Brinco"), /* @__PURE__ */ React31.createElement("th", null, "Data"), /* @__PURE__ */ React31.createElement("th", null, "Lote"), /* @__PURE__ */ React31.createElement("th", null, "Observa\xE7\xE3o"))), /* @__PURE__ */ React31.createElement("tbody", null, inv.semCadastro.map((s, i) => /* @__PURE__ */ React31.createElement("tr", { key: i, style: { cursor: "default" } }, /* @__PURE__ */ React31.createElement("td", { className: "br" }, s.brinco), /* @__PURE__ */ React31.createElement("td", null, br3(s.data)), /* @__PURE__ */ React31.createElement("td", null, s.lote), /* @__PURE__ */ React31.createElement("td", { className: "acao" }, [s.nota, s.repetido ? "n\xFAmero repetido no cadastro" : ""].filter(Boolean).join("; ")))))))), inv.fora.length > 0 && /* @__PURE__ */ React31.createElement("section", { className: "fx-card", style: { marginBottom: 12 } }, /* @__PURE__ */ React31.createElement("h3", null, "Passaram no curral mas est\xE3o fora do rebanho (", inv.fora.length, ")"), /* @__PURE__ */ React31.createElement("p", { className: "sub" }, "No sistema est\xE3o como vendidos ou mortos. Confira se a baixa est\xE1 certa."), inv.fora.map((s) => /* @__PURE__ */ React31.createElement("button", { key: s.k, className: "fx-li", onClick: () => abrir(s.k) }, /* @__PURE__ */ React31.createElement("span", { className: "fx-bb" }, s.brinco, /* @__PURE__ */ React31.createElement("small", null, s.rot)), /* @__PURE__ */ React31.createElement("span", { className: "fx-two" }, /* @__PURE__ */ React31.createElement("b", null, s.situacao), /* @__PURE__ */ React31.createElement("span", null, "visto em ", br3(s.data), " \xB7 ", s.manejo))))), inv.confirmadas.length > 0 && /* @__PURE__ */ React31.createElement("section", { className: "fx-card", style: { marginBottom: 12 } }, /* @__PURE__ */ React31.createElement("h3", null, 'Crias "a confirmar" que passaram (', inv.confirmadas.length, ")"), /* @__PURE__ */ React31.createElement("p", { className: "sub" }, "Do hist\xF3rico da planilha, com situa\xE7\xE3o em aberto. Passaram no curral: est\xE3o na fazenda."), ownerMode && onConfirmarNovilhas ? /* @__PURE__ */ React31.createElement(ConfirmarNaFazenda, { key: inv.confirmadas.map((s) => s.id).join(), ix, lista: inv.confirmadas, onConfirmar: onConfirmarNovilhas }) : /* @__PURE__ */ React31.createElement("div", { className: "fx-chips" }, inv.confirmadas.map((s) => /* @__PURE__ */ React31.createElement("button", { key: s.k, className: "fx-pill p-green", style: { border: "none", cursor: "pointer" }, onClick: () => abrir(s.k) }, s.brinco))), inv.confirmadas.some((s) => s.sexo !== "F\xEAmea") && /* @__PURE__ */ React31.createElement("p", { className: "sub" }, "Machos: cadastre em Rebanho > Bois.")), r.novilhasQuePariram > 0 && /* @__PURE__ */ React31.createElement("section", { className: "fx-card", style: { marginBottom: 12 }, "data-testid": "inv-novilhas-pariram" }, /* @__PURE__ */ React31.createElement("h3", null, "Novilhas que j\xE1 pariram (", r.novilhasQuePariram, ")"), /* @__PURE__ */ React31.createElement("p", { className: "sub" }, "Est\xE3o como Novilha no cadastro, mas t\xEAm parto registrado. Pela ficha, troque a categoria (prim\xEDpara ou vaca)."), inv.animais.filter((l) => l.novilhaQuePariu).map((l) => /* @__PURE__ */ React31.createElement("button", { key: l.k, className: "fx-li", onClick: () => abrir(l.k) }, /* @__PURE__ */ React31.createElement("span", { className: "fx-bb" }, l.brinco, /* @__PURE__ */ React31.createElement("small", null, l.rot)), /* @__PURE__ */ React31.createElement("span", { className: "fx-two" }, /* @__PURE__ */ React31.createElement("b", null, l.nPartos, " parto(s), \xFAltimo em ", br3(l.ultimoParto)), /* @__PURE__ */ React31.createElement("span", null, "lote conferido: ", l.loteConferido || "\u2014"))))), /* @__PURE__ */ React31.createElement("section", { className: "fx-card" }, /* @__PURE__ */ React31.createElement("h3", null, "N\xE3o conferidos (", r.nao, ")"), /* @__PURE__ */ React31.createElement("p", { className: "sub" }, "N\xE3o apareceram em nada da rodada. ", r.suspeitas, " j\xE1 pesavam contra na Produtividade. ", /* @__PURE__ */ React31.createElement("button", { className: "link", onClick: () => verAnimais({ res: "nao" }) }, "Ver a lista")))));
+  } }, /* @__PURE__ */ React32.createElement("td", null, /* @__PURE__ */ React32.createElement("b", null, x.lote)), /* @__PURE__ */ React32.createElement("td", { className: "num" }, x.n), /* @__PURE__ */ React32.createElement("td", { className: "num" }, x.conferidos), /* @__PURE__ */ React32.createElement("td", { className: "num", style: { color: x.nao ? "var(--amber)" : void 0 } }, x.nao))))))), aba === "divergencias" && /* @__PURE__ */ React32.createElement("div", { style: { marginTop: 14 }, "data-testid": "inv-divergencias" }, /* @__PURE__ */ React32.createElement("div", { className: "pd-pdf" }, /* @__PURE__ */ React32.createElement(BotaoPDF, { tipo: "divergencias" }, "PDF das diverg\xEAncias")), /* @__PURE__ */ React32.createElement("section", { className: "fx-card", style: { marginBottom: 12 } }, /* @__PURE__ */ React32.createElement("h3", null, "Lote diferente (", r.loteDif, ")"), /* @__PURE__ */ React32.createElement("p", { className: "sub" }, "Passaram no curral num lote, e no sistema est\xE3o em outro. ", /* @__PURE__ */ React32.createElement("button", { className: "link", onClick: () => verAnimais({ extra: "loteDif" }) }, "Ver a lista")), ownerMode && onDecidirLote ? /* @__PURE__ */ React32.createElement(AplicarLotes, { key: r.pendLote, lista: inv.animais.filter((l) => l.loteDif), onDecidir: onDecidirLote }) : r.pendLote > 0 && /* @__PURE__ */ React32.createElement("p", { className: "sub" }, "O propriet\xE1rio aplica o lote conferido aqui, com a senha.")), r.duplos > 0 && /* @__PURE__ */ React32.createElement("section", { className: "fx-card", style: { marginBottom: 12 } }, /* @__PURE__ */ React32.createElement("h3", null, "Passaram em dois lotes (", r.duplos, ")"), /* @__PURE__ */ React32.createElement("p", { className: "sub" }, "Ou mudaram de lote entre um manejo e outro, ou o brinco foi anotado errado."), inv.animais.filter((l) => l.duplo).map((l) => /* @__PURE__ */ React32.createElement("button", { key: l.k, className: "fx-li", onClick: () => abrir(l.k) }, /* @__PURE__ */ React32.createElement("span", { className: "fx-bb" }, l.brinco, /* @__PURE__ */ React32.createElement("small", null, l.rot)), /* @__PURE__ */ React32.createElement("span", { className: "fx-two" }, /* @__PURE__ */ React32.createElement("b", null, l.lotesConf.join(" e ")), /* @__PURE__ */ React32.createElement("span", null, "no sistema: ", l.loteSistema || "sem lote"))))), inv.semCadastro.length > 0 && /* @__PURE__ */ React32.createElement("section", { className: "fx-card", style: { marginBottom: 12 }, "data-testid": "inv-semcad" }, /* @__PURE__ */ React32.createElement("h3", null, "Brincos sem cadastro (", inv.semCadastro.length, ")"), /* @__PURE__ */ React32.createElement("p", { className: "sub" }, "Anotados no curral, mas n\xE3o existem no sistema. Cadastre em Lan\xE7ar > Nova Matriz (ou Rebanho > Bois) ou corrija o n\xFAmero no manejo."), /* @__PURE__ */ React32.createElement("div", { className: "pd-tabela-box", style: { maxHeight: "none" } }, /* @__PURE__ */ React32.createElement("table", { className: "pd-tabela" }, /* @__PURE__ */ React32.createElement("thead", null, /* @__PURE__ */ React32.createElement("tr", null, /* @__PURE__ */ React32.createElement("th", null, "Brinco"), /* @__PURE__ */ React32.createElement("th", null, "Data"), /* @__PURE__ */ React32.createElement("th", null, "Lote"), /* @__PURE__ */ React32.createElement("th", null, "Observa\xE7\xE3o"))), /* @__PURE__ */ React32.createElement("tbody", null, inv.semCadastro.map((s2, i) => /* @__PURE__ */ React32.createElement("tr", { key: i, style: { cursor: "default" } }, /* @__PURE__ */ React32.createElement("td", { className: "br" }, s2.brinco), /* @__PURE__ */ React32.createElement("td", null, br3(s2.data)), /* @__PURE__ */ React32.createElement("td", null, s2.lote), /* @__PURE__ */ React32.createElement("td", { className: "acao" }, [s2.nota, s2.repetido ? "n\xFAmero repetido no cadastro" : ""].filter(Boolean).join("; ")))))))), inv.fora.length > 0 && /* @__PURE__ */ React32.createElement("section", { className: "fx-card", style: { marginBottom: 12 } }, /* @__PURE__ */ React32.createElement("h3", null, "Passaram no curral mas est\xE3o fora do rebanho (", inv.fora.length, ")"), /* @__PURE__ */ React32.createElement("p", { className: "sub" }, "No sistema est\xE3o como vendidos ou mortos. Confira se a baixa est\xE1 certa."), inv.fora.map((s2) => /* @__PURE__ */ React32.createElement("button", { key: s2.k, className: "fx-li", onClick: () => abrir(s2.k) }, /* @__PURE__ */ React32.createElement("span", { className: "fx-bb" }, s2.brinco, /* @__PURE__ */ React32.createElement("small", null, s2.rot)), /* @__PURE__ */ React32.createElement("span", { className: "fx-two" }, /* @__PURE__ */ React32.createElement("b", null, s2.situacao), /* @__PURE__ */ React32.createElement("span", null, "visto em ", br3(s2.data), " \xB7 ", s2.manejo))))), inv.confirmadas.length > 0 && /* @__PURE__ */ React32.createElement("section", { className: "fx-card", style: { marginBottom: 12 } }, /* @__PURE__ */ React32.createElement("h3", null, 'Crias "a confirmar" que passaram (', inv.confirmadas.length, ")"), /* @__PURE__ */ React32.createElement("p", { className: "sub" }, "Do hist\xF3rico da planilha, com situa\xE7\xE3o em aberto. Passaram no curral: est\xE3o na fazenda."), ownerMode && onConfirmarNovilhas ? /* @__PURE__ */ React32.createElement(ConfirmarNaFazenda, { key: inv.confirmadas.map((s2) => s2.id).join(), ix, lista: inv.confirmadas, onConfirmar: onConfirmarNovilhas }) : /* @__PURE__ */ React32.createElement("div", { className: "fx-chips" }, inv.confirmadas.map((s2) => /* @__PURE__ */ React32.createElement("button", { key: s2.k, className: "fx-pill p-green", style: { border: "none", cursor: "pointer" }, onClick: () => abrir(s2.k) }, s2.brinco))), inv.confirmadas.some((s2) => s2.sexo !== "F\xEAmea") && /* @__PURE__ */ React32.createElement("p", { className: "sub" }, "Machos: cadastre em Rebanho > Bois.")), inv.animais.some((l) => l.bezerraVelha) && /* @__PURE__ */ React32.createElement("section", { className: "fx-card", style: { marginBottom: 12 }, "data-testid": "inv-bezerras-velhas" }, /* @__PURE__ */ React32.createElement("h3", null, "F\xEAmeas com mais de 12 meses ainda como bezerra (", inv.animais.filter((l) => l.bezerraVelha).length, ")"), /* @__PURE__ */ React32.createElement("p", { className: "sub" }, "Regra da fazenda: com mais de 12 meses, a f\xEAmea na fazenda \xE9 novilha. ", inv.animais.filter((l) => l.bezerraVelha).map((l) => l.brinco).join(", ")), ownerMode && onConfirmarNovilhas && /* @__PURE__ */ React32.createElement("button", { className: "btn sm", "data-testid": "passar-novilhas", onClick: () => {
+    const p = planoNovilhas12m(ix.dados, hoje);
+    if (p.matrizes.length) onConfirmarNovilhas(p.matrizes.map(({ _info, ...m }) => m));
+  } }, /* @__PURE__ */ React32.createElement(CheckCircle2, { size: 16 }), " Passar para novilha")), r.novilhasQuePariram > 0 && /* @__PURE__ */ React32.createElement("section", { className: "fx-card", style: { marginBottom: 12 }, "data-testid": "inv-novilhas-pariram" }, /* @__PURE__ */ React32.createElement("h3", null, "Novilhas que j\xE1 pariram (", r.novilhasQuePariram, ")"), /* @__PURE__ */ React32.createElement("p", { className: "sub" }, "Est\xE3o como Novilha no cadastro, mas t\xEAm parto registrado. Pela ficha, troque a categoria (prim\xEDpara ou vaca)."), inv.animais.filter((l) => l.novilhaQuePariu).map((l) => /* @__PURE__ */ React32.createElement("button", { key: l.k, className: "fx-li", onClick: () => abrir(l.k) }, /* @__PURE__ */ React32.createElement("span", { className: "fx-bb" }, l.brinco, /* @__PURE__ */ React32.createElement("small", null, l.rot)), /* @__PURE__ */ React32.createElement("span", { className: "fx-two" }, /* @__PURE__ */ React32.createElement("b", null, l.nPartos, " parto(s), \xFAltimo em ", br3(l.ultimoParto)), /* @__PURE__ */ React32.createElement("span", null, "lote conferido: ", l.loteConferido || "\u2014"))))), /* @__PURE__ */ React32.createElement("section", { className: "fx-card" }, /* @__PURE__ */ React32.createElement("h3", null, "N\xE3o conferidos (", r.nao, ")"), /* @__PURE__ */ React32.createElement("p", { className: "sub" }, "N\xE3o apareceram em nada da rodada. ", r.suspeitas, " j\xE1 pesavam contra na Produtividade. ", /* @__PURE__ */ React32.createElement("button", { className: "link", onClick: () => verAnimais({ res: "nao" }) }, "Ver a lista")))));
 }
 
 // src/telas/Produtividade.jsx
-import React32, { useMemo as useMemo27, useState as useState31, useEffect as useEffect13 } from "react";
+import React33, { useMemo as useMemo28, useState as useState32, useEffect as useEffect13 } from "react";
 import { Search as Search11, FileDown as FileDown8, Loader2 as Loader215 } from "lucide-react";
 var br4 = (d) => d ? formatarDataBR(d) : "";
 var virgula = (v) => String(v).replace(".", ",");
@@ -9365,11 +9684,11 @@ var COLS = [
 ];
 function Produtividade({ dados, hoje, filtroInicial }) {
   const { ix, abrir } = useFicha();
-  const linhas = useMemo27(() => analisarMatrizes(dados, hoje, ix ? ix.criaDaMatriz : null), [dados, hoje, ix]);
-  const r = useMemo27(() => resumoProdutividade(linhas), [linhas]);
-  const [filtro, setFiltro] = useState31(filtroInicial || "");
-  const [busca, setBusca] = useState31("");
-  const [sort, setSort] = useState31({ k: "ordem", dir: 1 });
+  const linhas = useMemo28(() => analisarMatrizes(dados, hoje, ix ? ix.criaDaMatriz : null), [dados, hoje, ix]);
+  const r = useMemo28(() => resumoProdutividade(linhas), [linhas]);
+  const [filtro, setFiltro] = useState32(filtroInicial || "");
+  const [busca, setBusca] = useState32("");
+  const [sort, setSort] = useState32({ k: "ordem", dir: 1 });
   useEffect13(() => {
     if (filtroInicial) setFiltro(filtroInicial.split(":")[0]);
   }, [filtroInicial]);
@@ -9388,7 +9707,7 @@ function Produtividade({ dados, hoje, filtroInicial }) {
     return String(va).localeCompare(String(vb), "pt-BR", { numeric: true }) * sort.dir;
   });
   const maxG = Math.max(1, ...r.porGrupo.map((g) => g.n));
-  const [gerando, setGerando] = useState31("");
+  const [gerando, setGerando] = useState32("");
   const nomeFiltro = (f) => f === "seis" ? `Mais de ${MESES_SEM_EMPRENHAR} meses sem emprenhar` : f === "vencida" ? "Cheias com previs\xE3o vencida" : (GRUPOS_PROD.find((g) => g.id === f) || {}).nome || "Todas as matrizes";
   const resumoPDF = [
     { rotulo: "Vacas no plantel (sem novilhas)", valor: r.vacas },
@@ -9425,13 +9744,13 @@ function Produtividade({ dados, hoje, filtroInicial }) {
     }
     setGerando("");
   }
-  const ordenar = (k) => setSort((s) => ({ k, dir: s.k === k ? -s.dir : 1 }));
-  const Chip2 = ({ id, children, cor }) => /* @__PURE__ */ React32.createElement("button", { className: `fx-cp${filtro === id ? " on" : ""}`, "aria-pressed": filtro === id, onClick: () => setFiltro(id) }, cor && /* @__PURE__ */ React32.createElement("span", { className: "pd-dot", style: { background: `var(--${cor})` } }), children);
+  const ordenar = (k) => setSort((s2) => ({ k, dir: s2.k === k ? -s2.dir : 1 }));
+  const Chip2 = ({ id, children, cor }) => /* @__PURE__ */ React33.createElement("button", { className: `fx-cp${filtro === id ? " on" : ""}`, "aria-pressed": filtro === id, onClick: () => setFiltro(id) }, cor && /* @__PURE__ */ React33.createElement("span", { className: "pd-dot", style: { background: `var(--${cor})` } }), children);
   const corVar = { bad: "late", warn: "amber", ok: "green", mut: "mut" };
-  return /* @__PURE__ */ React32.createElement("div", { className: "wrap", "data-testid": "produtividade" }, /* @__PURE__ */ React32.createElement("div", { className: "head" }, /* @__PURE__ */ React32.createElement("div", null, /* @__PURE__ */ React32.createElement("small", null, "Matrizes"), /* @__PURE__ */ React32.createElement("h1", null, "Produtividade"))), /* @__PURE__ */ React32.createElement("p", { className: "sub pd-lead" }, "Meta: cada vaca d\xE1 um bezerro por ano. Hoje ", /* @__PURE__ */ React32.createElement("b", null, Math.round(r.pct12m * 100), "%"), " das vacas pariram nos \xFAltimos 12 meses, o intervalo m\xE9dio entre partos \xE9 de ", /* @__PURE__ */ React32.createElement("b", null, r.iepMedio !== null ? virgula(r.iepMedio) : "\u2014", " meses"), " e ", /* @__PURE__ */ React32.createElement("b", null, r.descarte), " vacas s\xE3o candidatas a descarte."), /* @__PURE__ */ React32.createElement("div", { className: "fx-resumo" }, /* @__PURE__ */ React32.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React32.createElement("small", null, "Vacas no plantel"), /* @__PURE__ */ React32.createElement("b", null, r.vacas), /* @__PURE__ */ React32.createElement("i", null, "sem novilhas")), /* @__PURE__ */ React32.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React32.createElement("small", null, "Pariram em 12 meses"), /* @__PURE__ */ React32.createElement("b", { style: { color: "var(--green)" } }, r.pariram12m), /* @__PURE__ */ React32.createElement("i", null, Math.round(r.pct12m * 100), "%")), /* @__PURE__ */ React32.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React32.createElement("small", null, "Intervalo m\xE9dio entre partos"), /* @__PURE__ */ React32.createElement("b", { style: { color: "var(--amber)" } }, r.iepMedio !== null ? virgula(r.iepMedio) : "\u2014"), /* @__PURE__ */ React32.createElement("i", null, "meses (meta 12)")), /* @__PURE__ */ React32.createElement("button", { className: "fx-kpi", onClick: () => setFiltro("seis"), "data-testid": "kpi-seis" }, /* @__PURE__ */ React32.createElement("small", null, "Mais de ", MESES_SEM_EMPRENHAR, " meses sem emprenhar"), /* @__PURE__ */ React32.createElement("b", { style: { color: "var(--late)" } }, r.semEmprenhar)), /* @__PURE__ */ React32.createElement("button", { className: "fx-kpi", onClick: () => setFiltro("nunca") }, /* @__PURE__ */ React32.createElement("small", null, "Candidatas a descarte"), /* @__PURE__ */ React32.createElement("b", { style: { color: "var(--late)" } }, r.descarte)), /* @__PURE__ */ React32.createElement("button", { className: "fx-kpi", onClick: () => setFiltro("vencida") }, /* @__PURE__ */ React32.createElement("small", null, "Cheias com previs\xE3o vencida"), /* @__PURE__ */ React32.createElement("b", { style: { color: "var(--amber)" } }, r.previsaoVencida))), /* @__PURE__ */ React32.createElement("section", { className: "fx-card", style: { marginBottom: 14 } }, /* @__PURE__ */ React32.createElement("h3", null, "Onde est\xE1 cada matriz"), /* @__PURE__ */ React32.createElement("div", { className: "pd-barras" }, r.porGrupo.filter((g) => g.n > 0 || g.id !== "descarte").map((g) => /* @__PURE__ */ React32.createElement("button", { key: g.id, className: "pd-barra", onClick: () => setFiltro(g.id), "aria-label": `${g.nome}: ${g.n}` }, /* @__PURE__ */ React32.createElement("span", { className: "nome" }, g.nome), /* @__PURE__ */ React32.createElement("span", { className: "trilho" }, /* @__PURE__ */ React32.createElement("span", { style: { width: `${g.n / maxG * 100}%`, background: `var(--${corVar[g.cor]})` } })), /* @__PURE__ */ React32.createElement("b", null, g.n))))), /* @__PURE__ */ React32.createElement("div", { className: "fx-chips" }, /* @__PURE__ */ React32.createElement(Chip2, { id: "" }, "Todas", /* @__PURE__ */ React32.createElement("b", null, linhas.length)), /* @__PURE__ */ React32.createElement(Chip2, { id: "seis", cor: "late" }, "Mais de ", MESES_SEM_EMPRENHAR, " meses sem emprenhar", /* @__PURE__ */ React32.createElement("b", null, r.semEmprenhar)), r.previsaoVencida > 0 && /* @__PURE__ */ React32.createElement(Chip2, { id: "vencida", cor: "amber" }, "Previs\xE3o vencida", /* @__PURE__ */ React32.createElement("b", null, r.previsaoVencida)), r.porGrupo.filter((g) => g.n > 0).map((g) => /* @__PURE__ */ React32.createElement(Chip2, { key: g.id, id: g.id, cor: corVar[g.cor] }, g.nome, /* @__PURE__ */ React32.createElement("b", null, g.n)))), /* @__PURE__ */ React32.createElement("div", { className: "pd-pdf" }, /* @__PURE__ */ React32.createElement("button", { className: "btn sm", onClick: () => gerarPDF("lista"), disabled: !!gerando, "data-testid": "pdf-lista" }, gerando === "lista" ? /* @__PURE__ */ React32.createElement(Loader215, { size: 16, className: "spin" }) : /* @__PURE__ */ React32.createElement(FileDown8, { size: 16 }), " PDF: ", nomeFiltro(filtro)), /* @__PURE__ */ React32.createElement("button", { className: "btn sm quiet", onClick: () => gerarPDF("tudo"), disabled: !!gerando, "data-testid": "pdf-tudo" }, gerando === "tudo" ? /* @__PURE__ */ React32.createElement(Loader215, { size: 16, className: "spin" }) : /* @__PURE__ */ React32.createElement(FileDown8, { size: 16 }), " PDF completo (todos os estudos)")), /* @__PURE__ */ React32.createElement("label", { className: "search fx-search" }, /* @__PURE__ */ React32.createElement(Search11, null), /* @__PURE__ */ React32.createElement("input", { placeholder: "Buscar brinco da vaca ou da cria", "aria-label": "Buscar brinco da vaca ou da cria", inputMode: "numeric", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React32.createElement("div", { className: "pd-tabela-box" }, /* @__PURE__ */ React32.createElement("table", { className: "pd-tabela", "data-testid": "tabela-produtividade" }, /* @__PURE__ */ React32.createElement("thead", null, /* @__PURE__ */ React32.createElement("tr", null, COLS.map((c) => /* @__PURE__ */ React32.createElement("th", { key: c.k, className: c.num ? "num" : "", "aria-sort": sort.k === c.k ? sort.dir > 0 ? "ascending" : "descending" : void 0 }, /* @__PURE__ */ React32.createElement("button", { onClick: () => ordenar(c.k) }, c.t))), /* @__PURE__ */ React32.createElement("th", null, "Datas dos partos"), /* @__PURE__ */ React32.createElement("th", null, "Crias"), /* @__PURE__ */ React32.createElement("th", null, "O que fazer"))), /* @__PURE__ */ React32.createElement("tbody", null, lista5.length === 0 && /* @__PURE__ */ React32.createElement("tr", null, /* @__PURE__ */ React32.createElement("td", { colSpan: 9, className: "mut" }, "Nenhuma matriz com esse filtro.")), lista5.map((l) => {
+  return /* @__PURE__ */ React33.createElement("div", { className: "wrap", "data-testid": "produtividade" }, /* @__PURE__ */ React33.createElement("div", { className: "head" }, /* @__PURE__ */ React33.createElement("div", null, /* @__PURE__ */ React33.createElement("small", null, "Matrizes"), /* @__PURE__ */ React33.createElement("h1", null, "Produtividade"))), /* @__PURE__ */ React33.createElement("p", { className: "sub pd-lead" }, "Meta: cada vaca d\xE1 um bezerro por ano. Hoje ", /* @__PURE__ */ React33.createElement("b", null, Math.round(r.pct12m * 100), "%"), " das vacas pariram nos \xFAltimos 12 meses, o intervalo m\xE9dio entre partos \xE9 de ", /* @__PURE__ */ React33.createElement("b", null, r.iepMedio !== null ? virgula(r.iepMedio) : "\u2014", " meses"), " e ", /* @__PURE__ */ React33.createElement("b", null, r.descarte), " vacas s\xE3o candidatas a descarte."), /* @__PURE__ */ React33.createElement("div", { className: "fx-resumo" }, /* @__PURE__ */ React33.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React33.createElement("small", null, "Vacas no plantel"), /* @__PURE__ */ React33.createElement("b", null, r.vacas), /* @__PURE__ */ React33.createElement("i", null, "sem novilhas")), /* @__PURE__ */ React33.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React33.createElement("small", null, "Pariram em 12 meses"), /* @__PURE__ */ React33.createElement("b", { style: { color: "var(--green)" } }, r.pariram12m), /* @__PURE__ */ React33.createElement("i", null, Math.round(r.pct12m * 100), "%")), /* @__PURE__ */ React33.createElement("div", { className: "fx-kpi" }, /* @__PURE__ */ React33.createElement("small", null, "Intervalo m\xE9dio entre partos"), /* @__PURE__ */ React33.createElement("b", { style: { color: "var(--amber)" } }, r.iepMedio !== null ? virgula(r.iepMedio) : "\u2014"), /* @__PURE__ */ React33.createElement("i", null, "meses (meta 12)")), /* @__PURE__ */ React33.createElement("button", { className: "fx-kpi", onClick: () => setFiltro("seis"), "data-testid": "kpi-seis" }, /* @__PURE__ */ React33.createElement("small", null, "Mais de ", MESES_SEM_EMPRENHAR, " meses sem emprenhar"), /* @__PURE__ */ React33.createElement("b", { style: { color: "var(--late)" } }, r.semEmprenhar)), /* @__PURE__ */ React33.createElement("button", { className: "fx-kpi", onClick: () => setFiltro("nunca") }, /* @__PURE__ */ React33.createElement("small", null, "Candidatas a descarte"), /* @__PURE__ */ React33.createElement("b", { style: { color: "var(--late)" } }, r.descarte)), /* @__PURE__ */ React33.createElement("button", { className: "fx-kpi", onClick: () => setFiltro("vencida") }, /* @__PURE__ */ React33.createElement("small", null, "Cheias com previs\xE3o vencida"), /* @__PURE__ */ React33.createElement("b", { style: { color: "var(--amber)" } }, r.previsaoVencida))), /* @__PURE__ */ React33.createElement("section", { className: "fx-card", style: { marginBottom: 14 } }, /* @__PURE__ */ React33.createElement("h3", null, "Onde est\xE1 cada matriz"), /* @__PURE__ */ React33.createElement("div", { className: "pd-barras" }, r.porGrupo.filter((g) => g.n > 0 || g.id !== "descarte").map((g) => /* @__PURE__ */ React33.createElement("button", { key: g.id, className: "pd-barra", onClick: () => setFiltro(g.id), "aria-label": `${g.nome}: ${g.n}` }, /* @__PURE__ */ React33.createElement("span", { className: "nome" }, g.nome), /* @__PURE__ */ React33.createElement("span", { className: "trilho" }, /* @__PURE__ */ React33.createElement("span", { style: { width: `${g.n / maxG * 100}%`, background: `var(--${corVar[g.cor]})` } })), /* @__PURE__ */ React33.createElement("b", null, g.n))))), /* @__PURE__ */ React33.createElement("div", { className: "fx-chips" }, /* @__PURE__ */ React33.createElement(Chip2, { id: "" }, "Todas", /* @__PURE__ */ React33.createElement("b", null, linhas.length)), /* @__PURE__ */ React33.createElement(Chip2, { id: "seis", cor: "late" }, "Mais de ", MESES_SEM_EMPRENHAR, " meses sem emprenhar", /* @__PURE__ */ React33.createElement("b", null, r.semEmprenhar)), r.previsaoVencida > 0 && /* @__PURE__ */ React33.createElement(Chip2, { id: "vencida", cor: "amber" }, "Previs\xE3o vencida", /* @__PURE__ */ React33.createElement("b", null, r.previsaoVencida)), r.porGrupo.filter((g) => g.n > 0).map((g) => /* @__PURE__ */ React33.createElement(Chip2, { key: g.id, id: g.id, cor: corVar[g.cor] }, g.nome, /* @__PURE__ */ React33.createElement("b", null, g.n)))), /* @__PURE__ */ React33.createElement("div", { className: "pd-pdf" }, /* @__PURE__ */ React33.createElement("button", { className: "btn sm", onClick: () => gerarPDF("lista"), disabled: !!gerando, "data-testid": "pdf-lista" }, gerando === "lista" ? /* @__PURE__ */ React33.createElement(Loader215, { size: 16, className: "spin" }) : /* @__PURE__ */ React33.createElement(FileDown8, { size: 16 }), " PDF: ", nomeFiltro(filtro)), /* @__PURE__ */ React33.createElement("button", { className: "btn sm quiet", onClick: () => gerarPDF("tudo"), disabled: !!gerando, "data-testid": "pdf-tudo" }, gerando === "tudo" ? /* @__PURE__ */ React33.createElement(Loader215, { size: 16, className: "spin" }) : /* @__PURE__ */ React33.createElement(FileDown8, { size: 16 }), " PDF completo (todos os estudos)")), /* @__PURE__ */ React33.createElement("label", { className: "search fx-search" }, /* @__PURE__ */ React33.createElement(Search11, null), /* @__PURE__ */ React33.createElement("input", { placeholder: "Buscar brinco da vaca ou da cria", "aria-label": "Buscar brinco da vaca ou da cria", inputMode: "numeric", value: busca, onChange: (e) => setBusca(e.target.value) })), /* @__PURE__ */ React33.createElement("div", { className: "pd-tabela-box" }, /* @__PURE__ */ React33.createElement("table", { className: "pd-tabela", "data-testid": "tabela-produtividade" }, /* @__PURE__ */ React33.createElement("thead", null, /* @__PURE__ */ React33.createElement("tr", null, COLS.map((c) => /* @__PURE__ */ React33.createElement("th", { key: c.k, className: c.num ? "num" : "", "aria-sort": sort.k === c.k ? sort.dir > 0 ? "ascending" : "descending" : void 0 }, /* @__PURE__ */ React33.createElement("button", { onClick: () => ordenar(c.k) }, c.t))), /* @__PURE__ */ React33.createElement("th", null, "Datas dos partos"), /* @__PURE__ */ React33.createElement("th", null, "Crias"), /* @__PURE__ */ React33.createElement("th", null, "O que fazer"))), /* @__PURE__ */ React33.createElement("tbody", null, lista5.length === 0 && /* @__PURE__ */ React33.createElement("tr", null, /* @__PURE__ */ React33.createElement("td", { colSpan: 9, className: "mut" }, "Nenhuma matriz com esse filtro.")), lista5.map((l) => {
     const g = GRUPOS_PROD[l.ordem];
-    return /* @__PURE__ */ React32.createElement("tr", { key: l.id, onClick: () => abrir(`m:${l.id}`), "data-testid": `prod-${l.brinco}` }, /* @__PURE__ */ React32.createElement("td", { className: "br" }, l.brinco, /* @__PURE__ */ React32.createElement("small", null, l.status, l.lote ? ` \xB7 ${l.lote}` : "")), /* @__PURE__ */ React32.createElement("td", null, /* @__PURE__ */ React32.createElement("span", { className: `fx-pill p-${{ bad: "late", warn: "amber", ok: "green", mut: "gray" }[g.cor]}` }, g.nome), l.semEmprenhar && /* @__PURE__ */ React32.createElement("small", { className: "late" }, l.mesesSemParir, " meses sem emprenhar")), /* @__PURE__ */ React32.createElement("td", { className: "num" }, l.nPartos, l.antes ? /* @__PURE__ */ React32.createElement("small", null, "+", l.antes, " antes") : null), /* @__PURE__ */ React32.createElement("td", { className: "num" }, l.mesesSemParir ?? ""), /* @__PURE__ */ React32.createElement("td", { className: "num" }, l.iepMeses !== null ? virgula(l.iepMeses) : ""), /* @__PURE__ */ React32.createElement("td", null, br4(l.previsao), l.previsaoVencida ? /* @__PURE__ */ React32.createElement("small", { className: "late" }, "venceu h\xE1 ", l.previsaoVencida, " d") : null), /* @__PURE__ */ React32.createElement("td", { className: "lista" }, l.partos.map((p) => /* @__PURE__ */ React32.createElement("span", { key: p.id }, br4(p.data)))), /* @__PURE__ */ React32.createElement("td", { className: "lista" }, l.partos.map((p) => /* @__PURE__ */ React32.createElement("span", { key: p.id, className: p.brincoBezerro ? "" : "mut" }, p.resultadoParto === "Natimorto" ? "natim." : p.brincoBezerro || "s/ n\xBA"))), /* @__PURE__ */ React32.createElement("td", { className: "acao" }, l.acao));
-  })))), /* @__PURE__ */ React32.createElement("details", { className: "pd-defs" }, /* @__PURE__ */ React32.createElement("summary", null, "Como cada situa\xE7\xE3o \xE9 definida"), /* @__PURE__ */ React32.createElement("ul", null, /* @__PURE__ */ React32.createElement("li", null, /* @__PURE__ */ React32.createElement("b", null, "Em dia"), ": pariu nos \xFAltimos 13 meses (um bezerro por ano, com um m\xEAs de folga)."), /* @__PURE__ */ React32.createElement("li", null, /* @__PURE__ */ React32.createElement("b", null, "Mais de ", MESES_SEM_EMPRENHAR, " meses sem emprenhar"), ": est\xE1 vazia e o \xFAltimo parto foi h\xE1 mais de ", MESES_SEM_EMPRENHAR, " meses. Vaca que pariu e ainda n\xE3o passou por toque aparece como vazia: o toque confirma."), /* @__PURE__ */ React32.createElement("li", null, /* @__PURE__ */ React32.createElement("b", null, "Prenhe, mas atrasada"), ": cheia, mas o \xFAltimo parto foi h\xE1 mais de 13 meses (ou nunca pariu)."), /* @__PURE__ */ React32.createElement("li", null, /* @__PURE__ */ React32.createElement("b", null, "Vazia h\xE1 13 a 24 meses"), ": perdeu uma pari\xE7\xE3o. ", /* @__PURE__ */ React32.createElement("b", null, "Vazia h\xE1 mais de 2 anos"), " e ", /* @__PURE__ */ React32.createElement("b", null, "Vaca que nunca pariu"), ": candidatas a descarte."), /* @__PURE__ */ React32.createElement("li", null, /* @__PURE__ */ React32.createElement("b", null, "Novilha passada da idade"), ": 30 meses ou mais sem parir. ", /* @__PURE__ */ React32.createElement("b", null, "Novilha jovem"), ": menos de 30 meses ou idade n\xE3o informada."), /* @__PURE__ */ React32.createElement("li", null, "Intervalo m\xE9dio: m\xE9dia dos intervalos entre partos de cada vaca com dois partos ou mais. Partos antes de 2022 ou antes de a vaca entrar na fazenda n\xE3o t\xEAm data e n\xE3o entram na conta."))));
+    return /* @__PURE__ */ React33.createElement("tr", { key: l.id, onClick: () => abrir(`m:${l.id}`), "data-testid": `prod-${l.brinco}` }, /* @__PURE__ */ React33.createElement("td", { className: "br" }, l.brinco, /* @__PURE__ */ React33.createElement("small", null, l.status, l.lote ? ` \xB7 ${l.lote}` : "")), /* @__PURE__ */ React33.createElement("td", null, /* @__PURE__ */ React33.createElement("span", { className: `fx-pill p-${{ bad: "late", warn: "amber", ok: "green", mut: "gray" }[g.cor]}` }, g.nome), l.semEmprenhar && /* @__PURE__ */ React33.createElement("small", { className: "late" }, l.mesesSemParir, " meses sem emprenhar")), /* @__PURE__ */ React33.createElement("td", { className: "num" }, l.nPartos, l.antes ? /* @__PURE__ */ React33.createElement("small", null, "+", l.antes, " antes") : null), /* @__PURE__ */ React33.createElement("td", { className: "num" }, l.mesesSemParir ?? ""), /* @__PURE__ */ React33.createElement("td", { className: "num" }, l.iepMeses !== null ? virgula(l.iepMeses) : ""), /* @__PURE__ */ React33.createElement("td", null, br4(l.previsao), l.previsaoVencida ? /* @__PURE__ */ React33.createElement("small", { className: "late" }, "venceu h\xE1 ", l.previsaoVencida, " d") : null), /* @__PURE__ */ React33.createElement("td", { className: "lista" }, l.partos.map((p) => /* @__PURE__ */ React33.createElement("span", { key: p.id }, br4(p.data)))), /* @__PURE__ */ React33.createElement("td", { className: "lista" }, l.partos.map((p) => /* @__PURE__ */ React33.createElement("span", { key: p.id, className: p.brincoBezerro ? "" : "mut" }, p.resultadoParto === "Natimorto" ? "natim." : p.brincoBezerro || "s/ n\xBA"))), /* @__PURE__ */ React33.createElement("td", { className: "acao" }, l.acao));
+  })))), /* @__PURE__ */ React33.createElement("details", { className: "pd-defs" }, /* @__PURE__ */ React33.createElement("summary", null, "Como cada situa\xE7\xE3o \xE9 definida"), /* @__PURE__ */ React33.createElement("ul", null, /* @__PURE__ */ React33.createElement("li", null, /* @__PURE__ */ React33.createElement("b", null, "Em dia"), ": pariu nos \xFAltimos 13 meses (um bezerro por ano, com um m\xEAs de folga)."), /* @__PURE__ */ React33.createElement("li", null, /* @__PURE__ */ React33.createElement("b", null, "Mais de ", MESES_SEM_EMPRENHAR, " meses sem emprenhar"), ": est\xE1 vazia e o \xFAltimo parto foi h\xE1 mais de ", MESES_SEM_EMPRENHAR, " meses. Vaca que pariu e ainda n\xE3o passou por toque aparece como vazia: o toque confirma."), /* @__PURE__ */ React33.createElement("li", null, /* @__PURE__ */ React33.createElement("b", null, "Prenhe, mas atrasada"), ": cheia, mas o \xFAltimo parto foi h\xE1 mais de 13 meses (ou nunca pariu)."), /* @__PURE__ */ React33.createElement("li", null, /* @__PURE__ */ React33.createElement("b", null, "Vazia h\xE1 13 a 24 meses"), ": perdeu uma pari\xE7\xE3o. ", /* @__PURE__ */ React33.createElement("b", null, "Vazia h\xE1 mais de 2 anos"), " e ", /* @__PURE__ */ React33.createElement("b", null, "Vaca que nunca pariu"), ": candidatas a descarte."), /* @__PURE__ */ React33.createElement("li", null, /* @__PURE__ */ React33.createElement("b", null, "Novilha passada da idade"), ": 30 meses ou mais sem parir. ", /* @__PURE__ */ React33.createElement("b", null, "Novilha jovem"), ": menos de 30 meses ou idade n\xE3o informada."), /* @__PURE__ */ React33.createElement("li", null, "Intervalo m\xE9dio: m\xE9dia dos intervalos entre partos de cada vaca com dois partos ou mais. Partos antes de 2022 ou antes de a vaca entrar na fazenda n\xE3o t\xEAm data e n\xE3o entram na conta."))));
 }
 
 // src/app.jsx
@@ -9439,13 +9758,13 @@ var OWNER_PIN = typeof __PIN_TESTE__ !== "undefined" ? __PIN_TESTE__ : "1537";
 var VAZIO = { matrizes: [], touros: [], eventos: [], config: {}, protocolos: [] };
 function BotaoBusca() {
   const { buscar: buscar2 } = useFicha();
-  return /* @__PURE__ */ React33.createElement("button", { className: "chip fx-buscar", onClick: () => buscar2(""), "aria-label": "Buscar animal pelo brinco", "data-testid": "buscar-animal" }, /* @__PURE__ */ React33.createElement(Search12, { size: 17 }), /* @__PURE__ */ React33.createElement("span", null, "Buscar animal"));
+  return /* @__PURE__ */ React34.createElement("button", { className: "chip fx-buscar", onClick: () => buscar2(""), "aria-label": "Buscar animal pelo brinco", "data-testid": "buscar-animal" }, /* @__PURE__ */ React34.createElement(Search12, { size: 17 }), /* @__PURE__ */ React34.createElement("span", null, "Buscar animal"));
 }
 function Marca() {
-  return /* @__PURE__ */ React33.createElement("div", { className: "brand" }, /* @__PURE__ */ React33.createElement("small", null, "Fazenda Ibira\xE7u"), /* @__PURE__ */ React33.createElement("b", null, "Gest\xE3o da Pecu\xE1ria"));
+  return /* @__PURE__ */ React34.createElement("div", { className: "brand" }, /* @__PURE__ */ React34.createElement("small", null, "Fazenda Ibira\xE7u"), /* @__PURE__ */ React34.createElement("b", null, "Gest\xE3o da Pecu\xE1ria"));
 }
 function SeletorAno({ ano, anos, onChange }) {
-  return /* @__PURE__ */ React33.createElement("label", { className: "chip", title: "Ano de gest\xE3o" }, /* @__PURE__ */ React33.createElement("span", { className: "sr" }, "Ano de gest\xE3o"), /* @__PURE__ */ React33.createElement("span", { "aria-hidden": "true" }, "ANO"), /* @__PURE__ */ React33.createElement("select", { "aria-label": "Ano de gest\xE3o", value: String(ano), onChange: (e) => onChange(e.target.value === "todos" ? "todos" : Number(e.target.value)) }, anos.map((a) => /* @__PURE__ */ React33.createElement("option", { key: a, value: a }, a)), /* @__PURE__ */ React33.createElement("option", { value: "todos" }, "Todos")), /* @__PURE__ */ React33.createElement(ChevronDown2, { size: 14, "aria-hidden": "true" }));
+  return /* @__PURE__ */ React34.createElement("label", { className: "chip", title: "Ano de gest\xE3o" }, /* @__PURE__ */ React34.createElement("span", { className: "sr" }, "Ano de gest\xE3o"), /* @__PURE__ */ React34.createElement("span", { "aria-hidden": "true" }, "ANO"), /* @__PURE__ */ React34.createElement("select", { "aria-label": "Ano de gest\xE3o", value: String(ano), onChange: (e) => onChange(e.target.value === "todos" ? "todos" : Number(e.target.value)) }, anos.map((a) => /* @__PURE__ */ React34.createElement("option", { key: a, value: a }, a)), /* @__PURE__ */ React34.createElement("option", { value: "todos" }, "Todos")), /* @__PURE__ */ React34.createElement(ChevronDown2, { size: 14, "aria-hidden": "true" }));
 }
 function quandoTxt(iso) {
   if (!iso) return "";
@@ -9457,37 +9776,37 @@ function quandoTxt(iso) {
 function ChipFila({ est, onClick }) {
   if (!est.pendentes) return null;
   if (est.semInternet) {
-    return /* @__PURE__ */ React33.createElement("button", { className: "chip fila-off", onClick, "data-testid": "chip-fila" }, /* @__PURE__ */ React33.createElement(CloudOff, { size: 14 }), " ", est.pendentes, " no celular");
+    return /* @__PURE__ */ React34.createElement("button", { className: "chip fila-off", onClick, "data-testid": "chip-fila" }, /* @__PURE__ */ React34.createElement(CloudOff, { size: 14 }), " ", est.pendentes, " no celular");
   }
   if (est.erroPlanilha) {
-    return /* @__PURE__ */ React33.createElement("button", { className: "chip fila-erro", onClick, "data-testid": "chip-fila" }, /* @__PURE__ */ React33.createElement(AlertTriangle2, { size: 14 }), " erro ao gravar");
+    return /* @__PURE__ */ React34.createElement("button", { className: "chip fila-erro", onClick, "data-testid": "chip-fila" }, /* @__PURE__ */ React34.createElement(AlertTriangle2, { size: 14 }), " erro ao gravar");
   }
-  return /* @__PURE__ */ React33.createElement("button", { className: "chip", onClick, "data-testid": "chip-fila" }, /* @__PURE__ */ React33.createElement(Loader216, { size: 14, className: "spin" }), " gravando ", est.pendentes);
+  return /* @__PURE__ */ React34.createElement("button", { className: "chip", onClick, "data-testid": "chip-fila" }, /* @__PURE__ */ React34.createElement(Loader216, { size: 14, className: "spin" }), " gravando ", est.pendentes);
 }
 function GestaoPecuaria() {
-  const [tab, setTab] = useState32("lancar");
-  const [dados, setDados] = useState32(VAZIO);
+  const [tab, setTab] = useState33("lancar");
+  const [dados, setDados] = useState33(VAZIO);
   const dadosRef = useRef11(VAZIO);
-  const [loading, setLoading] = useState32(true);
-  const [aviso, setAviso] = useState32(null);
-  const [versaoScript, setVersaoScript] = useState32(null);
-  const [ownerMode, setOwnerMode] = useState32(false);
-  const [pinAberto, setPinAberto] = useState32(false);
-  const [pin, setPin] = useState32("");
-  const [pinErro, setPinErro] = useState32(false);
-  const [hoje, setHoje] = useState32(todayISO());
-  const [ano, setAno] = useState32(() => anoDe(todayISO()));
-  const [filaEst, setFilaEst] = useState32(estadoFila());
-  const [filaAberta, setFilaAberta] = useState32(false);
-  const [descartarUid, setDescartarUid] = useState32(null);
-  const [sincronizando, setSincronizando] = useState32(false);
-  const [preset, setPreset] = useState32(null);
-  const [editMatriz, setEditMatriz] = useState32(null);
-  const [editBoi, setEditBoi] = useState32(null);
-  const [novoProt, setNovoProt] = useState32(null);
-  const [prodFiltro, setProdFiltro] = useState32("");
-  const [atualizadoEm, setAtualizadoEm] = useState32(null);
-  const [doCelular, setDoCelular] = useState32(false);
+  const [loading, setLoading] = useState33(true);
+  const [aviso, setAviso] = useState33(null);
+  const [versaoScript, setVersaoScript] = useState33(null);
+  const [ownerMode, setOwnerMode] = useState33(false);
+  const [pinAberto, setPinAberto] = useState33(false);
+  const [pin, setPin] = useState33("");
+  const [pinErro, setPinErro] = useState33(false);
+  const [hoje, setHoje] = useState33(todayISO());
+  const [ano, setAno] = useState33(() => anoDe(todayISO()));
+  const [filaEst, setFilaEst] = useState33(estadoFila());
+  const [filaAberta, setFilaAberta] = useState33(false);
+  const [descartarUid, setDescartarUid] = useState33(null);
+  const [sincronizando, setSincronizando] = useState33(false);
+  const [preset, setPreset] = useState33(null);
+  const [editMatriz, setEditMatriz] = useState33(null);
+  const [editBoi, setEditBoi] = useState33(null);
+  const [novoProt, setNovoProt] = useState33(null);
+  const [prodFiltro, setProdFiltro] = useState33("");
+  const [atualizadoEm, setAtualizadoEm] = useState33(null);
+  const [doCelular, setDoCelular] = useState33(false);
   const versaoRef = useRef11(null);
   const timerCopia = useRef11(null);
   const pendentes = filaEst.pendentes;
@@ -9614,6 +9933,20 @@ function GestaoPecuaria() {
     const d = dadosRef.current;
     commit({ ...d, matrizes: d.matrizes.map((x) => x.id === m.id ? m : x) });
     enfileirar([{ action: "upsertMatriz", matriz: m }], `matriz ${m.brinco}`);
+  }
+  function alterarSituacaoCria(p) {
+    if (p.mudancas.eventos.length || p.mudancas.matrizes.length) {
+      const d = dadosRef.current;
+      const novas = p.mudancas.matrizes.filter((m) => !d.matrizes.some((x) => x.id === m.id));
+      if (novas.length) salvarNovasMatrizes(novas);
+      const resto = { eventos: p.mudancas.eventos, matrizes: p.mudancas.matrizes.filter((m) => !novas.includes(m)) };
+      if (resto.eventos.length || resto.matrizes.length) gravarCorrecao({ mudancas: resto }, "situa\xE7\xE3o da cria");
+    }
+    for (const t of p.touros || []) {
+      const e = salvarTouro(t);
+      if (e) return e;
+    }
+    return p.resumo + notaFila();
   }
   function salvarNovasMatrizes(lista5) {
     const d = dadosRef.current;
@@ -9811,7 +10144,7 @@ function GestaoPecuaria() {
     setPreset({ tipo, matrizId, n: Date.now() });
     setTab("lancar");
   }
-  const anos = useMemo28(() => anosDisponiveis(dados.eventos, hoje), [dados.eventos, hoje]);
+  const anos = useMemo29(() => anosDisponiveis(dados.eventos, hoje), [dados.eventos, hoje]);
   const itensNav = [
     ownerMode && { id: "painel", label: "Painel", Icon: LayoutDashboard },
     { id: "lancar", label: "Lan\xE7ar", Icon: Plus12 },
@@ -9823,105 +10156,119 @@ function GestaoPecuaria() {
     { id: "produtividade", label: "Produtividade", curto: "Produtiv.", micro: "Produt.", Icon: TrendingUp },
     { id: "relatorios", label: "Relat\xF3rios", curto: "Relat\xF3r.", micro: "Relat.", Icon: FileText }
   ].filter(Boolean);
-  const anoSel = /* @__PURE__ */ React33.createElement(SeletorAno, { ano, anos, onChange: setAno });
-  const botaoCad = ownerMode ? /* @__PURE__ */ React33.createElement("button", { className: `chip lock${tab === "cadastros" ? " on" : ""}`, onClick: () => mudarTab("cadastros"), "aria-label": "Cadastros", title: "Cadastros (listas do app)", "data-testid": "abrir-cadastros" }, /* @__PURE__ */ React33.createElement(Settings, { size: 17 })) : null;
-  const botaoDono = ownerMode ? /* @__PURE__ */ React33.createElement("button", { className: "chip on", onClick: sairDoModoDono, "aria-label": "Sair do modo propriet\xE1rio", title: "Voltar para o modo funcion\xE1rio" }, /* @__PURE__ */ React33.createElement(Unlock, { size: 15 }), " DONO") : /* @__PURE__ */ React33.createElement("button", { className: "chip lock", onClick: () => {
+  const anoSel = /* @__PURE__ */ React34.createElement(SeletorAno, { ano, anos, onChange: setAno });
+  const botaoCad = ownerMode ? /* @__PURE__ */ React34.createElement("button", { className: `chip lock${tab === "cadastros" ? " on" : ""}`, onClick: () => mudarTab("cadastros"), "aria-label": "Cadastros", title: "Cadastros (listas do app)", "data-testid": "abrir-cadastros" }, /* @__PURE__ */ React34.createElement(Settings, { size: 17 })) : null;
+  const botaoDono = ownerMode ? /* @__PURE__ */ React34.createElement("button", { className: "chip on", onClick: sairDoModoDono, "aria-label": "Sair do modo propriet\xE1rio", title: "Voltar para o modo funcion\xE1rio" }, /* @__PURE__ */ React34.createElement(Unlock, { size: 15 }), " DONO") : /* @__PURE__ */ React34.createElement("button", { className: "chip lock", onClick: () => {
     setPinAberto(true);
     setPin("");
     setPinErro(false);
-  }, "aria-label": "Entrar como propriet\xE1rio", title: "Entrar como propriet\xE1rio" }, /* @__PURE__ */ React33.createElement(Lock3, { size: 16 }));
+  }, "aria-label": "Entrar como propriet\xE1rio", title: "Entrar como propriet\xE1rio" }, /* @__PURE__ */ React34.createElement(Lock3, { size: 16 }));
   if (loading) {
-    return /* @__PURE__ */ React33.createElement("div", { className: "app" }, /* @__PURE__ */ React33.createElement("style", null, CSS), /* @__PURE__ */ React33.createElement("div", { className: "main" }, /* @__PURE__ */ React33.createElement("div", { className: "loading" }, /* @__PURE__ */ React33.createElement(Loader216, { size: 20, className: "spin" }), " Abrindo o livro do rebanho...")));
+    return /* @__PURE__ */ React34.createElement("div", { className: "app" }, /* @__PURE__ */ React34.createElement("style", null, CSS), /* @__PURE__ */ React34.createElement("div", { className: "main" }, /* @__PURE__ */ React34.createElement("div", { className: "loading" }, /* @__PURE__ */ React34.createElement(Loader216, { size: 20, className: "spin" }), " Abrindo o livro do rebanho...")));
   }
   definirDadosCadastro(dados);
-  return /* @__PURE__ */ React33.createElement(FichaProvider, { dados, hoje, ownerMode, onEditarMatriz: (m) => setEditMatriz(m), onEditarBoi: (t) => setEditBoi(t) }, /* @__PURE__ */ React33.createElement("div", { className: "app" }, /* @__PURE__ */ React33.createElement("style", null, CSS), /* @__PURE__ */ React33.createElement("aside", { className: "side" }, /* @__PURE__ */ React33.createElement(Marca, null), /* @__PURE__ */ React33.createElement("nav", { "aria-label": "Telas" }, itensNav.map(({ id, label, Icon }) => /* @__PURE__ */ React33.createElement("button", { key: id, "aria-current": tab === id ? "page" : void 0, onClick: () => mudarTab(id) }, /* @__PURE__ */ React33.createElement(Icon, null), " ", label))), /* @__PURE__ */ React33.createElement("div", { className: "foot" }, /* @__PURE__ */ React33.createElement(BotaoBusca, null), botaoCad, botaoDono)), /* @__PURE__ */ React33.createElement("div", { className: "main" }, MODO_TESTE && /* @__PURE__ */ React33.createElement("div", { className: "banner-teste", role: "status" }, /* @__PURE__ */ React33.createElement("b", null, "MODO TESTE"), /* @__PURE__ */ React33.createElement("span", null, "L\xEA os dados reais da planilha, mas N\xC3O grava nada nela. O que voc\xEA lan\xE7ar aqui some ao recarregar com internet."), /* @__PURE__ */ React33.createElement("button", { onClick: carregar }, "Recarregar dados")), /* @__PURE__ */ React33.createElement("header", { className: "topbar" }, /* @__PURE__ */ React33.createElement("div", { className: "in" }, /* @__PURE__ */ React33.createElement(Marca, null), /* @__PURE__ */ React33.createElement(ChipFila, { est: filaEst, onClick: () => setFilaAberta(true) }), /* @__PURE__ */ React33.createElement(BotaoBusca, null), botaoCad, botaoDono)), pendentes > 0 && /* @__PURE__ */ React33.createElement("span", { className: "sr", role: "status" }, filaEst.semInternet ? `${pendentes} lan\xE7amento(s) guardado(s) no celular esperando internet` : "Gravando na planilha"), pendentes > 0 && /* @__PURE__ */ React33.createElement("div", { className: "lado-fila" }, /* @__PURE__ */ React33.createElement(ChipFila, { est: filaEst, onClick: () => setFilaAberta(true) })), aviso && /* @__PURE__ */ React33.createElement("div", { className: "wrap" }, /* @__PURE__ */ React33.createElement(Aviso, { tipo: aviso.tipo === "erro" ? void 0 : aviso.tipo, onClose: () => setAviso(null) }, aviso.texto)), tab === "lancar" && /* @__PURE__ */ React33.createElement(
-    Lancar,
+  return /* @__PURE__ */ React34.createElement(
+    FichaProvider,
     {
       dados,
       hoje,
       ownerMode,
-      preset,
-      onSalvar: salvarLancamento,
-      onGravarLote: gravarLote,
-      modoTeste: MODO_TESTE,
-      onRegistrarMorte: registrarMorte,
-      onEditarNascimento: corrigirNascimento,
-      onEditarMorte: corrigirMorte,
-      onAnularMorte: anularUmaMorte
-    }
-  ), tab === "manejo" && /* @__PURE__ */ React33.createElement(Manejo, { key: novoProt ? novoProt.n : "m", novoProtocolo: novoProt, dados, hoje, ownerMode, modoTeste: MODO_TESTE, onGravarLote: gravarManejo, onSalvarProtocolo: salvarProtocolo, onSalvarConfig: salvarConfig, scriptAntes13: scriptAntes(13), onDecidirLote: decidirMudancaLote, onEfetivarNotas: efetivarObservacoes, onCorrigirManejo: corrigirManejoGeral, onExcluirManejo: excluirManejo }), tab === "parto" && /* @__PURE__ */ React33.createElement(
-    Parto,
-    {
-      dados,
-      hoje,
-      ownerMode,
-      modoTeste: MODO_TESTE,
-      onLancar: lancarDaVaca,
-      onGravarLote: gravarManejo,
-      onMontarProtocolo: (ids4) => {
-        setNovoProt({ tipo: "IATF", animais: ids4, nome: "", n: Date.now() });
-        setTab("manejo");
-      },
-      onAbrirProdutividade: (f) => {
-        setProdFiltro(`${f}:${Date.now()}`);
-        setTab("produtividade");
-      }
-    }
-  ), tab === "inventario" && /* @__PURE__ */ React33.createElement(Inventario, { hoje, ownerMode, onDecidirLote: decidirMudancaLote, onConfirmarNovilhas: salvarNovasMatrizes }), tab === "produtividade" && /* @__PURE__ */ React33.createElement(Produtividade, { dados, hoje, filtroInicial: prodFiltro }), tab === "cadastros" && ownerMode && /* @__PURE__ */ React33.createElement(Cadastros, { dados, onSalvarCadastros: salvarCadastros, scriptAntigo: scriptAntes(15) }), tab === "crias" && /* @__PURE__ */ React33.createElement(
-    Crias,
-    {
-      dados,
-      hoje,
-      ownerMode,
-      modoTeste: MODO_TESTE,
-      onLancar: salvarLancamento,
-      onGravarLote: gravarLote,
-      onVender: registrarVenda,
+      onEditarMatriz: (m) => setEditMatriz(m),
+      onEditarBoi: (t) => setEditBoi(t),
       onSalvarMatriz: salvarMatriz,
-      onSalvarConfig: salvarConfig,
-      onRegistrarMorte: registrarMorte,
-      onEditarNascimento: corrigirNascimento,
-      onEditarMorte: corrigirMorte,
-      onAnularMorte: anularUmaMorte,
-      onCorrigirPesagem: corrigirPesagem
-    }
-  ), tab === "rebanho" && /* @__PURE__ */ React33.createElement(Rebanho, { dados, hoje, ownerMode, onSalvarMatriz: salvarMatriz, onSalvarTouro: salvarTouro, onNovasMatrizes: salvarNovasMatrizes }), tab === "painel" && ownerMode && /* @__PURE__ */ React33.createElement(
-    Painel,
-    {
-      anoSel,
-      dados,
-      ano,
-      hoje,
-      go: mudarTab,
-      modoTeste: MODO_TESTE,
-      sincronizando,
-      onExcel: () => exportarExcel(dadosRef.current, ano, hoje),
-      onSync: sincronizarTudo,
-      onRecarregar: carregar
-    }
-  ), tab === "relatorios" && /* @__PURE__ */ React33.createElement(
-    Relatorios,
-    {
-      anoSel,
-      dados,
-      ano,
-      hoje,
-      ownerMode,
-      onExcel: () => exportarExcel(dadosRef.current, ano, hoje),
-      onExcelRelatorio: (rel) => exportarRelatorioExcel(rel, ano, hoje)
-    }
-  ), /* @__PURE__ */ React33.createElement("div", { className: "foot-note" }, "Fazenda Ibira\xE7u \xB7 app ", VERSAO_APP, " \xB7 planilha ", versaoScript ? `v${versaoScript}` : "vers\xE3o antiga", MODO_TESTE ? " \xB7 TESTE" : "", atualizadoEm ? ` \xB7 dados de ${quandoTxt(atualizadoEm)}${doCelular ? " (guardados no celular)" : ""}` : "")), /* @__PURE__ */ React33.createElement("nav", { className: `bnav${itensNav.length > 5 ? " mini" : ""}${itensNav.length > 8 ? " micro" : ""}`, "aria-label": "Telas (celular)" }, itensNav.map(({ id, label, curto, micro, Icon }) => /* @__PURE__ */ React33.createElement("button", { key: id, "aria-current": tab === id ? "page" : void 0, "aria-label": label, onClick: () => mudarTab(id) }, /* @__PURE__ */ React33.createElement(Icon, null), " ", itensNav.length > 8 ? micro || curto || label : itensNav.length > 6 && curto ? curto : label))), filaAberta && /* @__PURE__ */ React33.createElement(Modal, { titulo: "Lan\xE7amentos guardados no celular", onClose: () => {
-    setFilaAberta(false);
-    setDescartarUid(null);
-  } }, filaEst.pendentes === 0 ? /* @__PURE__ */ React33.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Tudo j\xE1 chegou na planilha. Nada esperando.") : /* @__PURE__ */ React33.createElement(React33.Fragment, null, /* @__PURE__ */ React33.createElement("p", { className: "sub", style: { marginTop: 0 } }, filaEst.semInternet ? "Sem internet. Estes lan\xE7amentos est\xE3o guardados neste celular e v\xE3o sozinhos para a planilha quando a internet voltar. N\xE3o feche o app pela metade de um lan\xE7amento, mas pode fechar e abrir \xE0 vontade: nada se perde." : filaEst.erroPlanilha ? `A planilha recusou um lan\xE7amento: ${filaEst.erroPlanilha}. Os outros esperam na fila, na ordem.` : "Enviando para a planilha..."), /* @__PURE__ */ React33.createElement("div", { className: "sheet", "data-testid": "lista-fila" }, filaEst.itens.map((it) => /* @__PURE__ */ React33.createElement("div", { className: "led-r", key: it.uid, style: { "--cols": ownerMode ? "1fr auto auto" : "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React33.createElement("span", { style: { fontSize: 14 } }, it.rotulo || it.payload.action, it.erro ? /* @__PURE__ */ React33.createElement("small", { style: { display: "block", color: it.rede ? "var(--amber)" : "var(--late)" } }, it.rede ? "esperando internet" : it.erro) : null), /* @__PURE__ */ React33.createElement("span", { className: "m mut" }, quandoTxt(it.criadoEm)), ownerMode && (descartarUid === it.uid ? /* @__PURE__ */ React33.createElement("button", { className: "btn sm", style: { background: "var(--late)" }, onClick: () => {
-    descartar(it.uid);
-    setDescartarUid(null);
-  } }, "Confirmar") : /* @__PURE__ */ React33.createElement("button", { className: "x-peq", "aria-label": "Descartar este lan\xE7amento da fila", title: "Descartar (s\xF3 se a planilha recusa sempre)", onClick: () => setDescartarUid(it.uid) }, /* @__PURE__ */ React33.createElement(Trash27, { size: 16 })))))), ownerMode && descartarUid && /* @__PURE__ */ React33.createElement(Aviso, null, "Descartar tira esse lan\xE7amento da fila e ele N\xC3O vai para a planilha (continua na tela at\xE9 recarregar). Use s\xF3 se a planilha recusa sempre.")), /* @__PURE__ */ React33.createElement("button", { className: "btn wide", style: { marginTop: 12 }, onClick: () => enviar(), disabled: filaEst.enviando || filaEst.pendentes === 0 }, filaEst.enviando ? /* @__PURE__ */ React33.createElement(Loader216, { size: 18, className: "spin" }) : /* @__PURE__ */ React33.createElement(RefreshCw2, { size: 18 }), " Tentar enviar agora")), pinAberto && !ownerMode && /* @__PURE__ */ React33.createElement(Modal, { titulo: "\xC1rea do propriet\xE1rio", onClose: () => setPinAberto(false) }, /* @__PURE__ */ React33.createElement("form", { onSubmit: (e) => {
-    e.preventDefault();
-    tentarEntrar();
-  } }, /* @__PURE__ */ React33.createElement("div", { className: "fld" }, /* @__PURE__ */ React33.createElement("label", { htmlFor: "pin" }, "Senha (PIN)"), /* @__PURE__ */ React33.createElement("input", { id: "pin", type: "password", inputMode: "numeric", autoComplete: "off", autoFocus: true, value: pin, onChange: (e) => {
-    setPin(e.target.value);
-    setPinErro(false);
-  } }), pinErro && /* @__PURE__ */ React33.createElement("div", { className: "hint late", role: "alert" }, "Senha incorreta.")), /* @__PURE__ */ React33.createElement("button", { type: "submit", className: "btn wide" }, "Entrar"))), editMatriz && ownerMode && /* @__PURE__ */ React33.createElement(ModalMatriz, { key: editMatriz.id, m: editMatriz, dados, ownerMode: true, editarDireto: true, onSalvar: salvarMatriz, onFechar: () => setEditMatriz(null) }), editBoi && ownerMode && /* @__PURE__ */ React33.createElement(ModalBoi, { boi: editBoi, dados, onSalvar: salvarTouro, onFechar: () => setEditBoi(null) })));
+      onCorrigirNascimento: corrigirNascimento,
+      onSalvarTouro: salvarTouro,
+      onAlterarSituacao: alterarSituacaoCria
+    },
+    /* @__PURE__ */ React34.createElement("div", { className: "app" }, /* @__PURE__ */ React34.createElement("style", null, CSS), /* @__PURE__ */ React34.createElement("aside", { className: "side" }, /* @__PURE__ */ React34.createElement(Marca, null), /* @__PURE__ */ React34.createElement("nav", { "aria-label": "Telas" }, itensNav.map(({ id, label, Icon }) => /* @__PURE__ */ React34.createElement("button", { key: id, "aria-current": tab === id ? "page" : void 0, onClick: () => mudarTab(id) }, /* @__PURE__ */ React34.createElement(Icon, null), " ", label))), /* @__PURE__ */ React34.createElement("div", { className: "foot" }, /* @__PURE__ */ React34.createElement(BotaoBusca, null), botaoCad, botaoDono)), /* @__PURE__ */ React34.createElement("div", { className: "main" }, MODO_TESTE && /* @__PURE__ */ React34.createElement("div", { className: "banner-teste", role: "status" }, /* @__PURE__ */ React34.createElement("b", null, "MODO TESTE"), /* @__PURE__ */ React34.createElement("span", null, "L\xEA os dados reais da planilha, mas N\xC3O grava nada nela. O que voc\xEA lan\xE7ar aqui some ao recarregar com internet."), /* @__PURE__ */ React34.createElement("button", { onClick: carregar }, "Recarregar dados")), /* @__PURE__ */ React34.createElement("header", { className: "topbar" }, /* @__PURE__ */ React34.createElement("div", { className: "in" }, /* @__PURE__ */ React34.createElement(Marca, null), /* @__PURE__ */ React34.createElement(ChipFila, { est: filaEst, onClick: () => setFilaAberta(true) }), /* @__PURE__ */ React34.createElement(BotaoBusca, null), botaoCad, botaoDono)), pendentes > 0 && /* @__PURE__ */ React34.createElement("span", { className: "sr", role: "status" }, filaEst.semInternet ? `${pendentes} lan\xE7amento(s) guardado(s) no celular esperando internet` : "Gravando na planilha"), pendentes > 0 && /* @__PURE__ */ React34.createElement("div", { className: "lado-fila" }, /* @__PURE__ */ React34.createElement(ChipFila, { est: filaEst, onClick: () => setFilaAberta(true) })), aviso && /* @__PURE__ */ React34.createElement("div", { className: "wrap" }, /* @__PURE__ */ React34.createElement(Aviso, { tipo: aviso.tipo === "erro" ? void 0 : aviso.tipo, onClose: () => setAviso(null) }, aviso.texto)), tab === "lancar" && /* @__PURE__ */ React34.createElement(
+      Lancar,
+      {
+        dados,
+        hoje,
+        ownerMode,
+        preset,
+        onSalvar: salvarLancamento,
+        onGravarLote: gravarLote,
+        modoTeste: MODO_TESTE,
+        onRegistrarMorte: registrarMorte,
+        onEditarNascimento: corrigirNascimento,
+        onEditarMorte: corrigirMorte,
+        onAnularMorte: anularUmaMorte
+      }
+    ), tab === "manejo" && /* @__PURE__ */ React34.createElement(Manejo, { key: novoProt ? novoProt.n : "m", novoProtocolo: novoProt, dados, hoje, ownerMode, modoTeste: MODO_TESTE, onGravarLote: gravarManejo, onSalvarProtocolo: salvarProtocolo, onSalvarConfig: salvarConfig, scriptAntes13: scriptAntes(13), onDecidirLote: decidirMudancaLote, onEfetivarNotas: efetivarObservacoes, onCorrigirManejo: corrigirManejoGeral, onExcluirManejo: excluirManejo }), tab === "parto" && /* @__PURE__ */ React34.createElement(
+      Parto,
+      {
+        dados,
+        hoje,
+        ownerMode,
+        modoTeste: MODO_TESTE,
+        onLancar: lancarDaVaca,
+        onGravarLote: gravarManejo,
+        onMontarProtocolo: (ids4) => {
+          setNovoProt({ tipo: "IATF", animais: ids4, nome: "", n: Date.now() });
+          setTab("manejo");
+        },
+        onAbrirProdutividade: (f) => {
+          setProdFiltro(`${f}:${Date.now()}`);
+          setTab("produtividade");
+        }
+      }
+    ), tab === "inventario" && /* @__PURE__ */ React34.createElement(Inventario, { hoje, ownerMode, onDecidirLote: decidirMudancaLote, onConfirmarNovilhas: salvarNovasMatrizes }), tab === "produtividade" && /* @__PURE__ */ React34.createElement(Produtividade, { dados, hoje, filtroInicial: prodFiltro }), tab === "cadastros" && ownerMode && /* @__PURE__ */ React34.createElement(Cadastros, { dados, onSalvarCadastros: salvarCadastros, scriptAntigo: scriptAntes(15) }), tab === "crias" && /* @__PURE__ */ React34.createElement(
+      Crias,
+      {
+        dados,
+        hoje,
+        ownerMode,
+        modoTeste: MODO_TESTE,
+        onLancar: salvarLancamento,
+        onGravarLote: gravarLote,
+        onVender: registrarVenda,
+        onSalvarMatriz: salvarMatriz,
+        onSalvarConfig: salvarConfig,
+        onRegistrarMorte: registrarMorte,
+        onEditarNascimento: corrigirNascimento,
+        onEditarMorte: corrigirMorte,
+        onAnularMorte: anularUmaMorte,
+        onCorrigirPesagem: corrigirPesagem
+      }
+    ), tab === "rebanho" && /* @__PURE__ */ React34.createElement(Rebanho, { dados, hoje, ownerMode, onSalvarMatriz: salvarMatriz, onSalvarTouro: salvarTouro, onNovasMatrizes: salvarNovasMatrizes }), tab === "painel" && ownerMode && /* @__PURE__ */ React34.createElement(
+      Painel,
+      {
+        anoSel,
+        dados,
+        ano,
+        hoje,
+        go: mudarTab,
+        modoTeste: MODO_TESTE,
+        sincronizando,
+        onExcel: () => exportarExcel(dadosRef.current, ano, hoje),
+        onSync: sincronizarTudo,
+        onRecarregar: carregar
+      }
+    ), tab === "relatorios" && /* @__PURE__ */ React34.createElement(
+      Relatorios,
+      {
+        anoSel,
+        dados,
+        ano,
+        hoje,
+        ownerMode,
+        onExcel: () => exportarExcel(dadosRef.current, ano, hoje),
+        onExcelRelatorio: (rel) => exportarRelatorioExcel(rel, ano, hoje)
+      }
+    ), /* @__PURE__ */ React34.createElement("div", { className: "foot-note" }, "Fazenda Ibira\xE7u \xB7 app ", VERSAO_APP, " \xB7 planilha ", versaoScript ? `v${versaoScript}` : "vers\xE3o antiga", MODO_TESTE ? " \xB7 TESTE" : "", atualizadoEm ? ` \xB7 dados de ${quandoTxt(atualizadoEm)}${doCelular ? " (guardados no celular)" : ""}` : "")), /* @__PURE__ */ React34.createElement("nav", { className: `bnav${itensNav.length > 5 ? " mini" : ""}${itensNav.length > 8 ? " micro" : ""}`, "aria-label": "Telas (celular)" }, itensNav.map(({ id, label, curto, micro, Icon }) => /* @__PURE__ */ React34.createElement("button", { key: id, "aria-current": tab === id ? "page" : void 0, "aria-label": label, onClick: () => mudarTab(id) }, /* @__PURE__ */ React34.createElement(Icon, null), " ", itensNav.length > 8 ? micro || curto || label : itensNav.length > 6 && curto ? curto : label))), filaAberta && /* @__PURE__ */ React34.createElement(Modal, { titulo: "Lan\xE7amentos guardados no celular", onClose: () => {
+      setFilaAberta(false);
+      setDescartarUid(null);
+    } }, filaEst.pendentes === 0 ? /* @__PURE__ */ React34.createElement("p", { className: "sub", style: { marginTop: 0 } }, "Tudo j\xE1 chegou na planilha. Nada esperando.") : /* @__PURE__ */ React34.createElement(React34.Fragment, null, /* @__PURE__ */ React34.createElement("p", { className: "sub", style: { marginTop: 0 } }, filaEst.semInternet ? "Sem internet. Estes lan\xE7amentos est\xE3o guardados neste celular e v\xE3o sozinhos para a planilha quando a internet voltar. N\xE3o feche o app pela metade de um lan\xE7amento, mas pode fechar e abrir \xE0 vontade: nada se perde." : filaEst.erroPlanilha ? `A planilha recusou um lan\xE7amento: ${filaEst.erroPlanilha}. Os outros esperam na fila, na ordem.` : "Enviando para a planilha..."), /* @__PURE__ */ React34.createElement("div", { className: "sheet", "data-testid": "lista-fila" }, filaEst.itens.map((it) => /* @__PURE__ */ React34.createElement("div", { className: "led-r", key: it.uid, style: { "--cols": ownerMode ? "1fr auto auto" : "1fr auto", minHeight: 48 } }, /* @__PURE__ */ React34.createElement("span", { style: { fontSize: 14 } }, it.rotulo || it.payload.action, it.erro ? /* @__PURE__ */ React34.createElement("small", { style: { display: "block", color: it.rede ? "var(--amber)" : "var(--late)" } }, it.rede ? "esperando internet" : it.erro) : null), /* @__PURE__ */ React34.createElement("span", { className: "m mut" }, quandoTxt(it.criadoEm)), ownerMode && (descartarUid === it.uid ? /* @__PURE__ */ React34.createElement("button", { className: "btn sm", style: { background: "var(--late)" }, onClick: () => {
+      descartar(it.uid);
+      setDescartarUid(null);
+    } }, "Confirmar") : /* @__PURE__ */ React34.createElement("button", { className: "x-peq", "aria-label": "Descartar este lan\xE7amento da fila", title: "Descartar (s\xF3 se a planilha recusa sempre)", onClick: () => setDescartarUid(it.uid) }, /* @__PURE__ */ React34.createElement(Trash27, { size: 16 })))))), ownerMode && descartarUid && /* @__PURE__ */ React34.createElement(Aviso, null, "Descartar tira esse lan\xE7amento da fila e ele N\xC3O vai para a planilha (continua na tela at\xE9 recarregar). Use s\xF3 se a planilha recusa sempre.")), /* @__PURE__ */ React34.createElement("button", { className: "btn wide", style: { marginTop: 12 }, onClick: () => enviar(), disabled: filaEst.enviando || filaEst.pendentes === 0 }, filaEst.enviando ? /* @__PURE__ */ React34.createElement(Loader216, { size: 18, className: "spin" }) : /* @__PURE__ */ React34.createElement(RefreshCw2, { size: 18 }), " Tentar enviar agora")), pinAberto && !ownerMode && /* @__PURE__ */ React34.createElement(Modal, { titulo: "\xC1rea do propriet\xE1rio", onClose: () => setPinAberto(false) }, /* @__PURE__ */ React34.createElement("form", { onSubmit: (e) => {
+      e.preventDefault();
+      tentarEntrar();
+    } }, /* @__PURE__ */ React34.createElement("div", { className: "fld" }, /* @__PURE__ */ React34.createElement("label", { htmlFor: "pin" }, "Senha (PIN)"), /* @__PURE__ */ React34.createElement("input", { id: "pin", type: "password", inputMode: "numeric", autoComplete: "off", autoFocus: true, value: pin, onChange: (e) => {
+      setPin(e.target.value);
+      setPinErro(false);
+    } }), pinErro && /* @__PURE__ */ React34.createElement("div", { className: "hint late", role: "alert" }, "Senha incorreta.")), /* @__PURE__ */ React34.createElement("button", { type: "submit", className: "btn wide" }, "Entrar"))), editMatriz && ownerMode && /* @__PURE__ */ React34.createElement(ModalMatriz, { key: editMatriz.id, m: editMatriz, dados, ownerMode: true, editarDireto: true, onSalvar: salvarMatriz, onFechar: () => setEditMatriz(null) }), editBoi && ownerMode && /* @__PURE__ */ React34.createElement(ModalBoi, { boi: editBoi, dados, onSalvar: salvarTouro, onFechar: () => setEditBoi(null) }))
+  );
 }
-createRoot(document.getElementById("root")).render(/* @__PURE__ */ React33.createElement(GestaoPecuaria, null));
+createRoot(document.getElementById("root")).render(/* @__PURE__ */ React34.createElement(GestaoPecuaria, null));
