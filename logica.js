@@ -2,7 +2,7 @@
 // É usado por dois lados: o app (app.jsx) e a integração por foto (lançamentos em lote feitos pelo Claude).
 // Mexeu aqui = mudou nos dois, de propósito: uma única fonte da verdade para status, previsão e relatórios.
 
-export const VERSAO_APP = '11.2.2 (05/11/26)';
+export const VERSAO_APP = '11.4 (05/11/26)';
 export const VERSAO_MINIMA_SCRIPT = 12; // v12 = protocolos, manejos, touros completos (v11 = não duplica reenvio; v10 = aba Mortes)
 export const PERIODO_GESTACAO_DIAS = 285; // mesmo período usado na planilha original da fazenda
 
@@ -38,7 +38,7 @@ export const CAMPOS_EDICAO_MATRIZ = [
   { key: 'lote', label: 'Lote / piquete', type: 'text', cadastro: 'lotes' },
   { key: 'dataNascimento', label: 'Data de nascimento', type: 'date' },
   { key: 'partosAnteriores', label: 'Partos antes de entrar na fazenda', type: 'number' },
-  { key: 'status', label: 'Status', type: 'select', options: ['Vazia', 'Cheia', 'Descarte', 'Vendida'] },
+  { key: 'status', label: 'Status', type: 'select', options: ['Vazia', 'Cheia', 'Descarte', 'Vendida', 'Morta'] },
 ];
 
 export const CAMPOS = {
@@ -1018,7 +1018,23 @@ function pontosDePeso(idx, { nasc, matriz }) {
 
 export function rotuloSituacao(c) {
   const f = c.sexo === 'Fêmea';
-  return { mamando: 'Mamando', desmamado: f ? 'Desmamada' : 'Desmamado', novilha: 'Novilha', matriz: 'Virou matriz', vendido: f ? 'Vendida' : 'Vendido', morto: f ? 'Morta' : 'Morto', confirmar: 'Situação a confirmar' }[c.situacao] || c.situacao;
+  return { mamando: 'Mamando', desmamado: f ? 'Desmamada' : 'Desmamado', novilha: 'Novilha', matriz: 'Virou matriz', vendido: f ? 'Vendida' : 'Vendido', morto: f ? 'Morta' : 'Morto', confirmar: 'Situação a confirmar', touro: 'Virou touro da fazenda', boi: 'Virou boi/garrote' }[c.situacao] || c.situacao;
+}
+
+// v11.4: situação definida pelo dono, gravada nas observações do nascimento. Vale sobre o histórico da planilha e sobre
+// venda ou morte lançadas (o dono corrige o que está errado). Só a novilha ligada à cria (cadastro de matriz) fica acima dela.
+export const SITUACOES_DONO = { MAMANDO: 'mamando', 'NA FAZENDA': 'desmamado', VENDIDO: 'vendido', MORTO: 'morto', 'A CONFIRMAR': 'confirmar', TOURO: 'touro', BOI: 'boi' };
+const RE_DONO = /\[situa[çc][ãa]o definida pelo dono: (MAMANDO|NA FAZENDA|VENDIDO|MORTO|A CONFIRMAR|TOURO|BOI)(?: em (\d{2})\/(\d{2})\/(\d{4}))?[^\]]*\]/i;
+export function situacaoDono(n) {
+  const m = RE_DONO.exec(String((n && n.observacoes) || ''));
+  return m ? { sit: m[1].toUpperCase(), data: m[2] ? `${m[4]}-${m[3]}-${m[2]}` : '' } : null;
+}
+// Observação nova do nascimento com a marca do dono (troca a anterior, se houver)
+export function marcarSituacaoDono(obs, sit, dataISO, hoje) {
+  const limpo = String(obs || '').replace(/\s*(·\s*)?\[situa[çc][ãa]o definida pelo dono:[^\]]*\]/gi, '').trim();
+  const dt = (d) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : '');
+  const tag = `[situação definida pelo dono: ${sit}${dataISO ? ` em ${dt(dataISO)}` : ''} · alterada em ${dt(hoje || todayISO())}]`;
+  return limpo ? `${limpo} · ${tag}` : tag;
 }
 
 // Todas as crias vivas (uma por nascimento). Cada uma traz idade, mãe, origem/pai, pesos, ganho diário e situação.
@@ -1050,6 +1066,8 @@ export function listarCrias(estado, hoje) {
       else if (hist && hist.sit === 'MORTO') situacao = 'morto';
       else if (hist && hist.sit === 'A CONFIRMAR') situacao = 'confirmar';
       else if (desm || (hist && hist.sit === 'NA FAZENDA')) situacao = 'desmamado';
+      const dono = situacaoDono(n);
+      if (dono && !novilha) situacao = SITUACOES_DONO[dono.sit] || situacao;
       const baixa = itensVenda[0] || null;
       const mae = n.matrizId ? matrizPorId.get(n.matrizId) || null : null;
       const maeMorta = !!(mae && mae.status === 'Morta');
@@ -1059,10 +1077,10 @@ export function listarCrias(estado, hoje) {
         origem: origemDaCria(n, eventos, touros, estado.protocolos), pelagem: n.pelagem || '',
         pontos, pesoAtual: ultimo ? ultimo.peso : null, pesoData: ultimo ? ultimo.data : '',
         diasDesdePeso: ultimo ? diasEntre(ultimo.data, hoje) : null, gmd: ganhoDiario(pontos),
-        situacao, desmamaData: desm ? desm.data : '', novilha, vendaData: baixa ? baixa.data : (novilha && novilha.dataBaixa) || (hist && hist.sit === 'VENDIDO' ? hist.data : '') || '',
-        historico: !!hist,
-        ativa: situacao !== 'vendido' && situacao !== 'morto',
-        mortoData: morte ? morte.data : (novilha && novilha.status === 'Morta' && novilha.dataBaixa) || (hist && hist.sit === 'MORTO' ? hist.data : '') || '', causaMorte: morte ? morte.causa : '',
+        situacao, desmamaData: desm ? desm.data : '', novilha, vendaData: situacao !== 'vendido' ? '' : (dono && dono.sit === 'VENDIDO' && dono.data) || (baixa ? baixa.data : (novilha && novilha.dataBaixa) || (hist && hist.sit === 'VENDIDO' ? hist.data : '') || ''),
+        historico: !!hist, situacaoDono: dono,
+        ativa: situacao !== 'vendido' && situacao !== 'morto' && situacao !== 'touro' && situacao !== 'boi',
+        mortoData: situacao !== 'morto' ? '' : (dono && dono.sit === 'MORTO' && dono.data) || (morte ? morte.data : (novilha && novilha.status === 'Morta' && novilha.dataBaixa) || (hist && hist.sit === 'MORTO' ? hist.data : '') || ''), causaMorte: morte && situacao === 'morto' ? morte.causa : '',
         maeMorta, maeMortaData: maeMorta ? mae.dataBaixa || '' : '', orfa: maeMorta && situacao === 'mamando',
       };
     })
